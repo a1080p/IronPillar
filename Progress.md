@@ -4,6 +4,21 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-08 — Analytics page build-out (training stats from workout logs)
+
+- The `workoutLogs` docs the `completeWorkout` function already stores (name, timestamp, `durationSeconds`, full per-set reps/weight/duration) had everything needed — no new data collection or backend change. All aggregation is client-side in `lib/workoutStats.ts`.
+- New `lib/workoutStats.ts`: `summarizeExerciseLogs` / `summarizeLog` (volume = Σ reps×weight, reps, sets, active seconds), `allTimeStats`, Monday-aligned `weeklyBuckets`, `thisWeekVsLast`, `personalRecords` (best set per exercise by Epley 1RM), plus `formatVolume` / `formatDuration`.
+- New components: `StatTile` (value + label + optional up/down delta hint) and `BarChart` (SVG, last-bar highlighted, empty state).
+- Rebuilt `app/(tabs)/analytics.tsx`:
+  - Headline tiles: total workouts, volume lifted, training time, day streak.
+  - "This week" tiles for workouts / volume / time with deltas vs last week.
+  - Bar charts: workouts per week and weekly volume (last 8 weeks).
+  - Personal records list (only shows when weighted sets exist).
+  - Recent workouts list — per-workout chips: minutes, volume, reps, sets, xp.
+  - Body measurements (existing BMI / body-fat line charts + add-entry form) kept, moved to the bottom.
+- Completion screen (`app/workout/[id]/complete.tsx`) now shows a per-workout summary row (min / lb lifted / reps / sets); `log.tsx` passes those totals through as route params.
+- **Verified live** on the test account: all sections render with real log data (5 workouts, 1.3k lb all-time, "Leg ext 155 lb × 8 · ~196 lb 1RM" PR, weekly bars at 8/24 and 8/31, recent-workout chips). Typecheck passes.
+
 ## 2026-09-08 — Per-workout menu on "My Workouts" cards + tab bar fix
 
 - New `components/ActionSheet.tsx` — a bottom-anchored menu modal (title, icon rows, destructive styling, Cancel). Defers the picked action ~200ms so it runs after the modal finishes dismissing (an Alert or navigation fired mid-dismiss gets swallowed on iOS).

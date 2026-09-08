@@ -5,19 +5,36 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { colors, radii, spacing, typography } from '../../../constants/theme';
 import { badges } from '../../../data/badges';
+import { formatVolume } from '../../../lib/workoutStats';
 import { useAuth } from '../../../contexts/AuthContext';
 
 export default function WorkoutCompleteScreen() {
-  const { xpEarned, streakBonus, streakCountAfter, badgeEarnedId } = useLocalSearchParams<{
-    xpEarned: string;
-    streakBonus: string;
-    streakCountAfter: string;
-    badgeEarnedId: string;
-  }>();
+  const { xpEarned, streakBonus, streakCountAfter, badgeEarnedId, volume, reps, sets, durationSeconds } =
+    useLocalSearchParams<{
+      xpEarned: string;
+      streakBonus: string;
+      streakCountAfter: string;
+      badgeEarnedId: string;
+      volume: string;
+      reps: string;
+      sets: string;
+      durationSeconds: string;
+    }>();
   const { profile } = useAuth();
   const [showBadge, setShowBadge] = useState(false);
 
   const badge = badgeEarnedId ? badges[badgeEarnedId] : null;
+
+  const volumeNum = Number(volume) || 0;
+  const repsNum = Number(reps) || 0;
+  const setsNum = Number(sets) || 0;
+  const minutes = Math.round((Number(durationSeconds) || 0) / 60);
+  const summaryChips = [
+    `${minutes} min`,
+    volumeNum > 0 ? `${formatVolume(volumeNum)} lb lifted` : null,
+    repsNum > 0 ? `${repsNum} reps` : null,
+    setsNum > 0 ? `${setsNum} sets` : null,
+  ].filter(Boolean) as string[];
 
   const handleNext = () => {
     if (badge && !showBadge) {
@@ -65,6 +82,16 @@ export default function WorkoutCompleteScreen() {
           </Text>
         )}
 
+        {summaryChips.length > 0 && (
+          <View style={styles.summaryRow}>
+            {summaryChips.map((chip) => (
+              <View key={chip} style={styles.summaryChip}>
+                <Text style={styles.summaryChipText}>{chip}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         <Text style={styles.rockPile}>🪨</Text>
       </View>
       <View style={styles.footer}>
@@ -84,6 +111,20 @@ const styles = StyleSheet.create({
   xpLine: { fontSize: typography.sizes.md, color: colors.primary, marginTop: spacing.sm },
   streakBonus: { fontSize: typography.sizes.body, color: colors.text, marginTop: spacing.xs },
   xpUnit: { color: colors.primary, fontSize: typography.sizes.small },
+  summaryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  summaryChip: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  summaryChipText: { color: colors.text, fontSize: typography.sizes.small, fontWeight: '600' },
   rockPile: { fontSize: 96, marginTop: spacing.xl },
   congrats: { fontSize: typography.sizes.xl, fontWeight: '800', color: colors.primary, textAlign: 'center' },
   badgeCircle: {

@@ -10,6 +10,7 @@ import { motivationalMessages } from '../../../constants/motivation';
 import { useWorkout } from '../../../hooks/useWorkout';
 import { useAuth } from '../../../contexts/AuthContext';
 import { completeWorkout } from '../../../lib/workoutCompletion';
+import { summarizeExerciseLogs } from '../../../lib/workoutStats';
 import type { ExerciseLog, LoggedSet } from '../../../types/models';
 
 export default function WorkoutLogScreen() {
@@ -80,6 +81,7 @@ export default function WorkoutLogScreen() {
     setFinishing(true);
     try {
       const result = await completeWorkout(template, nextLogs, elapsedSeconds);
+      const totals = summarizeExerciseLogs(nextLogs);
       router.replace({
         pathname: '/workout/[id]/complete',
         params: {
@@ -88,6 +90,10 @@ export default function WorkoutLogScreen() {
           streakBonus: String(result.streakBonus),
           streakCountAfter: String(result.streakCountAfter),
           badgeEarnedId: result.badgeEarnedId ?? '',
+          volume: String(totals.volume),
+          reps: String(totals.reps),
+          sets: String(totals.sets),
+          durationSeconds: String(elapsedSeconds),
         },
       });
     } finally {
