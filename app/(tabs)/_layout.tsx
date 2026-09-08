@@ -1,28 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { colors, radii } from '../../constants/theme';
+import { FloatingTabBar } from '../../components/FloatingTabBar';
+import { colors } from '../../constants/theme';
 
 export default function TabsLayout() {
   return (
     <Tabs
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
         tabBarActiveTintColor: colors.textOnDark,
         tabBarInactiveTintColor: 'rgba(255,255,255,0.6)',
-        tabBarStyle: {
-          position: 'absolute',
-          left: 16,
-          right: 16,
-          bottom: 24,
-          height: 60,
-          borderRadius: radii.pill,
-          backgroundColor: colors.primary,
-          borderTopWidth: 0,
-        },
-        tabBarItemStyle: {
-          paddingVertical: 8,
-        },
       }}
     >
       <Tabs.Screen
