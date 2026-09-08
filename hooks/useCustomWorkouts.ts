@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase/config';
 import type { CustomWorkout, ExerciseSpec, GeneratedWorkoutDetails } from '../types/models';
 
@@ -89,4 +89,25 @@ export async function updateCustomWorkout(
 ): Promise<void> {
   const ref = doc(db, 'userWorkouts', uid, 'customWorkouts', workoutId);
   await updateDoc(ref, patch);
+}
+
+export async function deleteCustomWorkout(uid: string, workoutId: string): Promise<void> {
+  await deleteDoc(doc(db, 'userWorkouts', uid, 'customWorkouts', workoutId));
+}
+
+// Copies an existing custom workout into a new doc ("… (Copy)").
+export async function duplicateCustomWorkout(
+  uid: string,
+  source: CustomWorkout
+): Promise<string> {
+  const col = collection(db, 'userWorkouts', uid, 'customWorkouts');
+  const ref = doc(col);
+  const copy: CustomWorkout = {
+    ...source,
+    id: ref.id,
+    name: `${source.name} (Copy)`,
+    createdBy: uid,
+  };
+  await setDoc(ref, copy);
+  return ref.id;
 }

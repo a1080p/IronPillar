@@ -1,12 +1,18 @@
+import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { ActionSheet } from '../../components/ActionSheet';
 import { TopBar } from '../../components/TopBar';
 import { colors, radii, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWorkoutTemplates } from '../../hooks/useWorkoutTemplates';
-import { useCustomWorkouts } from '../../hooks/useCustomWorkouts';
+import {
+  deleteCustomWorkout,
+  duplicateCustomWorkout,
+  useCustomWorkouts,
+} from '../../hooks/useCustomWorkouts';
 import type { CustomWorkout, WorkoutTemplate } from '../../types/models';
 
 export default function HomeScreen() {
@@ -70,7 +76,7 @@ export default function HomeScreen() {
           <Text style={styles.sectionSubLabel}>Workouts you've built yourself</Text>
           <View style={styles.quickRow}>
             {customWorkouts.map((w) => (
-              <QuickStartCard key={w.id} workout={w} />
+              <QuickStartCard key={w.id} workout={w} editable />
             ))}
             <Pressable style={styles.createCard} onPress={() => router.push('/workout/new')}>
               <Ionicons name="add-circle-outline" size={26} color={colors.primary} />
@@ -83,11 +89,78 @@ export default function HomeScreen() {
   );
 }
 
-function QuickStartCard({ workout }: { workout: WorkoutTemplate | CustomWorkout }) {
+function QuickStartCard({
+  workout,
+  editable = false,
+}: {
+  workout: WorkoutTemplate | CustomWorkout;
+  editable?: boolean;
+}) {
+  const { user } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const confirmDelete = () => {
+    Alert.alert('Delete workout', `Delete "${workout.name}"? This can't be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          if (!user) return;
+          try {
+            await deleteCustomWorkout(user.uid, workout.id);
+          } catch (e) {
+            Alert.alert('Could not delete', e instanceof Error ? e.message : 'Try again.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleDuplicate = async () => {
+    if (!user) return;
+    try {
+      await duplicateCustomWorkout(user.uid, workout as CustomWorkout);
+    } catch (e) {
+      Alert.alert('Could not duplicate', e instanceof Error ? e.message : 'Try again.');
+    }
+  };
+
   return (
     <Pressable style={styles.quickCard} onPress={() => router.push(`/workout/${workout.id}`)}>
-      <Text style={styles.quickCardTitle}>{workout.name}</Text>
+      <View style={styles.quickCardHeader}>
+        <Text style={styles.quickCardTitle} numberOfLines={2}>
+          {workout.name}
+        </Text>
+        {editable && (
+          <Pressable hitSlop={8} onPress={() => setMenuOpen(true)} style={styles.kebab}>
+            <Ionicons name="ellipsis-vertical" size={16} color={colors.textOnDark} />
+          </Pressable>
+        )}
+      </View>
       <Text style={styles.quickCardMeta}>{workout.durationMinutes} Minutes</Text>
+
+      {editable && (
+        <ActionSheet
+          visible={menuOpen}
+          title={workout.name}
+          onClose={() => setMenuOpen(false)}
+          actions={[
+            {
+              label: 'Edit details',
+              icon: 'create-outline',
+              onPress: () => router.push(`/workout/${workout.id}/edit`),
+            },
+            { label: 'Duplicate', icon: 'copy-outline', onPress: handleDuplicate },
+            {
+              label: 'Delete',
+              icon: 'trash-outline',
+              destructive: true,
+              onPress: confirmDelete,
+            },
+          ]}
+        />
+      )}
     </Pressable>
   );
 }
@@ -119,7 +192,19 @@ const styles = StyleSheet.create({
     minHeight: 90,
     justifyContent: 'space-between',
   },
-  quickCardTitle: { color: colors.textOnDark, fontWeight: '700', fontSize: typography.sizes.small },
+  quickCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  quickCardTitle: {
+    flex: 1,
+    color: colors.textOnDark,
+    fontWeight: '700',
+    fontSize: typography.sizes.small,
+  },
+  kebab: { marginRight: -4, marginTop: -2, padding: 2 },
   quickCardMeta: { color: colors.textOnDark, fontSize: typography.sizes.small },
   createCard: {
     borderWidth: 1.5,

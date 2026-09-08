@@ -12,6 +12,7 @@ export const colors = {
   border: '#3D4FEA',
   surfaceMuted: '#F2F2F2',
   success: '#FF8A00',
+  danger: '#E5484D',
 } as const;
 
 export const typography = {

@@ -4,6 +4,15 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-08 — Per-workout menu on "My Workouts" cards + tab bar fix
+
+- New `components/ActionSheet.tsx` — a bottom-anchored menu modal (title, icon rows, destructive styling, Cancel). Defers the picked action ~200ms so it runs after the modal finishes dismissing (an Alert or navigation fired mid-dismiss gets swallowed on iOS).
+- Home "My Workouts" cards now show a `⋮` button (custom workouts only) opening that menu: **Edit details** (→ `/workout/[id]/edit`), **Duplicate**, **Delete** (native confirm Alert first). Quick Start / preset cards are unchanged.
+- `useCustomWorkouts`: added `deleteCustomWorkout` and `duplicateCustomWorkout` (copies the whole doc as "… (Copy)").
+- Added `colors.danger` (#E5484D) for destructive actions.
+- **Verified live**: opened the menu on a custom card, duplicated a workout (copy appeared instantly via the snapshot listener), then deleted the copy through the confirm dialog (removed instantly). Firestore rules already allow client writes to `userWorkouts/{uid}/customWorkouts`, so no rules change.
+- Also replaced the bottom tab bar with `components/FloatingTabBar.tsx` — RN's `tabBarStyle` position/height overrides weren't respected in expo-router v57, leaving the pill clipped and icons top-aligned. The custom bar is inset to the 24pt screen gutter and centers each icon.
+
 ## 2026-09-08 — AI-filled details for custom workouts
 
 - New `generateWorkoutDetails` Cloud Function (`functions/src/index.ts`): given a workout name + exercise list, calls Claude (`claude-haiku-4-5`) via `@anthropic-ai/sdk` with a forced tool call for structured output, and returns `durationMinutes`, `caloriesRangeLabel`, `equipmentRequired`, `overview`, `workoutTips[]`, `equipment[]`, and one `exerciseTips` cue per exercise. Runs server-side so the API key never ships in the bundle. Output is clamped/trimmed (duration 5–180, ≤4 sections, ≤6 bullets, bullet/heading length caps) before returning.
