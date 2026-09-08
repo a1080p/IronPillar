@@ -13,7 +13,7 @@ export default function NameBirthdayScreen() {
 
   const handleNext = () => {
     setNameBirthday(name.trim(), birthday);
-    router.push('/onboarding/goals');
+    router.push('/onboarding/body');
   };
 
   return (

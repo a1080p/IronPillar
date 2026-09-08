@@ -4,6 +4,18 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-08 — Onboarding body metrics + weight-based Progress tab
+
+- **Onboarding** gains a step (`app/(auth)/onboarding/body.tsx`, between name-birthday and goals): sex (male/female), height (ft + in → stored as `heightInches`), and starting weight. `UserProfile` gains `sex`, `heightInches`, `startingWeightLb`; `OnboardingContext` + `createProfile` + `experience.tsx` finish updated to carry them. `SEX_OPTIONS` added to `constants/options.ts`. No Firestore rules change (users/create rule only constrains the gamification fields).
+- **`ProgressMetric` changed** from `{ bmi, bodyFatPercent }` to `{ weightLb }`. `useProgressMetrics.addMetric(uid, weightLb)`; the hook filters out legacy entries that lack `weightLb`.
+- **Analytics page**:
+  - Removed the BMI and percent-body-fat line charts and the two-field entry form.
+  - "Add an entry" → **"Log today's weight"** (single lb field).
+  - New **Body weight** section: current-weight / change-since-start / BMI tiles (BMI derived via `bmiFrom` = 703·lb/in²; tiles show only when the data exists) + a **Body weight (lb)** line chart seeded from `startingWeightLb` then every logged entry.
+  - New **Strength trend (est. 1RM, lb)** line chart (`strengthTrend` in `lib/workoutStats.ts` — max Epley 1RM per workout over the last 10 weighted workouts). Replaced the "Weekly volume" bar chart with it; "Workouts per week" bar kept.
+- **Existing accounts** created before this change have no `sex`/`heightInches`/`startingWeightLb` — the weight chart shows its empty state and the BMI/since-start tiles hide until they log a weight (or re-onboard). A future account-details field could let them fill it in; `updateProfile` already accepts the keys.
+- **Verified live**: analytics renders for a legacy profile without the new fields; logged a weight (178) and the Current-weight tile + Body weight chart populated instantly; Strength trend chart renders. Typecheck passes. Onboarding `body` screen not driven end-to-end (test account already onboarded) but matches the existing screen pattern and typechecks.
+
 ## 2026-09-08 — Analytics page build-out (training stats from workout logs)
 
 - The `workoutLogs` docs the `completeWorkout` function already stores (name, timestamp, `durationSeconds`, full per-set reps/weight/duration) had everything needed — no new data collection or backend change. All aggregation is client-side in `lib/workoutStats.ts`.

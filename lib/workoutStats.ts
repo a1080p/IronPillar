@@ -170,6 +170,43 @@ export function personalRecords(logs: WorkoutLog[], limit = 5): PersonalRecord[]
     .slice(0, limit);
 }
 
+// Heaviest estimated 1RM (Epley) reached in a single workout, charted over
+// the most recent `limit` workouts that involved any weighted sets. This is
+// the "are my lifts getting heavier" line.
+export function strengthTrend(
+  logs: WorkoutLog[],
+  limit = 10
+): { label: string; value: number }[] {
+  const perWorkout: { at: number; value: number }[] = [];
+
+  for (const log of logs) {
+    let best = 0;
+    for (const exercise of log.exercises) {
+      for (const set of exercise.sets) {
+        if (!set.weight || !set.reps) continue;
+        best = Math.max(best, set.weight * (1 + set.reps / 30));
+      }
+    }
+    if (best > 0) {
+      perWorkout.push({ at: new Date(log.completedAt).getTime(), value: Math.round(best) });
+    }
+  }
+
+  return perWorkout
+    .sort((a, b) => a.at - b.at)
+    .slice(-limit)
+    .map((p) => {
+      const d = new Date(p.at);
+      return { label: `${d.getMonth() + 1}/${d.getDate()}`, value: p.value };
+    });
+}
+
+// Imperial BMI. Returns null when we don't have a usable height.
+export function bmiFrom(weightLb: number, heightInches: number): number | null {
+  if (!heightInches || heightInches <= 0) return null;
+  return Math.round((703 * weightLb) / (heightInches * heightInches) * 10) / 10;
+}
+
 export function formatVolume(lb: number): string {
   if (lb >= 1000) return `${(lb / 1000).toFixed(lb >= 10000 ? 0 : 1)}k`;
   return String(Math.round(lb));

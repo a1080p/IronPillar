@@ -12,9 +12,11 @@ import { useWorkoutLogs } from '../../hooks/useWorkoutLogs';
 import { useProgressMetrics } from '../../hooks/useProgressMetrics';
 import {
   allTimeStats,
+  bmiFrom,
   formatDuration,
   formatVolume,
   personalRecords,
+  strengthTrend,
   summarizeLog,
   thisWeekVsLast,
   weeklyBuckets,
@@ -41,8 +43,7 @@ export default function AnalyticsScreen() {
   const { logs } = useWorkoutLogs(user?.uid);
   const { metrics, addMetric } = useProgressMetrics(user?.uid);
 
-  const [bmiInput, setBmiInput] = useState('');
-  const [bodyFatInput, setBodyFatInput] = useState('');
+  const [weightInput, setWeightInput] = useState('');
   const [saving, setSaving] = useState(false);
 
   const stats = useMemo(() => allTimeStats(logs), [logs]);
@@ -50,25 +51,40 @@ export default function AnalyticsScreen() {
   const compare = useMemo(() => thisWeekVsLast(logs), [logs]);
   const prs = useMemo(() => personalRecords(logs, 5), [logs]);
   const recent = useMemo(() => logs.slice(0, 8), [logs]);
+  const strengthPoints = useMemo(() => strengthTrend(logs, 10), [logs]);
 
-  const bmiPoints = metrics.map((m) => ({ label: formatShortDate(m.recordedAt), value: m.bmi }));
-  const bodyFatPoints = metrics.map((m) => ({
-    label: formatShortDate(m.recordedAt),
-    value: m.bodyFatPercent,
-  }));
+  // Weight line = the starting weight from onboarding, then every logged entry.
+  const weightPoints = useMemo(() => {
+    const points: { label: string; value: number }[] = [];
+    if (profile?.startingWeightLb && profile.createdAt) {
+      points.push({ label: formatShortDate(profile.createdAt), value: profile.startingWeightLb });
+    }
+    for (const m of metrics) {
+      points.push({ label: formatShortDate(m.recordedAt), value: m.weightLb });
+    }
+    return points;
+  }, [profile?.startingWeightLb, profile?.createdAt, metrics]);
+
+  const currentWeight = weightPoints.length ? weightPoints[weightPoints.length - 1].value : null;
+  const weightChange =
+    currentWeight != null && profile?.startingWeightLb != null
+      ? currentWeight - profile.startingWeightLb
+      : null;
+  const bmi =
+    currentWeight != null && profile?.heightInches != null
+      ? bmiFrom(currentWeight, profile.heightInches)
+      : null;
 
   const handleAdd = async () => {
-    const bmi = Number(bmiInput);
-    const bodyFat = Number(bodyFatInput);
-    if (!bmi || !bodyFat || !user) {
-      Alert.alert('Enter both values', 'Add a BMI and body fat % to save an entry.');
+    const weight = Number(weightInput);
+    if (!weight || weight < 60 || weight > 1000 || !user) {
+      Alert.alert('Enter your weight', 'Add your current weight in pounds to save an entry.');
       return;
     }
     setSaving(true);
     try {
-      await addMetric(user.uid, bmi, bodyFat);
-      setBmiInput('');
-      setBodyFatInput('');
+      await addMetric(user.uid, Math.round(weight));
+      setWeightInput('');
     } finally {
       setSaving(false);
     }
@@ -126,11 +142,7 @@ export default function AnalyticsScreen() {
               title="Workouts per week"
               points={weeks.map((w) => ({ label: w.label, value: w.workouts }))}
             />
-            <BarChart
-              title="Weekly volume (lb)"
-              points={weeks.map((w) => ({ label: w.label, value: w.volume }))}
-              formatValue={(v) => (v > 0 ? formatVolume(v) : '')}
-            />
+            <LineChart title="Strength trend (est. 1RM, lb)" points={strengthPoints} />
 
             {prs.length > 0 && (
               <View style={styles.panel}>
@@ -175,28 +187,36 @@ export default function AnalyticsScreen() {
           </>
         )}
 
-        <Text style={styles.sectionLabel}>Body measurements</Text>
-        <LineChart title="BMI (kg/m²)" points={bmiPoints} />
-        <LineChart title="Percent Body Fat (%)" points={bodyFatPoints} unit="%" />
+        <Text style={styles.sectionLabel}>Body weight</Text>
+
+        {currentWeight != null && (
+          <View style={styles.tileGrid}>
+            <StatTile value={`${currentWeight} lb`} label="Current weight" />
+            {weightChange != null && (
+              <StatTile
+                value={`${weightChange > 0 ? '+' : weightChange < 0 ? '−' : ''}${Math.abs(
+                  weightChange
+                )} lb`}
+                label="Since you started"
+              />
+            )}
+            {bmi != null && <StatTile value={bmi} label="BMI" />}
+          </View>
+        )}
+
+        <LineChart title="Body weight (lb)" points={weightPoints} />
 
         <View style={styles.addCard}>
-          <Text style={styles.addTitle}>Add an entry</Text>
+          <Text style={styles.addTitle}>Log today's weight</Text>
           <View style={styles.addRow}>
             <TextInput
               style={styles.input}
-              placeholder="BMI"
+              placeholder="Weight (lb)"
               placeholderTextColor={colors.textMuted}
-              keyboardType="decimal-pad"
-              value={bmiInput}
-              onChangeText={setBmiInput}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Body fat %"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="decimal-pad"
-              value={bodyFatInput}
-              onChangeText={setBodyFatInput}
+              keyboardType="number-pad"
+              maxLength={4}
+              value={weightInput}
+              onChangeText={setWeightInput}
             />
           </View>
           <Button label="Save Entry" onPress={handleAdd} loading={saving} />

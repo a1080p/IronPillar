@@ -13,7 +13,14 @@ export default function ExperienceScreen() {
   const [saving, setSaving] = useState(false);
 
   const handleFinish = async () => {
-    if (!data.experienceLevel) return;
+    if (
+      !data.experienceLevel ||
+      !data.sex ||
+      data.heightInches == null ||
+      data.startingWeightLb == null
+    ) {
+      return;
+    }
     setSaving(true);
     try {
       await createProfile({
@@ -21,6 +28,9 @@ export default function ExperienceScreen() {
         birthday: data.birthday,
         goals: data.goals,
         experienceLevel: data.experienceLevel,
+        sex: data.sex,
+        heightInches: data.heightInches,
+        startingWeightLb: data.startingWeightLb,
       });
       // Root layout's auth guard redirects to the tabs home once the
       // profile document exists.
@@ -36,7 +46,13 @@ export default function ExperienceScreen() {
       onBack={() => router.back()}
       onNext={handleFinish}
       nextLabel={saving ? 'Saving...' : 'Next'}
-      nextDisabled={!data.experienceLevel || saving}
+      nextDisabled={
+        !data.experienceLevel ||
+        !data.sex ||
+        data.heightInches == null ||
+        data.startingWeightLb == null ||
+        saving
+      }
     >
       {LEVELS.map((level) => (
         <SelectableOption

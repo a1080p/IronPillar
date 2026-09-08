@@ -1,4 +1,9 @@
-import type { ExperienceLevel, FitnessGoal } from '../types/models';
+import type { ExperienceLevel, FitnessGoal, Sex } from '../types/models';
+
+export const SEX_OPTIONS: { value: Sex; label: string }[] = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+];
 
 export const GOAL_OPTIONS: { value: FitnessGoal; label: string }[] = [
   { value: 'lose_weight', label: 'Lose Weight' },

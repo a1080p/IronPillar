@@ -1,5 +1,6 @@
 export type FitnessGoal = 'lose_weight' | 'build_strength' | 'build_endurance';
 export type ExperienceLevel = 'new' | 'some' | 'experienced';
+export type Sex = 'male' | 'female';
 
 export interface UserProfile {
   uid: string;
@@ -8,6 +9,9 @@ export interface UserProfile {
   birthday: string; // MM-DD-YYYY
   goals: FitnessGoal[];
   experienceLevel: ExperienceLevel;
+  sex: Sex;
+  heightInches: number; // total height in inches
+  startingWeightLb: number; // weight captured at onboarding
   level: number;
   xp: number;
   streakCount: number;
@@ -112,8 +116,7 @@ export interface EarnedBadge {
 export interface ProgressMetric {
   id: string;
   recordedAt: string; // ISO timestamp
-  bmi: number;
-  bodyFatPercent: number;
+  weightLb: number;
 }
 
 export interface ActivityFeedItem {

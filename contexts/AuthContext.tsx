@@ -18,8 +18,26 @@ interface AuthContextValue {
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  createProfile: (data: Pick<UserProfile, 'name' | 'birthday' | 'goals' | 'experienceLevel'>) => Promise<void>;
-  updateProfile: (data: Partial<Pick<UserProfile, 'name' | 'birthday' | 'goals' | 'experienceLevel'>>) => Promise<void>;
+  createProfile: (
+    data: Pick<
+      UserProfile,
+      | 'name'
+      | 'birthday'
+      | 'goals'
+      | 'experienceLevel'
+      | 'sex'
+      | 'heightInches'
+      | 'startingWeightLb'
+    >
+  ) => Promise<void>;
+  updateProfile: (
+    data: Partial<
+      Pick<
+        UserProfile,
+        'name' | 'birthday' | 'goals' | 'experienceLevel' | 'sex' | 'heightInches' | 'startingWeightLb'
+      >
+    >
+  ) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -69,7 +87,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async signOut() {
         await firebaseSignOut(auth);
       },
-      async createProfile({ name, birthday, goals, experienceLevel }) {
+      async createProfile({
+        name,
+        birthday,
+        goals,
+        experienceLevel,
+        sex,
+        heightInches,
+        startingWeightLb,
+      }) {
         if (!user) throw new Error('Must be signed in to create a profile');
         const ref = doc(db, 'users', user.uid);
         const existing = await getDoc(ref);
@@ -97,6 +123,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             birthday,
             goals,
             experienceLevel,
+            sex,
+            heightInches,
+            startingWeightLb,
             level: 1,
             xp: 0,
             streakCount: 0,

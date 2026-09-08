@@ -13,7 +13,12 @@ export function useProgressMetrics(uid: string | undefined) {
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
-        setMetrics(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ProgressMetric));
+        setMetrics(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }) as ProgressMetric)
+            // Older entries (pre weight-tracking) won't have weightLb — skip them.
+            .filter((m) => typeof m.weightLb === 'number' && m.weightLb > 0)
+        );
         setLoading(false);
       },
       () => setLoading(false)
@@ -21,11 +26,10 @@ export function useProgressMetrics(uid: string | undefined) {
     return unsubscribe;
   }, [uid]);
 
-  async function addMetric(uid: string, bmi: number, bodyFatPercent: number) {
+  async function addMetric(uid: string, weightLb: number) {
     await addDoc(collection(db, 'users', uid, 'metrics'), {
       recordedAt: new Date().toISOString(),
-      bmi,
-      bodyFatPercent,
+      weightLb,
     });
   }
 

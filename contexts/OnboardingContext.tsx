@@ -1,9 +1,12 @@
 import React, { createContext, useContext, useState } from 'react';
-import type { ExperienceLevel, FitnessGoal } from '../types/models';
+import type { ExperienceLevel, FitnessGoal, Sex } from '../types/models';
 
 interface OnboardingData {
   name: string;
   birthday: string;
+  sex: Sex | null;
+  heightInches: number | null;
+  startingWeightLb: number | null;
   goals: FitnessGoal[];
   experienceLevel: ExperienceLevel | null;
 }
@@ -11,6 +14,7 @@ interface OnboardingData {
 interface OnboardingContextValue {
   data: OnboardingData;
   setNameBirthday: (name: string, birthday: string) => void;
+  setBody: (sex: Sex, heightInches: number, startingWeightLb: number) => void;
   toggleGoal: (goal: FitnessGoal) => void;
   setExperienceLevel: (level: ExperienceLevel) => void;
 }
@@ -21,6 +25,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [data, setData] = useState<OnboardingData>({
     name: '',
     birthday: '',
+    sex: null,
+    heightInches: null,
+    startingWeightLb: null,
     goals: [],
     experienceLevel: null,
   });
@@ -28,6 +35,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const value: OnboardingContextValue = {
     data,
     setNameBirthday: (name, birthday) => setData((d) => ({ ...d, name, birthday })),
+    setBody: (sex, heightInches, startingWeightLb) =>
+      setData((d) => ({ ...d, sex, heightInches, startingWeightLb })),
     toggleGoal: (goal) =>
       setData((d) => ({
         ...d,
