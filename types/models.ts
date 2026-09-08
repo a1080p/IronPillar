@@ -47,6 +47,7 @@ export interface WorkoutTemplate {
   equipmentRequired: boolean;
   category: 'preset' | 'quick_start';
   tags: FitnessGoal[];
+  overview?: string; // short prose summary shown on the Overview tab
   workoutTips: InfoSection[];
   equipment: InfoSection[];
   exercises: ExerciseSpec[];
@@ -56,6 +57,18 @@ export interface WorkoutTemplate {
 export interface CustomWorkout extends Omit<WorkoutTemplate, 'category'> {
   category: 'custom';
   createdBy: string;
+  detailsGenerated?: boolean; // true once AI has filled in overview/tips/equipment/etc.
+}
+
+// Shape returned by the generateWorkoutDetails Cloud Function.
+export interface GeneratedWorkoutDetails {
+  durationMinutes: number;
+  caloriesRangeLabel: string;
+  equipmentRequired: boolean;
+  overview: string;
+  workoutTips: InfoSection[];
+  equipment: InfoSection[];
+  exerciseTips: { name: string; tips: string }[];
 }
 
 export interface LoggedSet {

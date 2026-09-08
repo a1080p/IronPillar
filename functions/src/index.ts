@@ -1,10 +1,15 @@
+import Anthropic from '@anthropic-ai/sdk';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { defineSecret } from 'firebase-functions/params';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
 initializeApp();
 const db = getFirestore();
+
+// Set with: firebase functions:secrets:set ANTHROPIC_API_KEY
+const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
 
 const XP_PER_EXERCISE = 50;
 const XP_PER_SET = 5;
@@ -311,3 +316,225 @@ export const deleteAccount = onCall(async (request) => {
 
   return { success: true };
 });
+
+// ---------------------------------------------------------------------------
+// AI-generated workout details
+//
+// When a user builds a custom workout they only supply a name + a list of
+// exercises. This fills in the same descriptive fields the seeded preset
+// templates have — an overview, a time estimate, a calorie range, whether
+// equipment is needed, per-section workout tips, an equipment breakdown, and
+// a one-liner tip per exercise — by asking Claude. It runs server-side so the
+// Anthropic API key never ships in the app bundle. The client treats a
+// failure here as non-fatal (the workout still saves, just without the extra
+// detail), so this throws rather than returning a partial object.
+// ---------------------------------------------------------------------------
+
+const WORKOUT_DETAIL_MODEL = 'claude-haiku-4-5';
+
+interface GenerateExerciseInput {
+  name: string;
+  logType: 'reps_weight' | 'duration';
+  targetSets: number;
+  targetRepsLabel: string;
+}
+
+interface GenerateWorkoutDetailsRequest {
+  name: string;
+  exercises: GenerateExerciseInput[];
+}
+
+function isValidGenerateRequest(data: unknown): data is GenerateWorkoutDetailsRequest {
+  if (!data || typeof data !== 'object') return false;
+  const d = data as Record<string, unknown>;
+  if (typeof d.name !== 'string' || !d.name.trim()) return false;
+  if (!Array.isArray(d.exercises) || d.exercises.length === 0 || d.exercises.length > 40) return false;
+  return d.exercises.every((e) => {
+    if (!e || typeof e !== 'object') return false;
+    const ex = e as Record<string, unknown>;
+    return (
+      typeof ex.name === 'string' &&
+      !!ex.name.trim() &&
+      (ex.logType === 'reps_weight' || ex.logType === 'duration') &&
+      typeof ex.targetSets === 'number' &&
+      typeof ex.targetRepsLabel === 'string'
+    );
+  });
+}
+
+const infoSectionSchema = {
+  type: 'array',
+  maxItems: 4,
+  items: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['heading', 'bullets'],
+    properties: {
+      heading: { type: 'string' },
+      bullets: { type: 'array', minItems: 1, maxItems: 6, items: { type: 'string' } },
+    },
+  },
+} as const;
+
+const WORKOUT_DETAILS_TOOL: Anthropic.Tool = {
+  name: 'emit_workout_details',
+  description: 'Return the descriptive metadata for a workout.',
+  input_schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: [
+      'durationMinutes',
+      'caloriesRangeLabel',
+      'equipmentRequired',
+      'overview',
+      'workoutTips',
+      'equipment',
+      'exerciseTips',
+    ],
+    properties: {
+      durationMinutes: {
+        type: 'integer',
+        minimum: 5,
+        maximum: 180,
+        description: 'Realistic total time including warm-up, rest between sets, and cool-down.',
+      },
+      caloriesRangeLabel: {
+        type: 'string',
+        description: 'Estimated calorie burn as a range, formatted exactly like "320-450 Calories".',
+      },
+      equipmentRequired: {
+        type: 'boolean',
+        description: 'True if any exercise needs equipment beyond bodyweight / a mat.',
+      },
+      overview: {
+        type: 'string',
+        description:
+          '2-4 sentences: what this session targets, who it suits, and how it should feel. Plain text, no markdown.',
+      },
+      workoutTips: {
+        ...infoSectionSchema,
+        description:
+          'Grouped coaching tips, e.g. sections titled "Weight Guidelines", "Rest Times", "Form Cues".',
+      },
+      equipment: {
+        ...infoSectionSchema,
+        description:
+          'Equipment breakdown, e.g. a "Required" section and an "Optional" section. If no equipment is needed, return one section titled "No Equipment" explaining it is bodyweight-only.',
+      },
+      exerciseTips: {
+        type: 'array',
+        maxItems: 40,
+        description: 'One short coaching cue per exercise, matched by exact exercise name.',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['name', 'tips'],
+          properties: {
+            name: { type: 'string' },
+            tips: { type: 'string', description: 'One sentence, <= 140 characters.' },
+          },
+        },
+      },
+    },
+  },
+};
+
+function clampInt(value: unknown, min: number, max: number, fallback: number): number {
+  const n = typeof value === 'number' ? Math.round(value) : NaN;
+  if (Number.isNaN(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+function cleanString(value: unknown, maxLen: number): string {
+  return typeof value === 'string' ? value.trim().slice(0, maxLen) : '';
+}
+
+function cleanInfoSections(value: unknown): { heading: string; bullets: string[] }[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .slice(0, 4)
+    .map((section) => {
+      const s = (section ?? {}) as Record<string, unknown>;
+      const bullets = Array.isArray(s.bullets)
+        ? s.bullets.map((b) => cleanString(b, 200)).filter(Boolean).slice(0, 6)
+        : [];
+      return { heading: cleanString(s.heading, 80), bullets };
+    })
+    .filter((s) => s.heading && s.bullets.length > 0);
+}
+
+export const generateWorkoutDetails = onCall(
+  { secrets: [ANTHROPIC_API_KEY] },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError('unauthenticated', 'Must be signed in to generate workout details.');
+    }
+    if (!isValidGenerateRequest(request.data)) {
+      throw new HttpsError('invalid-argument', 'Malformed generate-details payload.');
+    }
+    const { name, exercises } = request.data;
+
+    const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+
+    const exerciseLines = exercises
+      .map(
+        (e, i) =>
+          `${i + 1}. ${e.name} — ${e.targetSets} sets of ${e.targetRepsLabel}` +
+          (e.logType === 'duration' ? ' (timed)' : '')
+      )
+      .join('\n');
+
+    let message: Anthropic.Message;
+    try {
+      message = await anthropic.messages.create({
+        model: WORKOUT_DETAIL_MODEL,
+        max_tokens: 2000,
+        system:
+          'You are a certified strength and conditioning coach writing concise, practical ' +
+          'metadata for a workout in a fitness app. Be specific and realistic. Never use markdown. ' +
+          'Always respond by calling the emit_workout_details tool.',
+        tools: [WORKOUT_DETAILS_TOOL],
+        tool_choice: { type: 'tool', name: 'emit_workout_details' },
+        messages: [
+          {
+            role: 'user',
+            content:
+              `Workout name: ${name}\n\nExercises:\n${exerciseLines}\n\n` +
+              'Fill in the workout details. For exerciseTips, use the exact exercise names above.',
+          },
+        ],
+      });
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : 'unknown error';
+      throw new HttpsError('internal', `AI request failed: ${detail}`);
+    }
+
+    const toolUse = message.content.find(
+      (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use'
+    );
+    if (!toolUse) {
+      throw new HttpsError('internal', 'AI returned no structured output.');
+    }
+
+    const raw = toolUse.input as Record<string, unknown>;
+    const rawTips = Array.isArray(raw.exerciseTips) ? raw.exerciseTips : [];
+    const exerciseTips = rawTips
+      .map((t) => {
+        const tip = (t ?? {}) as Record<string, unknown>;
+        return { name: cleanString(tip.name, 120), tips: cleanString(tip.tips, 200) };
+      })
+      .filter((t) => t.name && t.tips)
+      .slice(0, exercises.length);
+
+    return {
+      durationMinutes: clampInt(raw.durationMinutes, 5, 180, Math.max(10, exercises.length * 5)),
+      caloriesRangeLabel: cleanString(raw.caloriesRangeLabel, 40) || 'Varies',
+      equipmentRequired: raw.equipmentRequired === true,
+      overview: cleanString(raw.overview, 800),
+      workoutTips: cleanInfoSections(raw.workoutTips),
+      equipment: cleanInfoSections(raw.equipment),
+      exerciseTips,
+    };
+  }
+);

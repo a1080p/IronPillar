@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { WorkoutHeader } from '../../../components/WorkoutHeader';
-import { colors, spacing, typography } from '../../../constants/theme';
+import { colors, radii, spacing, typography } from '../../../constants/theme';
 import { useWorkout } from '../../../hooks/useWorkout';
 import { useAuth } from '../../../contexts/AuthContext';
 import type { InfoSection } from '../../../types/models';
@@ -13,10 +13,15 @@ import type { InfoSection } from '../../../types/models';
 type Tab = 'overview' | 'tips' | 'equipment';
 
 export default function WorkoutDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, generated } = useLocalSearchParams<{ id: string; generated?: string }>();
   const { user } = useAuth();
   const { workout: template, loading } = useWorkout(id, user?.uid);
   const [tab, setTab] = useState<Tab>('overview');
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  const isOwnCustom =
+    !!template && template.category === 'custom' && template.createdBy === user?.uid;
+  const showBanner = !bannerDismissed && (generated === '1' || generated === 'failed');
 
   if (loading) {
     return (
@@ -42,11 +47,34 @@ export default function WorkoutDetailScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>{template.name}</Text>
 
+        {showBanner && (
+          <View style={[styles.banner, generated === 'failed' && styles.bannerWarn]}>
+            <Text style={styles.bannerText}>
+              {generated === 'failed'
+                ? "Couldn't auto-generate details this time. Add them with Edit Details."
+                : 'Overview, time, calories, equipment and tips were filled in by AI. Tap Edit Details to tweak them.'}
+            </Text>
+            <Pressable onPress={() => setBannerDismissed(true)} hitSlop={12}>
+              <Ionicons name="close" size={18} color={colors.primary} />
+            </Pressable>
+          </View>
+        )}
+
         <View style={styles.statsRow}>
           <Stat icon="alarm" label={`${template.durationMinutes} Minutes`} />
           {template.equipmentRequired && <Stat icon="barbell" label="Equipment Required" />}
           <Stat icon="flame" label={template.caloriesRangeLabel} />
         </View>
+
+        {isOwnCustom && (
+          <Pressable
+            style={styles.editLink}
+            onPress={() => router.push(`/workout/${template.id}/edit`)}
+          >
+            <Ionicons name="create-outline" size={16} color={colors.primary} />
+            <Text style={styles.editLinkText}>Edit Details</Text>
+          </Pressable>
+        )}
 
         <View style={styles.tabs}>
           <TabButton label="Overview" active={tab === 'overview'} onPress={() => setTab('overview')} />
@@ -54,23 +82,38 @@ export default function WorkoutDetailScreen() {
           <TabButton label="Equipment" active={tab === 'equipment'} onPress={() => setTab('equipment')} />
         </View>
 
-        {tab === 'overview' &&
-          template.exercises.map((ex, i) => (
-            <View key={ex.id} style={styles.exerciseRow}>
-              <Text style={styles.exerciseTitle}>
-                {i + 1}: {ex.name}
-              </Text>
-              <Text style={styles.exerciseDetail}>Sets: {ex.targetSets}</Text>
-              <Text style={styles.exerciseDetail}>
-                {ex.logType === 'duration' ? 'Target: ' : 'Reps: '}
-                {ex.targetRepsLabel}
-              </Text>
-            </View>
+        {tab === 'overview' && (
+          <>
+            {template.overview ? <Text style={styles.overview}>{template.overview}</Text> : null}
+            {template.exercises.map((ex, i) => (
+              <View key={ex.id} style={styles.exerciseRow}>
+                <Text style={styles.exerciseTitle}>
+                  {i + 1}: {ex.name}
+                </Text>
+                <Text style={styles.exerciseDetail}>Sets: {ex.targetSets}</Text>
+                <Text style={styles.exerciseDetail}>
+                  {ex.logType === 'duration' ? 'Target: ' : 'Reps: '}
+                  {ex.targetRepsLabel}
+                </Text>
+                {ex.tips ? <Text style={styles.exerciseTip}>{ex.tips}</Text> : null}
+              </View>
+            ))}
+          </>
+        )}
+
+        {tab === 'tips' &&
+          (template.workoutTips.length > 0 ? (
+            template.workoutTips.map((section) => <InfoBlock key={section.heading} section={section} />)
+          ) : (
+            <Text style={styles.emptyTab}>No workout tips yet.</Text>
           ))}
 
-        {tab === 'tips' && template.workoutTips.map((section) => <InfoBlock key={section.heading} section={section} />)}
-
-        {tab === 'equipment' && template.equipment.map((section) => <InfoBlock key={section.heading} section={section} />)}
+        {tab === 'equipment' &&
+          (template.equipment.length > 0 ? (
+            template.equipment.map((section) => <InfoBlock key={section.heading} section={section} />)
+          ) : (
+            <Text style={styles.emptyTab}>No equipment details yet.</Text>
+          ))}
       </ScrollView>
       <View style={styles.footer}>
         <Button label="Get Started" onPress={() => router.push(`/workout/${template.id}/log`)} />
@@ -114,7 +157,23 @@ const styles = StyleSheet.create({
   loading: { textAlign: 'center', marginTop: spacing.xl, color: colors.textMuted },
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   title: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, marginBottom: spacing.md },
-  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, marginBottom: spacing.lg },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  bannerWarn: { backgroundColor: '#FFF1E0' },
+  bannerText: { flex: 1, color: colors.text, fontSize: typography.sizes.small, lineHeight: 18 },
+  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, marginBottom: spacing.md },
+  editLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.lg },
+  editLinkText: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.small },
+  overview: { color: colors.text, lineHeight: 21, marginBottom: spacing.lg },
+  exerciseTip: { color: colors.textMuted, fontSize: typography.sizes.small, marginTop: 4 },
+  emptyTab: { color: colors.textMuted },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statLabel: { color: colors.primary, fontWeight: '600', fontSize: typography.sizes.small },
   tabs: { gap: spacing.md, marginBottom: spacing.lg },

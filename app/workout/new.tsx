@@ -8,7 +8,8 @@ import { WorkoutHeader } from '../../components/WorkoutHeader';
 import { colors, radii, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { createCustomWorkout } from '../../hooks/useCustomWorkouts';
-import type { ExerciseSpec } from '../../types/models';
+import { generateWorkoutDetails } from '../../lib/workoutDetails';
+import type { ExerciseSpec, GeneratedWorkoutDetails } from '../../types/models';
 
 type LogType = ExerciseSpec['logType'];
 
@@ -23,6 +24,7 @@ export default function NewWorkoutScreen() {
   const [targetLabel, setTargetLabel] = useState('');
 
   const [saving, setSaving] = useState(false);
+  const [savingStatus, setSavingStatus] = useState('');
 
   const handleAddExercise = () => {
     const setsNum = Number(sets);
@@ -61,13 +63,26 @@ export default function NewWorkoutScreen() {
       return;
     }
     setSaving(true);
+
+    // Let AI fill in the overview / time / calories / equipment / tips. This is
+    // best-effort — if it fails, the workout still saves without those extras
+    // and the detail screen surfaces a "couldn't generate" note.
+    setSavingStatus('Generating workout details with AI...');
+    let details: GeneratedWorkoutDetails | null = null;
     try {
-      const id = await createCustomWorkout(user.uid, workoutName.trim(), exercises);
-      router.replace(`/workout/${id}`);
+      details = await generateWorkoutDetails(workoutName.trim(), exercises);
+    } catch (e) {
+      console.warn('generateWorkoutDetails failed', e);
+    }
+
+    setSavingStatus('Saving...');
+    try {
+      const id = await createCustomWorkout(user.uid, workoutName.trim(), exercises, details);
+      router.replace(`/workout/${id}?generated=${details ? '1' : 'failed'}`);
     } catch (e) {
       Alert.alert('Could not save workout', e instanceof Error ? e.message : 'Try again.');
-    } finally {
       setSaving(false);
+      setSavingStatus('');
     }
   };
 
@@ -84,6 +99,11 @@ export default function NewWorkoutScreen() {
           value={workoutName}
           onChangeText={setWorkoutName}
         />
+
+        <Text style={styles.aiNote}>
+          Just add the exercises — when you save, AI fills in the overview, time, calorie
+          estimate, equipment, and coaching tips. You can edit them afterward.
+        </Text>
 
         {exercises.map((ex, i) => (
           <View key={ex.id} style={styles.exerciseRow}>
@@ -155,6 +175,7 @@ export default function NewWorkoutScreen() {
         </View>
       </ScrollView>
       <View style={styles.footer}>
+        {saving && savingStatus ? <Text style={styles.savingStatus}>{savingStatus}</Text> : null}
         <Button label="Save Workout" onPress={handleSave} loading={saving} />
       </View>
     </SafeAreaView>
@@ -180,7 +201,19 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     fontWeight: '700',
     color: colors.primary,
+    marginBottom: spacing.md,
+  },
+  aiNote: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.small,
+    lineHeight: 18,
     marginBottom: spacing.lg,
+  },
+  savingStatus: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.small,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
   exerciseRow: {
     flexDirection: 'row',

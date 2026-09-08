@@ -4,6 +4,18 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-08 — AI-filled details for custom workouts
+
+- New `generateWorkoutDetails` Cloud Function (`functions/src/index.ts`): given a workout name + exercise list, calls Claude (`claude-haiku-4-5`) via `@anthropic-ai/sdk` with a forced tool call for structured output, and returns `durationMinutes`, `caloriesRangeLabel`, `equipmentRequired`, `overview`, `workoutTips[]`, `equipment[]`, and one `exerciseTips` cue per exercise. Runs server-side so the API key never ships in the bundle. Output is clamped/trimmed (duration 5–180, ≤4 sections, ≤6 bullets, bullet/heading length caps) before returning.
+  - **Requires**: `firebase functions:secrets:set ANTHROPIC_API_KEY`, then `cd functions && npm install && npm run deploy`. Not yet deployed.
+- Model: added `overview?: string` to `WorkoutTemplate`, `detailsGenerated?: boolean` to `CustomWorkout`, and a `GeneratedWorkoutDetails` type.
+- Create-workout flow (`app/workout/new.tsx`): on Save it calls `generateWorkoutDetails` first ("Generating workout details with AI..."), merges the result into the doc, then saves. **Best-effort** — if the AI call fails the workout still saves with a rough time estimate and neutral labels, and the detail screen shows a "couldn't auto-generate" note. Added a one-line explainer above the form.
+- `createCustomWorkout` now takes an optional `details` arg and merges it (per-exercise tips matched back by name); new `updateCustomWorkout` for partial edits.
+- Workout detail screen (`app/workout/[id]/index.tsx`): renders `overview` at the top of the Overview tab and per-exercise tips under each exercise; empty-state text on the Tips/Equipment tabs; a dismissible banner after creation ("filled in by AI" / "couldn't auto-generate"); an **Edit Details** link for the owner of a custom workout.
+- New `app/workout/[id]/edit.tsx`: owner-only screen to edit name, time, calories, equipment toggle, overview, and the tip/equipment sections (one multiline field per section, one bullet per line) — structure-preserving, drops empty sections on save.
+- Firestore rules unchanged — `userWorkouts/{uid}/customWorkouts` is already fully client-writable.
+- **Verified**: full TypeScript typecheck (app + functions) and `functions` build pass; fresh bundle loads clean in the simulator; the new create-screen copy and detail-screen Overview render correctly. The AI round-trip itself is untested pending function deploy + secret.
+
 ## 2026-09-08 — Spacing polish + Delete Account moved into Account Details
 
 - Removed the baked-in margins from the shared `TextField` and `SelectableOption` components (they were double-stacking with any parent that also tried to control spacing) and switched every touched screen (Settings, Account Details, History, welcome/onboarding) to explicit `gap` on the containing view instead — one consistent value between major blocks, a tighter consistent value inside grouped lists. Cleaned up several manual `<View style={{height: ...}}>` spacer hacks on the welcome screen along the way.
