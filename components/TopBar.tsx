@@ -1,15 +1,23 @@
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Logo } from './Logo';
-import { colors, spacing, typography } from '../constants/theme';
+import { colors, radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
+
+const MENU_ITEMS = [
+  { label: 'Settings', route: '/settings' as const },
+  { label: 'History', route: '/history' as const },
+  { label: 'Account Details', route: '/account-details' as const },
+];
 
 export function TopBar() {
   const { profile, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const close = () => setMenuOpen(false);
 
   return (
     <View style={styles.bar}>
@@ -22,44 +30,47 @@ export function TopBar() {
         <Ionicons name="flame" size={20} color={colors.accentFlame} />
       </View>
 
-      <Modal visible={menuOpen} animationType="slide" transparent onRequestClose={() => setMenuOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setMenuOpen(false)}>
-          <SafeAreaView style={styles.drawer}>
-            <Pressable
-              onPress={() => {
-                setMenuOpen(false);
-                router.push('/settings');
-              }}
-            >
-              <Text style={styles.link}>Settings</Text>
+      <Modal visible={menuOpen} animationType="slide" transparent onRequestClose={close}>
+        {/* Re-provide safe-area context — a Modal renders outside the app's provider. */}
+        <SafeAreaProvider>
+          <Pressable style={styles.backdrop} onPress={close}>
+            {/* Inner Pressable swallows taps so touching the drawer doesn't close it. */}
+            <Pressable style={styles.drawer} onPress={() => {}}>
+              <SafeAreaView edges={['top', 'bottom']} style={styles.drawerInner}>
+              <Text style={styles.drawerHeading}>Menu</Text>
+
+              <View style={styles.list}>
+                {MENU_ITEMS.map((item) => (
+                  <Pressable
+                    key={item.label}
+                    style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                    onPress={() => {
+                      close();
+                      router.push(item.route);
+                    }}
+                  >
+                    <Text style={styles.rowLabel}>{item.label}</Text>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                  </Pressable>
+                ))}
+              </View>
+
+              <View style={{ flex: 1 }} />
+
+              <Pressable
+                style={({ pressed }) => [styles.row, styles.signOutRow, pressed && styles.rowPressed]}
+                onPress={async () => {
+                  close();
+                  await signOut();
+                }}
+              >
+                <Text style={styles.signOutLabel}>Sign out</Text>
+                <Ionicons name="log-out-outline" size={18} color={colors.danger} />
+              </Pressable>
+              </SafeAreaView>
             </Pressable>
-            <Pressable
-              onPress={() => {
-                setMenuOpen(false);
-                router.push('/history');
-              }}
-            >
-              <Text style={styles.link}>History</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                setMenuOpen(false);
-                router.push('/account-details');
-              }}
-            >
-              <Text style={styles.link}>Account Details</Text>
-            </Pressable>
-            <View style={{ flex: 1 }} />
-            <Pressable
-              onPress={async () => {
-                setMenuOpen(false);
-                await signOut();
-              }}
-            >
-              <Text style={styles.signOut}>Sign out</Text>
-            </Pressable>
-          </SafeAreaView>
-        </Pressable>
+          </Pressable>
+        </SafeAreaProvider>
       </Modal>
     </View>
   );
@@ -87,22 +98,56 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   drawer: {
-    width: '65%',
-    backgroundColor: colors.surfaceMuted,
+    width: '74%',
+    backgroundColor: colors.background,
+    borderTopRightRadius: radii.lg,
+    borderBottomRightRadius: radii.lg,
+  },
+  drawerInner: {
+    flex: 1,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
-    gap: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
   },
-  link: {
-    fontSize: typography.sizes.md,
-    color: colors.primary,
-    marginBottom: spacing.lg,
+  drawerHeading: {
+    fontSize: typography.sizes.small,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+    paddingVertical: spacing.sm,
   },
-  signOut: {
+  list: {
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  rowPressed: {
+    backgroundColor: colors.surfaceMuted,
+  },
+  rowLabel: {
     fontSize: typography.sizes.body,
+    fontWeight: '600',
     color: colors.primary,
+  },
+  signOutRow: {
+    borderBottomWidth: 0,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+  signOutLabel: {
+    fontSize: typography.sizes.body,
+    fontWeight: '700',
+    color: colors.danger,
   },
 });

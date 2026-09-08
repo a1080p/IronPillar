@@ -11,6 +11,7 @@ export const colors = {
   accentFlame: '#FF8A00',
   border: '#3D4FEA',
   surfaceMuted: '#F2F2F2',
+  divider: '#E4E4E4',
   success: '#FF8A00',
   danger: '#E5484D',
 } as const;
