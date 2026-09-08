@@ -1,0 +1,96 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Gamification fields (xp, streakCount, level, lastWorkoutDate) are only
+    // ever written by the completeWorkout Cloud Function, which runs with
+    // Admin SDK privileges and bypasses these rules entirely. The client can
+    // create its own initial profile (with zeroed-out gamification fields)
+    // and can freely update everything else (name, goals, etc.), but can
+    // never move its own xp/streak/level directly — that's the whole point
+    // of moving this server-side: a raw Firestore write can't spoof a streak.
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+
+      allow create: if isOwner(uid)
+        && request.resource.data.xp == 0
+        && request.resource.data.streakCount == 0
+        && request.resource.data.level == 1
+        && request.resource.data.lastWorkoutDate == null
+        && request.resource.data.friendCount == 0;
+
+      allow update: if isOwner(uid)
+        && request.resource.data.xp == resource.data.xp
+        && request.resource.data.streakCount == resource.data.streakCount
+        && request.resource.data.level == resource.data.level
+        && request.resource.data.lastWorkoutDate == resource.data.lastWorkoutDate
+        && request.resource.data.friendCount == resource.data.friendCount;
+
+      allow delete: if false;
+
+      // Badges are granted only by the Cloud Function.
+      match /badges/{badgeId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      // User-entered BMI / body-fat history — stays client-writable.
+      match /metrics/{metricId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Preset/quick-start workouts are seeded by an admin script (bypasses
+    // rules via the Admin SDK) and are read-only from the client.
+    match /workoutTemplates/{id} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // A user's own custom-built workouts.
+    match /userWorkouts/{uid}/customWorkouts/{workoutId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // A user's own completed-workout history — written only by the
+    // completeWorkout Cloud Function, so xpEarned/streakBonusEarned on a log
+    // can't be forged either.
+    match /workoutLogs/{uid}/logs/{logId} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // Username -> uid lookup, claimed once at profile creation (client-side,
+    // since profile creation itself is a client write) and never touched
+    // again. Used by the addFriend Cloud Function to resolve a username.
+    match /usernames/{username} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Friend relationships are mutual (both sides written at once), which a
+    // single user's own auth can't do under normal ownership rules — so
+    // these are written only by the addFriend Cloud Function.
+    match /friendships/{uid}/friends/{friendUid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // A user's friend activity feed — fanned out by the completeWorkout
+    // Cloud Function when a friend finishes a workout, earns a badge, or
+    // hits a streak milestone.
+    match /activityFeed/{uid}/items/{itemId} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // Everything else is denied until its collection is built (build steps 9+)
+    // and gets its own explicit rule here.
+  }
+}

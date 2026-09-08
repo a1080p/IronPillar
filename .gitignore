@@ -3,6 +3,9 @@
 # dependencies
 node_modules/
 
+# Cloud Functions build output
+functions/lib/
+
 # Expo
 .expo/
 dist/
@@ -31,7 +34,11 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# Firebase Admin SDK credentials
+serviceAccountKey.json
 
 # typescript
 *.tsbuildinfo
