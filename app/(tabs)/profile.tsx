@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { TopBar } from '../../components/TopBar';
 import { ProgressBar } from '../../components/ProgressBar';
+import { Avatar } from '../../components/Avatar';
 import { colors, radii, spacing, typography } from '../../constants/theme';
 import { levelForXp, xpIntoLevel, XP_PER_LEVEL } from '../../constants/gamification';
 import { useAuth } from '../../contexts/AuthContext';
@@ -30,12 +32,20 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <TopBar />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.heading}>Profile</Text>
+        <View style={styles.headingRow}>
+          <Text style={styles.heading}>Profile</Text>
+          <Pressable
+            style={({ pressed }) => [styles.editButton, pressed && styles.editButtonPressed]}
+            onPress={() => router.push('/edit-profile')}
+            hitSlop={8}
+          >
+            <Ionicons name="pencil" size={16} color={colors.primary} />
+            <Text style={styles.editButtonLabel}>Edit</Text>
+          </Pressable>
+        </View>
 
         <View style={styles.avatarWrap}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={64} color={colors.primary} />
-          </View>
+          <Avatar url={profile.avatarUrl} presetKey={profile.avatarKey} size={120} />
           <Text style={styles.name}>{profile.name}</Text>
           {handle ? <Text style={styles.handle}>{handle}</Text> : null}
         </View>
@@ -106,18 +116,26 @@ function Stat({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 120 },
-  heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, marginBottom: spacing.lg },
-  avatarWrap: { alignItems: 'center', marginBottom: spacing.lg },
-  avatarCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: radii.pill,
-    borderWidth: 2,
-    borderColor: colors.primary,
+  headingRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
   },
+  heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.pill,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  editButtonPressed: { backgroundColor: colors.surfaceMuted },
+  editButtonLabel: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.small },
+  avatarWrap: { alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
   name: { fontSize: typography.sizes.md, fontWeight: '700', color: colors.primary },
   handle: { color: colors.textMuted, fontSize: typography.sizes.small },
   levelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs },

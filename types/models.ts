@@ -6,6 +6,8 @@ export interface UserProfile {
   uid: string;
   username: string;
   name: string;
+  avatarUrl?: string | null; // uploaded profile photo (Firebase Storage download URL)
+  avatarKey?: string | null; // key of a built-in preset avatar (see constants/avatars)
   birthday: string; // MM-DD-YYYY
   goals: FitnessGoal[];
   experienceLevel: ExperienceLevel;

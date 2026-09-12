@@ -34,7 +34,15 @@ interface AuthContextValue {
     data: Partial<
       Pick<
         UserProfile,
-        'name' | 'birthday' | 'goals' | 'experienceLevel' | 'sex' | 'heightInches' | 'startingWeightLb'
+        | 'name'
+        | 'avatarUrl'
+        | 'avatarKey'
+        | 'birthday'
+        | 'goals'
+        | 'experienceLevel'
+        | 'sex'
+        | 'heightInches'
+        | 'startingWeightLb'
       >
     >
   ) => Promise<void>;

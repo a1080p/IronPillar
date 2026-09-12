@@ -15,6 +15,9 @@ export default function SettingsScreen() {
         <Text style={styles.heading}>Settings</Text>
 
         <View style={styles.rowGroup}>
+          <Pressable style={styles.row} onPress={() => router.push('/edit-profile')}>
+            <Text style={styles.rowLabel}>Edit Profile</Text>
+          </Pressable>
           <Pressable style={styles.row} onPress={() => router.push('/account-details')}>
             <Text style={styles.rowLabel}>Account Details</Text>
           </Pressable>

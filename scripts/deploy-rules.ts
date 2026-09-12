@@ -1,6 +1,6 @@
-// One-off admin script to publish firestore.rules via the Admin SDK,
-// bypassing the Firebase CLI (whose pre-deploy check needs broader IAM
-// permissions than the default Admin SDK service account has).
+// One-off admin script to publish firestore.rules + storage.rules via the
+// Admin SDK, bypassing the Firebase CLI (whose pre-deploy check needs broader
+// IAM permissions than the default Admin SDK service account has).
 //
 // Usage: npx tsx scripts/deploy-rules.ts
 
@@ -10,7 +10,8 @@ import { initializeApp, cert } from 'firebase-admin/app';
 import { getSecurityRules } from 'firebase-admin/security-rules';
 
 const keyPath = join(__dirname, '..', 'serviceAccountKey.json');
-const rulesPath = join(__dirname, '..', 'firestore.rules');
+const firestoreRulesPath = join(__dirname, '..', 'firestore.rules');
+const storageRulesPath = join(__dirname, '..', 'storage.rules');
 
 if (!existsSync(keyPath)) {
   console.error('Missing serviceAccountKey.json at project root.');
@@ -18,16 +19,27 @@ if (!existsSync(keyPath)) {
 }
 
 const serviceAccount = JSON.parse(readFileSync(keyPath, 'utf8'));
-const rulesSource = readFileSync(rulesPath, 'utf8');
 
 initializeApp({ credential: cert(serviceAccount) });
 
 async function deploy() {
   const rules = getSecurityRules();
-  const file = rules.createRulesFileFromSource('firestore.rules', rulesSource);
-  const ruleset = await rules.createRuleset(file);
-  await rules.releaseFirestoreRuleset(ruleset);
-  console.log('Deployed firestore.rules ->', ruleset.name);
+
+  const firestoreFile = rules.createRulesFileFromSource(
+    'firestore.rules',
+    readFileSync(firestoreRulesPath, 'utf8')
+  );
+  const firestoreRuleset = await rules.createRuleset(firestoreFile);
+  await rules.releaseFirestoreRuleset(firestoreRuleset);
+  console.log('Deployed firestore.rules ->', firestoreRuleset.name);
+
+  const storageFile = rules.createRulesFileFromSource(
+    'storage.rules',
+    readFileSync(storageRulesPath, 'utf8')
+  );
+  const storageRuleset = await rules.createRuleset(storageFile);
+  await rules.releaseStorageRuleset(storageRuleset);
+  console.log('Deployed storage.rules ->', storageRuleset.name);
 }
 
 deploy().catch((err) => {
