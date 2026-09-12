@@ -1,6 +1,7 @@
 import type { WorkoutTemplate } from '../types/models';
+import { browseWorkoutTemplates } from './browseWorkoutTemplates';
 
-export const workoutTemplates: WorkoutTemplate[] = [
+const presetsAndQuickStarts: WorkoutTemplate[] = [
   {
     id: 'upper-body-strength-builder',
     name: 'Upper Body Strength Builder',
@@ -275,4 +276,9 @@ export const workoutTemplates: WorkoutTemplate[] = [
       },
     ],
   },
+];
+
+export const workoutTemplates: WorkoutTemplate[] = [
+  ...presetsAndQuickStarts,
+  ...browseWorkoutTemplates,
 ];

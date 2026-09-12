@@ -51,7 +51,8 @@ export interface WorkoutTemplate {
   durationMinutes: number;
   caloriesRangeLabel: string; // e.g. "320-450 Calories"
   equipmentRequired: boolean;
-  category: 'preset' | 'quick_start';
+  category: 'preset' | 'quick_start' | 'browse';
+  browseCategory?: string; // section label for the Browse tab, e.g. "Yoga" (only set when category is 'browse')
   tags: FitnessGoal[];
   overview?: string; // short prose summary shown on the Overview tab
   workoutTips: InfoSection[];
@@ -94,7 +95,7 @@ export interface WorkoutLog {
   id: string;
   workoutId: string;
   workoutName: string;
-  workoutSource: 'preset' | 'quick_start' | 'custom';
+  workoutSource: 'preset' | 'quick_start' | 'browse' | 'custom';
   completedAt: string; // ISO timestamp
   durationSeconds: number;
   exercises: ExerciseLog[];

@@ -37,7 +37,7 @@ interface CompleteWorkoutRequest {
   workout: {
     id: string;
     name: string;
-    category: 'preset' | 'quick_start' | 'custom';
+    category: 'preset' | 'quick_start' | 'browse' | 'custom';
   };
   exercises: ExerciseLog[];
   durationSeconds: number;

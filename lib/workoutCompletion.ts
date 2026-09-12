@@ -12,7 +12,7 @@ export interface CompletionResult {
 export interface CompletedWorkoutRef {
   id: string;
   name: string;
-  category: 'preset' | 'quick_start' | 'custom';
+  category: 'preset' | 'quick_start' | 'browse' | 'custom';
 }
 
 const completeWorkoutFn = httpsCallable<
