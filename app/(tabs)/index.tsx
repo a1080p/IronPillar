@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,22 +8,31 @@ import { TopBar } from '../../components/TopBar';
 import { colors, radii, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWorkoutTemplates } from '../../hooks/useWorkoutTemplates';
+import { useWorkoutLogs } from '../../hooks/useWorkoutLogs';
 import {
   deleteCustomWorkout,
   duplicateCustomWorkout,
   useCustomWorkouts,
 } from '../../hooks/useCustomWorkouts';
+import { formatShortDate } from '../../lib/dates';
+import { pickRecommendedWorkout } from '../../lib/recommendations';
+import { dedupeRecentWorkouts } from '../../lib/recentWorkouts';
 import type { CustomWorkout, WorkoutTemplate } from '../../types/models';
 
 export default function HomeScreen() {
   const { user, profile } = useAuth();
   const { templates, loading } = useWorkoutTemplates();
   const { customWorkouts } = useCustomWorkouts(user?.uid);
+  const { logs } = useWorkoutLogs(user?.uid);
 
-  const presets = templates.filter((t) => t.category === 'preset');
   const quickStarts = templates.filter((t) => t.category === 'quick_start');
-  const recommended =
-    presets.find((t) => profile?.goals.some((g) => t.tags.includes(g))) ?? presets[0];
+  // Re-derives from `logs` (a live Firestore listener) on every render, so the
+  // pick updates the moment a workout is completed — see lib/recommendations.
+  const recommended = useMemo(
+    () => pickRecommendedWorkout(templates, logs, profile?.goals, user?.uid),
+    [templates, logs, profile?.goals, user?.uid]
+  );
+  const recentWorkouts = useMemo(() => dedupeRecentWorkouts(logs), [logs]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -56,6 +65,31 @@ export default function HomeScreen() {
                 )}
               </View>
             </Pressable>
+          </View>
+        )}
+
+        {recentWorkouts.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Recent Workouts:</Text>
+            <Text style={styles.sectionSubLabel}>Jump back into something you've done before</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.recentRow}
+            >
+              {recentWorkouts.map((log) => (
+                <Pressable
+                  key={log.workoutId}
+                  style={styles.recentCard}
+                  onPress={() => router.push(`/workout/${log.workoutId}`)}
+                >
+                  <Text style={styles.quickCardTitle} numberOfLines={2}>
+                    {log.workoutName}
+                  </Text>
+                  <Text style={styles.quickCardMeta}>{formatShortDate(log.completedAt)}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
         )}
 
@@ -177,6 +211,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: radii.md,
     padding: spacing.lg,
+  },
+  recentRow: { gap: spacing.md, paddingRight: spacing.lg },
+  recentCard: {
+    backgroundColor: colors.primary,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    width: 150,
+    minHeight: 90,
+    justifyContent: 'space-between',
   },
   recommendedTitle: { color: colors.textOnDark, fontSize: typography.sizes.md, fontWeight: '700', marginBottom: spacing.md },
   recommendedMetaRow: { flexDirection: 'row', gap: spacing.md },

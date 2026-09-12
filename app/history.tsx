@@ -4,11 +4,7 @@ import { WorkoutHeader } from '../components/WorkoutHeader';
 import { colors, radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkoutLogs } from '../hooks/useWorkoutLogs';
-
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
+import { formatShortDate } from '../lib/dates';
 
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -38,7 +34,7 @@ export default function HistoryScreen() {
               <Text style={styles.xp}>+{log.xpEarned}xp</Text>
             </View>
             <Text style={styles.meta}>
-              {formatDate(log.completedAt)} · {formatDuration(log.durationSeconds)} ·{' '}
+              {formatShortDate(log.completedAt)} · {formatDuration(log.durationSeconds)} ·{' '}
               {log.exercises.length} exercise{log.exercises.length === 1 ? '' : 's'}
             </Text>
             {log.streakBonusEarned > 0 && (
