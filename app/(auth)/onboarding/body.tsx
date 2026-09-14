@@ -47,6 +47,8 @@ export default function BodyScreen() {
       onBack={() => router.back()}
       onNext={handleNext}
       nextDisabled={!canContinue}
+      step={2}
+      totalSteps={5}
     >
       <Text style={styles.groupLabel}>Sex</Text>
       {SEX_OPTIONS.map((option) => (

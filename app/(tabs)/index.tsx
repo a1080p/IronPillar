@@ -15,9 +15,11 @@ import {
   useCustomWorkouts,
 } from '../../hooks/useCustomWorkouts';
 import { formatShortDate } from '../../lib/dates';
-import { pickRecommendedWorkout } from '../../lib/recommendations';
+import { pickQuickStartWorkouts, pickRecommendedWorkout } from '../../lib/recommendations';
 import { dedupeRecentWorkouts } from '../../lib/recentWorkouts';
 import type { CustomWorkout, WorkoutTemplate } from '../../types/models';
+
+const QUICK_START_COUNT = 3;
 
 export default function HomeScreen() {
   const { user, profile } = useAuth();
@@ -25,12 +27,23 @@ export default function HomeScreen() {
   const { customWorkouts } = useCustomWorkouts(user?.uid);
   const { logs } = useWorkoutLogs(user?.uid);
 
-  const quickStarts = templates.filter((t) => t.category === 'quick_start');
-  // Re-derives from `logs` (a live Firestore listener) on every render, so the
-  // pick updates the moment a workout is completed — see lib/recommendations.
+  // Both re-derive from `logs` (a live Firestore listener) on every render,
+  // so picks update the instant a workout is completed — see lib/recommendations.
   const recommended = useMemo(
-    () => pickRecommendedWorkout(templates, logs, profile?.goals, user?.uid),
-    [templates, logs, profile?.goals, user?.uid]
+    () => pickRecommendedWorkout(templates, logs, profile, user?.uid),
+    [templates, logs, profile, user?.uid]
+  );
+  const quickStarts = useMemo(
+    () =>
+      pickQuickStartWorkouts(
+        templates,
+        logs,
+        profile,
+        user?.uid,
+        QUICK_START_COUNT,
+        recommended ? [recommended.id] : []
+      ),
+    [templates, logs, profile, user?.uid, recommended]
   );
   const recentWorkouts = useMemo(() => dedupeRecentWorkouts(logs), [logs]);
 

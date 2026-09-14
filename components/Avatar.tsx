@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image, StyleSheet, View } from 'react-native';
-import { avatarPresetByKey } from '../constants/avatars';
+import { parseAvatarKey } from '../constants/avatars';
 import { colors, radii } from '../constants/theme';
 
 // Renders a user's avatar: an uploaded photo if present, otherwise a chosen
-// preset glyph, otherwise the neutral person placeholder.
+// icon+color combo, otherwise the neutral person placeholder.
 export function Avatar({
   url,
   presetKey,
@@ -14,7 +14,7 @@ export function Avatar({
   presetKey?: string | null;
   size?: number;
 }) {
-  const preset = avatarPresetByKey(presetKey);
+  const parsed = parseAvatarKey(presetKey);
   const iconSize = Math.round(size * 0.5);
 
   if (url) {
@@ -26,16 +26,16 @@ export function Avatar({
     );
   }
 
-  if (preset) {
+  if (parsed) {
     return (
       <View
         style={[
           styles.base,
           styles.centered,
-          { width: size, height: size, borderRadius: radii.pill, backgroundColor: preset.color, borderColor: preset.color },
+          { width: size, height: size, borderRadius: radii.pill, backgroundColor: parsed.color, borderColor: parsed.color },
         ]}
       >
-        <Ionicons name={preset.icon} size={iconSize} color={colors.textOnDark} />
+        <Ionicons name={parsed.icon} size={iconSize} color={colors.textOnDark} />
       </View>
     );
   }

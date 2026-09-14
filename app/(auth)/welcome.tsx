@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -16,12 +16,18 @@ import { colors, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function WelcomeScreen() {
-  const { signUp, signIn } = useAuth();
+  const { signUp, signIn, sendPasswordReset, isAppleSignInAvailable, signInWithApple } =
+    useAuth();
   const [mode, setMode] = useState<'sign_up' | 'log_in'>('sign_up');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  useEffect(() => {
+    isAppleSignInAvailable().then(setAppleAvailable);
+  }, [isAppleSignInAvailable]);
 
   const socialComingSoon = (provider: string) =>
     Alert.alert(
@@ -49,6 +55,39 @@ export default function WelcomeScreen() {
     }
   };
 
+  const handleApple = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await signInWithApple();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = () => {
+    if (!email) {
+      setError('Enter your email above first, then tap "Forgot password?".');
+      return;
+    }
+    Alert.alert('Reset password', `Send a password reset link to ${email}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Send',
+        onPress: async () => {
+          try {
+            await sendPasswordReset(email);
+            Alert.alert('Check your email', `A password reset link was sent to ${email}.`);
+          } catch (e) {
+            Alert.alert('Could not send reset email', e instanceof Error ? e.message : 'Try again.');
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -72,11 +111,15 @@ export default function WelcomeScreen() {
               variant="outline"
               onPress={() => socialComingSoon('Google')}
             />
-            <Button
-              label="Continue with Apple"
-              variant="outline"
-              onPress={() => socialComingSoon('Apple')}
-            />
+            {appleAvailable ? (
+              <Button label="Continue with Apple" variant="outline" onPress={handleApple} />
+            ) : (
+              <Button
+                label="Continue with Apple"
+                variant="outline"
+                onPress={() => socialComingSoon('Apple')}
+              />
+            )}
           </View>
 
           <View style={styles.divider}>
@@ -102,6 +145,12 @@ export default function WelcomeScreen() {
               placeholder="At least 6 characters"
             />
           </View>
+
+          {mode === 'log_in' && (
+            <Text style={styles.forgotPasswordLink} onPress={handleForgotPassword}>
+              Forgot password?
+            </Text>
+          )}
 
           {error && <Text style={styles.error}>{error}</Text>}
 
@@ -168,6 +217,12 @@ const styles = StyleSheet.create({
   },
   fieldGroup: {
     gap: spacing.md,
+  },
+  forgotPasswordLink: {
+    textAlign: 'right',
+    color: colors.primary,
+    fontSize: typography.sizes.small,
+    marginTop: -spacing.sm,
   },
   error: {
     color: '#D33',

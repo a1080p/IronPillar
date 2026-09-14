@@ -13,6 +13,8 @@ export default function GoalsScreen() {
       onBack={() => router.back()}
       onNext={() => router.push('/onboarding/experience')}
       nextDisabled={data.goals.length === 0}
+      step={3}
+      totalSteps={5}
     >
       {GOALS.map((goal) => (
         <SelectableOption

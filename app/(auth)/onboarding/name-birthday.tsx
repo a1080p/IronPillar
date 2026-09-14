@@ -17,7 +17,13 @@ export default function NameBirthdayScreen() {
   };
 
   return (
-    <OnboardingScreen heading="Let's Get to Know You" onNext={handleNext} nextDisabled={!canContinue}>
+    <OnboardingScreen
+      heading="Let's Get to Know You"
+      onNext={handleNext}
+      nextDisabled={!canContinue}
+      step={1}
+      totalSteps={5}
+    >
       <TextField
         label="What Should We Call You?"
         value={name}

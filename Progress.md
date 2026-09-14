@@ -4,6 +4,34 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-12 — Backend cleanup, real email/Apple auth, 5-step onboarding
+
+- **Cloud Functions runtime bumped Node 20 → 22** (`functions/package.json` engines) — Node 20 is deprecated by Google 2026-10-30 (a known gap from 2026-08-25). Rebuilt clean; not yet redeployed (see below).
+- **Email auth, finished properly**: `signUp`/`signIn` now trim input and map raw Firebase error codes to copy a user can act on ("An account already exists with that email..." instead of `Firebase: Error (auth/email-already-in-use).`); `signUp` fires `sendEmailVerification` best-effort (non-blocking — a failed send doesn't block account creation). Added a real **"Forgot password?"** link on the Log In screen → `sendPasswordResetEmail`, with a confirm-then-send flow.
+- **Sign in with Apple — client half done, account setup still needed.** Added `expo-apple-authentication` + `expo-crypto`, wired `signInWithApple()` in `AuthContext` (SHA-256 nonce → Apple → `OAuthProvider('apple.com')` → Firebase, cancel-safe), and the Welcome screen now shows a real "Continue with Apple" button (checked via `AppleAuthentication.isAvailableAsync()`) instead of the placeholder alert on any device that supports it — a signed-in-via-Apple user drops into the same onboarding flow as a fresh email signup, no extra plumbing needed. **Three manual steps remain, none of which I have credentials for:** (1) enable the "Sign In with Apple" capability on the App ID in the Apple Developer portal (needs a paid Apple Developer Program membership), (2) enable the Apple provider in the Firebase Console → Authentication → Sign-in method, (3) set `ios.bundleIdentifier` in `app.json` and build a custom dev client (`eas build` or `npx expo run:ios`) — Expo Go can't grant this entitlement, so it can't be tested there.
+- **Onboarding grew a 5th step and a real progress indicator.** `OnboardingScreen` now takes `step`/`totalSteps` and renders "Step X of Y" + a progress bar under the logo on every screen. New final step `app/(auth)/onboarding/avatar.tsx` (reusing the preset-avatar grid from Edit Profile) lets a new user pick an avatar before their profile is created, instead of starting with a blank placeholder — `experience.tsx` now just advances to it instead of calling `createProfile` itself. `OnboardingContext` and `AuthContext.createProfile` both gained `avatarKey`.
+- **Verified**: full TypeScript check (app + functions) and a clean `functions` build pass. Walked the Welcome screen live in the Simulator — Apple button correctly falls back to the "coming soon" alert (no Apple ID signed into this Simulator, exactly the expected behavior), Forgot Password link renders in Log In mode, email field takes input correctly. Hit iOS Simulator input-injection flakiness partway through signing up a second test account to walk the new avatar step end-to-end — that specific path (avatar step → `createProfile` with `avatarKey`) is typechecked and code-reviewed against the existing Edit Profile pattern but **not walked live**; worth a quick manual pass before demoing onboarding specifically.
+- **Not done**: didn't deploy the Cloud Functions runtime bump or attempt the still-undeployed `generateWorkoutDetails` (needs `firebase functions:secrets:set ANTHROPIC_API_KEY`, which I don't have) — both are a `cd functions && npm run deploy` away once you're ready.
+
+## 2026-09-12 — Recent Workouts moved to Home + live workout-taste recommendation engine
+
+- Moved the "Recent Workouts" quick-access row (added earlier the same day on the History page) onto the Home screen instead, between the featured daily workout and Quick Start. History goes back to being a plain chronological list.
+- New `lib/recommendations.ts`: replaces the old "first preset matching an onboarding goal" recommendation with a taste model derived entirely from `workoutLogs` — no new data store. Recency-weighted affinity per tag/`browseCategory` (a workout done today counts fully, one from ~3 weeks ago about a third as much), plus a baseline weight on every category so untried ones can still surface — recommendations lean toward what a user actually does while occasionally branching into something new. Deterministic per user per day (seeded) so it doesn't flicker on re-render, but reacts immediately to new history since it reads live Firestore listeners already in place.
+- **Verified live**: confirmed the Home layout order, and watched the engine surface "Beginner Pool Workout" (swimming — zero prior history) alongside a log history full of HIIT/strength, which is exactly the intended explore behavior. Typecheck passes.
+
+## 2026-09-12 — Browse Workouts tab (10 categories, 72 workouts)
+
+- New bottom-nav "Browse" tab (`app/(tabs)/browse.tsx`): every workout sectioned by activity type — Cardio, Strength Training, HIIT, Yoga, Pilates & Core, Group Fitness Classes, Swimming, Cycling, Sports & Outdoor, Stretching & Recovery — each a horizontally-scrollable row of cards.
+- `data/browseWorkoutTemplates.ts`: 72 workouts (7-8 per category) with full exercise lists, tips, and equipment notes, merged into the same `workoutTemplates` Firestore collection as presets/quick-starts (`category: 'browse'`, new `browseCategory` field) so they flow through the existing detail/log/complete/XP screens with no separate code path.
+- Widened the `category`/`workoutSource` unions across `types/models.ts`, `lib/workoutCompletion.ts`, and `functions/src/index.ts` to include `'browse'`.
+- **Verified live**: seeded all 76 templates to Firestore, confirmed each category renders with the right count, and completed a full detail → "Get Started" round trip on a browse workout.
+
+## 2026-09-12 — Profile avatars (upload a photo or pick a preset)
+
+- Firebase Storage wired up (`storage.rules`, `firebase.json`, `lib/firebase/config.ts` `storage` export) — a user can upload their own square photo (capped 5MB, image-only, self-write-only) or pick one of 12 built-in Ionicon presets (`constants/avatars.ts`).
+- New `components/Avatar.tsx` (renders photo → preset → neutral placeholder, in that priority) and `app/edit-profile.tsx` (photo picker via `expo-image-picker`, preset grid, deletes the old Storage object when replaced). `UserProfile` gained `avatarUrl`/`avatarKey`.
+- **Verified live**: uploaded a photo, swapped to a preset (old photo deleted from Storage), confirmed the avatar shows correctly on Profile and in the hamburger drawer.
+
 ## 2026-09-08 — Onboarding body metrics + weight-based Progress tab
 
 - **Onboarding** gains a step (`app/(auth)/onboarding/body.tsx`, between name-birthday and goals): sex (male/female), height (ft + in → stored as `heightInches`), and starting weight. `UserProfile` gains `sex`, `heightInches`, `startingWeightLb`; `OnboardingContext` + `createProfile` + `experience.tsx` finish updated to carry them. `SEX_OPTIONS` added to `constants/options.ts`. No Firestore rules change (users/create rule only constrains the gamification fields).
@@ -117,6 +145,9 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 ## Known gaps / not yet built
 
 - No real exercise diagrams/icons — using emoji placeholders (Figma design assets not yet exported; see IP-5/IP-6).
-- Cloud Functions runtime is Node 20, which Google deprecates 2026-10-30 — needs a runtime bump before then.
+- Cloud Functions runtime bumped to Node 22 in code (2026-09-12) but **not yet redeployed** — run `cd functions && npm run deploy`.
+- `generateWorkoutDetails` (AI-filled custom workout details) still isn't deployed — needs `firebase functions:secrets:set ANTHROPIC_API_KEY` first (requires an Anthropic API key, which isn't something an agent session has).
 - The delete-account flow (`deleteAccount` Cloud Function) hasn't been live-tested end to end yet, only deployed + type-checked.
-- No push notifications, no social login (Apple/Google/Facebook buttons on the welcome screen are present but non-functional placeholders), no dark mode.
+- Sign in with Apple is coded and ready client-side (2026-09-12) but needs three manual, credential-gated steps before it'll actually work: enabling the capability in the Apple Developer portal (paid membership), enabling the Apple provider in the Firebase Console, and a custom dev-client build (`ios.bundleIdentifier` + EAS/`expo run:ios` — Expo Go can't grant the entitlement).
+- No Google/Facebook login (buttons are still non-functional placeholders — needs OAuth app setup in the Firebase console for each).
+- No push notifications, no dark mode.

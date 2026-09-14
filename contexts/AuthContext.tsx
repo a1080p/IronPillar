@@ -1,7 +1,15 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import {
+  AuthErrorCodes,
   createUserWithEmailAndPassword,
+  OAuthProvider,
   onAuthStateChanged,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   type User,
@@ -9,6 +17,28 @@ import {
 import { doc, getDoc, onSnapshot, runTransaction, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase/config';
 import type { UserProfile } from '../types/models';
+
+// Maps common Firebase Auth error codes to copy a user can actually act on,
+// instead of surfacing "Firebase: Error (auth/email-already-in-use)." raw.
+function friendlyAuthError(error: unknown): string {
+  const code = (error as { code?: string } | undefined)?.code;
+  switch (code) {
+    case AuthErrorCodes.EMAIL_EXISTS:
+      return 'An account already exists with that email. Try logging in instead.';
+    case AuthErrorCodes.INVALID_EMAIL:
+      return "That email address doesn't look right.";
+    case AuthErrorCodes.WEAK_PASSWORD:
+      return 'Password must be at least 6 characters.';
+    case AuthErrorCodes.INVALID_PASSWORD:
+    case AuthErrorCodes.USER_DELETED:
+    case 'auth/invalid-credential':
+      return 'Incorrect email or password.';
+    case AuthErrorCodes.NETWORK_REQUEST_FAILED:
+      return 'Network error — check your connection and try again.';
+    default:
+      return error instanceof Error ? error.message : 'Something went wrong.';
+  }
+}
 
 interface AuthContextValue {
   user: User | null;
@@ -18,6 +48,9 @@ interface AuthContextValue {
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
+  isAppleSignInAvailable: () => Promise<boolean>;
+  signInWithApple: () => Promise<void>;
   createProfile: (
     data: Pick<
       UserProfile,
@@ -28,7 +61,8 @@ interface AuthContextValue {
       | 'sex'
       | 'heightInches'
       | 'startingWeightLb'
-    >
+    > &
+      Partial<Pick<UserProfile, 'avatarKey' | 'avatarUrl'>>
   ) => Promise<void>;
   updateProfile: (
     data: Partial<
@@ -87,13 +121,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       initializing,
       hasOnboarded: !!profile,
       async signUp(email, password) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        try {
+          const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+          // Best-effort — a failed verification email shouldn't block signup.
+          sendEmailVerification(credential.user).catch(() => {});
+        } catch (e) {
+          throw new Error(friendlyAuthError(e));
+        }
       },
       async signIn(email, password) {
-        await signInWithEmailAndPassword(auth, email, password);
+        try {
+          await signInWithEmailAndPassword(auth, email.trim(), password);
+        } catch (e) {
+          throw new Error(friendlyAuthError(e));
+        }
       },
       async signOut() {
         await firebaseSignOut(auth);
+      },
+      async sendPasswordReset(email) {
+        try {
+          await sendPasswordResetEmail(auth, email.trim());
+        } catch (e) {
+          throw new Error(friendlyAuthError(e));
+        }
+      },
+      async isAppleSignInAvailable() {
+        if (Platform.OS !== 'ios') return false;
+        return AppleAuthentication.isAvailableAsync();
+      },
+      // Sign in with Apple, Firebase-side: generates a nonce (Apple gets its
+      // SHA-256 hash, Firebase gets the raw value back) so the identity token
+      // Apple returns can't be replayed against a different sign-in attempt.
+      async signInWithApple() {
+        const rawNonce = Crypto.randomUUID();
+        const hashedNonce = await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
+          rawNonce
+        );
+
+        let appleCredential: AppleAuthentication.AppleAuthenticationCredential;
+        try {
+          appleCredential = await AppleAuthentication.signInAsync({
+            requestedScopes: [
+              AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+              AppleAuthentication.AppleAuthenticationScope.EMAIL,
+            ],
+            nonce: hashedNonce,
+          });
+        } catch (e) {
+          if ((e as { code?: string })?.code === 'ERR_REQUEST_CANCELED') {
+            return; // user dismissed the Apple sheet — not an error to surface
+          }
+          throw new Error('Apple sign-in failed. Please try again.');
+        }
+
+        if (!appleCredential.identityToken) {
+          throw new Error('Apple sign-in did not return an identity token.');
+        }
+
+        try {
+          const provider = new OAuthProvider('apple.com');
+          const firebaseCredential = provider.credential({
+            idToken: appleCredential.identityToken,
+            rawNonce,
+          });
+          await signInWithCredential(auth, firebaseCredential);
+        } catch (e) {
+          throw new Error(friendlyAuthError(e));
+        }
       },
       async createProfile({
         name,
@@ -103,6 +199,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sex,
         heightInches,
         startingWeightLb,
+        avatarKey,
+        avatarUrl,
       }) {
         if (!user) throw new Error('Must be signed in to create a profile');
         const ref = doc(db, 'users', user.uid);
@@ -141,6 +239,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             friendCount: 0,
             createdAt: new Date().toISOString(),
           };
+          if (avatarUrl) newProfile.avatarUrl = avatarUrl;
+          else if (avatarKey) newProfile.avatarKey = avatarKey;
           tx.set(ref, newProfile);
           tx.set(doc(db, 'usernames', username), { uid: user.uid });
         });

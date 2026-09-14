@@ -25,6 +25,7 @@
     "plugins": [
       "expo-router",
       "expo-status-bar",
+      "expo-apple-authentication",
       [
         "expo-image-picker",
         {

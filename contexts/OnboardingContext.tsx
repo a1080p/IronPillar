@@ -9,6 +9,8 @@ interface OnboardingData {
   startingWeightLb: number | null;
   goals: FitnessGoal[];
   experienceLevel: ExperienceLevel | null;
+  avatarKey: string | null;
+  avatarPhotoUri: string | null;
 }
 
 interface OnboardingContextValue {
@@ -17,6 +19,11 @@ interface OnboardingContextValue {
   setBody: (sex: Sex, heightInches: number, startingWeightLb: number) => void;
   toggleGoal: (goal: FitnessGoal) => void;
   setExperienceLevel: (level: ExperienceLevel) => void;
+  // A picked photo and a preset icon/color key are mutually exclusive —
+  // setting one clears the other.
+  setAvatarKey: (avatarKey: string) => void;
+  setAvatarPhotoUri: (uri: string) => void;
+  clearAvatarPhoto: () => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextValue | undefined>(undefined);
@@ -30,6 +37,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     startingWeightLb: null,
     goals: [],
     experienceLevel: null,
+    avatarKey: null,
+    avatarPhotoUri: null,
   });
 
   const value: OnboardingContextValue = {
@@ -43,6 +52,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         goals: d.goals.includes(goal) ? d.goals.filter((g) => g !== goal) : [...d.goals, goal],
       })),
     setExperienceLevel: (experienceLevel) => setData((d) => ({ ...d, experienceLevel })),
+    setAvatarKey: (avatarKey) => setData((d) => ({ ...d, avatarKey, avatarPhotoUri: null })),
+    setAvatarPhotoUri: (avatarPhotoUri) => setData((d) => ({ ...d, avatarPhotoUri, avatarKey: null })),
+    clearAvatarPhoto: () => setData((d) => ({ ...d, avatarPhotoUri: null })),
   };
 
   return <OnboardingContext.Provider value={value}>{children}</OnboardingContext.Provider>;
