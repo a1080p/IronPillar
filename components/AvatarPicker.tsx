@@ -1,19 +1,12 @@
-import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useState } from 'react';
 import { ActionSheet } from './ActionSheet';
 import { Avatar } from './Avatar';
-import { GridSheet } from './GridSheet';
-import {
-  AVATAR_COLORS,
-  AVATAR_ICONS,
-  DEFAULT_AVATAR_COLOR,
-  DEFAULT_AVATAR_ICON,
-  buildAvatarKey,
-  parseAvatarKey,
-} from '../constants/avatars';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { Button } from './Button';
+import { AVATAR_PRESETS, buildAvatarKey, parseAvatarKey } from '../constants/avatars';
+import { colors, radii, spacing } from '../constants/theme';
 
 const PHOTO_OPTIONS: ImagePicker.ImagePickerOptions = {
   mediaTypes: ['images'],
@@ -22,10 +15,10 @@ const PHOTO_OPTIONS: ImagePicker.ImagePickerOptions = {
   quality: 0.6,
 };
 
-// Avatar editor shared by onboarding and Edit Profile: a live preview plus
-// three entry points below it — take/choose a photo, pick an icon shape, and
-// pick a color for that shape. The parent owns the actual photoUrl/avatarKey
-// state (and upload timing); this component only reports picks.
+// Avatar editor shared by onboarding and Edit Profile: a live preview, one
+// button to take/choose a photo, and an inline grid of preset icon+color
+// avatars below it. The parent owns the actual photoUrl/avatarKey state (and
+// upload timing); this component only reports picks.
 export function AvatarPicker({
   photoUrl,
   avatarKey,
@@ -43,14 +36,10 @@ export function AvatarPicker({
   showRemove?: boolean;
   size?: number;
 }) {
-  const [cameraSheetOpen, setCameraSheetOpen] = useState(false);
-  const [iconSheetOpen, setIconSheetOpen] = useState(false);
-  const [colorSheetOpen, setColorSheetOpen] = useState(false);
+  const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
 
   const parsed = parseAvatarKey(avatarKey);
-  const currentIconKey = parsed?.iconKey ?? DEFAULT_AVATAR_ICON;
-  const currentColor = parsed?.color ?? DEFAULT_AVATAR_COLOR;
-  const currentIcon = AVATAR_ICONS.find((i) => i.key === currentIconKey)?.icon ?? 'barbell';
+  const currentIconKey = parsed?.iconKey;
 
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -82,21 +71,33 @@ export function AvatarPicker({
     <View style={styles.container}>
       <Avatar url={photoUrl} presetKey={photoUrl ? null : avatarKey} size={size} />
 
-      <View style={styles.actionRow}>
-        <ActionButton icon="camera" label="Photo" onPress={() => setCameraSheetOpen(true)} />
-        <ActionButton icon={currentIcon} label="Icon" onPress={() => setIconSheetOpen(true)} />
-        <ActionButton
-          icon="color-palette"
-          label="Color"
-          swatchColor={currentColor}
-          onPress={() => setColorSheetOpen(true)}
-        />
+      <Button
+        label="Upload or Choose Photo"
+        variant="outline"
+        onPress={() => setPhotoSheetOpen(true)}
+      />
+
+      <View style={styles.grid}>
+        {AVATAR_PRESETS.map((preset) => {
+          const selected = !photoUrl && preset.key === currentIconKey;
+          return (
+            <Pressable
+              key={preset.key}
+              onPress={() => onChangeAvatarKey(buildAvatarKey(preset.key, preset.color))}
+              style={[styles.swatchWrap, selected && styles.swatchWrapSelected]}
+            >
+              <View style={[styles.swatch, { backgroundColor: preset.color }]}>
+                <Ionicons name={preset.icon} size={26} color={colors.textOnDark} />
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
 
       <ActionSheet
-        visible={cameraSheetOpen}
+        visible={photoSheetOpen}
         title="Profile Photo"
-        onClose={() => setCameraSheetOpen(false)}
+        onClose={() => setPhotoSheetOpen(false)}
         actions={[
           { label: 'Take Photo', icon: 'camera-outline', onPress: takePhoto },
           { label: 'Choose from Library', icon: 'images-outline', onPress: choosePhoto },
@@ -112,81 +113,30 @@ export function AvatarPicker({
             : []),
         ]}
       />
-
-      <GridSheet
-        visible={iconSheetOpen}
-        title="Choose an Icon"
-        items={AVATAR_ICONS}
-        keyExtractor={(item) => item.key}
-        isSelected={(item) => item.key === currentIconKey && !photoUrl}
-        onSelect={(item) => onChangeAvatarKey(buildAvatarKey(item.key, currentColor))}
-        onClose={() => setIconSheetOpen(false)}
-        renderSwatch={(item) => (
-          <View style={[styles.iconSwatch, { backgroundColor: currentColor }]}>
-            <Ionicons name={item.icon} size={26} color={colors.textOnDark} />
-          </View>
-        )}
-      />
-
-      <GridSheet
-        visible={colorSheetOpen}
-        title="Choose a Color"
-        items={AVATAR_COLORS}
-        keyExtractor={(item) => item}
-        isSelected={(item) => item === currentColor && !photoUrl}
-        onSelect={(item) => onChangeAvatarKey(buildAvatarKey(currentIconKey, item))}
-        onClose={() => setColorSheetOpen(false)}
-        renderSwatch={(item) => <View style={[styles.colorSwatch, { backgroundColor: item }]} />}
-      />
     </View>
-  );
-}
-
-function ActionButton({
-  icon,
-  label,
-  swatchColor,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  swatchColor?: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable style={styles.actionButton} onPress={onPress}>
-      <View style={[styles.actionCircle, swatchColor ? { backgroundColor: swatchColor } : null]}>
-        <Ionicons name={icon} size={20} color={swatchColor ? colors.textOnDark : colors.primary} />
-      </View>
-      <Text style={styles.actionLabel}>{label}</Text>
-    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', gap: spacing.md },
-  actionRow: { flexDirection: 'row', gap: spacing.lg },
-  actionButton: { alignItems: 'center', gap: spacing.xs },
-  actionCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.pill,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    alignItems: 'center',
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
+    gap: spacing.md,
   },
-  actionLabel: { fontSize: typography.sizes.small, color: colors.primary, fontWeight: '600' },
-  iconSwatch: {
+  swatchWrap: {
+    padding: 3,
+    borderRadius: radii.pill,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  swatchWrapSelected: { borderColor: colors.primary },
+  swatch: {
     width: 52,
     height: 52,
     borderRadius: radii.pill,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  colorSwatch: {
-    width: 52,
-    height: 52,
-    borderRadius: radii.pill,
   },
 });

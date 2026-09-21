@@ -40,16 +40,18 @@ export const AVATAR_COLORS: string[] = [
 export const DEFAULT_AVATAR_ICON = AVATAR_ICONS[0].key;
 export const DEFAULT_AVATAR_COLOR = AVATAR_COLORS[0];
 
-// Legacy fixed icon+color pairs from before icon/color were split into
-// separate pickers. Kept only so avatarKey values saved before this change
-// (a bare key like "rocket") still resolve to the same look.
-interface LegacyAvatarPreset {
+// Fixed icon+color pairs shown as the picker's grid — one distinct color per
+// icon, so choosing an icon and choosing a color is a single tap instead of
+// two separate steps. Also resolves legacy avatarKey values saved before
+// icon/color were ever split into separate pickers (a bare key like
+// "rocket") to the same look.
+export interface AvatarPreset {
   key: string;
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
 }
 
-const LEGACY_AVATAR_PRESETS: LegacyAvatarPreset[] = [
+export const AVATAR_PRESETS: AvatarPreset[] = [
   { key: 'barbell', icon: 'barbell', color: '#3D4FEA' },
   { key: 'flame', icon: 'flame', color: '#FF8A00' },
   { key: 'flash', icon: 'flash', color: '#F5B301' },
@@ -78,7 +80,7 @@ export function parseAvatarKey(
     return { iconKey, icon: iconOption.icon, color: color || DEFAULT_AVATAR_COLOR };
   }
 
-  const legacy = LEGACY_AVATAR_PRESETS.find((p) => p.key === key);
+  const legacy = AVATAR_PRESETS.find((p) => p.key === key);
   if (legacy) return { iconKey: legacy.key, icon: legacy.icon, color: legacy.color };
 
   return undefined;

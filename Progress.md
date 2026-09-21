@@ -4,6 +4,14 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-21 — Onboarding-completion bug found (Storage never provisioned); avatar picker redesign, Welcome screen trim, birthday auto-format
+
+- **Root cause found for "Could not save your profile" / Firebase Storage `storage/unknown`**: the project's Cloud Storage bucket (`iron-piller.firebasestorage.app`) has never actually been provisioned — confirmed directly against the Admin SDK (`404 The specified bucket does not exist`), also checked the older `iron-piller.appspot.com` naming in case that was the real one; neither exists. `storage.rules` deploying without error means nothing here — there's no bucket for the rules to attach to. This has nothing to do with any app code; it's a one-time Firebase Console step ("Storage" → "Get started", pick a region) only the project owner can do, since it asks for a billing-relevant location choice. **Onboarding cannot complete for anyone who picks a photo avatar until this is done** — the icon-grid avatars (no upload) still work fine in the meantime.
+- **Avatar picker redesigned** to match a hand-drawn wireframe: was a 3-button row (Photo/Icon/Color) opening two separate modal sheets; now a single "Upload or Choose Photo" button plus an inline grid of 12 fixed icon+color presets shown directly on the page — no more separate color-picking step. `constants/avatars.ts`: the old internal `LEGACY_AVATAR_PRESETS` (already exactly 12 icon+color pairs, coincidentally matching the sketch's 12 circles) is now the exported `AVATAR_PRESETS` driving the grid. Deleted `components/GridSheet.tsx` (no longer used by anything). Shared by both onboarding and Edit Profile.
+- **Welcome/sign-up screen**: removed the "Continue with Facebook" button (never functional, just a placeholder); dropped the tagline+subtitle marketing copy and tightened spacing so the whole sign-up screen fits on one page with no scrolling needed.
+- **Birthday field auto-formats** as you type — entering `05102004` fills in as `05-10-2004` live, digits only (dashes can't be typed or deleted independently, they're derived).
+- **Verified**: full TypeScript typecheck passes clean. Live-checked in Expo Go: Welcome screen renders Facebook-free and fits without scrolling. Could not live-walk the avatar grid or birthday field specifically — same simulator text-input flakiness noted throughout this project blocked reaching those screens (both require getting through email/verification-code entry first), and the avatar *upload* path can't be tested at all yet regardless, pending the Storage bucket fix above.
+
 ## 2026-09-21 — Email verification via a typed code (not Firebase's link flow)
 
 - Firebase Auth only does clicked-link email verification out of the box; built a proper 6-digit-code flow on top instead, using Cloud Functions + Resend for the actual send.

@@ -116,17 +116,10 @@ export default function WelcomeScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <Text style={styles.tagline}>Are you ready to forge your</Text>
-          <Logo size="lg" />
-          <Text style={styles.subtitle}>
-            Your fitness journey begins with a single step. Take it with confidence, knowing you
-            have the tools and support to reach any goal.
-          </Text>
-
+          <Logo />
           <Text style={styles.sectionLabel}>{mode === 'sign_up' ? 'Sign-up' : 'Log in'}</Text>
 
           <View style={styles.socialGroup}>
-            <Button label="Continue with Facebook" onPress={() => socialComingSoon('Facebook')} />
             {googleAvailable ? (
               <Button label="Continue with Google" variant="outline" onPress={handleGoogle} />
             ) : (
@@ -205,19 +198,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
     padding: spacing.lg,
-    paddingTop: spacing.xl,
-    gap: spacing.lg,
-  },
-  tagline: {
-    textAlign: 'center',
-    fontSize: typography.sizes.lg,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  subtitle: {
-    textAlign: 'center',
-    color: colors.primary,
+    gap: spacing.md,
   },
   sectionLabel: {
     textAlign: 'center',
