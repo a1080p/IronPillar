@@ -3,7 +3,7 @@ import { Image, StyleSheet } from 'react-native';
 const ASPECT_RATIO = 3199 / 900;
 
 export function Logo({ size = 'md' }: { size?: 'md' | 'lg' | 'xl' }) {
-  const height = size === 'xl' ? 72 : size === 'lg' ? 56 : 32;
+  const height = size === 'xl' ? 110 : size === 'lg' ? 88 : 32;
   return (
     <Image
       source={require('../assets/logo.png')}

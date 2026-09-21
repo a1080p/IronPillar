@@ -26,8 +26,10 @@ export default function WelcomeScreen() {
     signInWithGoogle,
   } = useAuth();
   const [mode, setMode] = useState<'sign_up' | 'log_in'>('sign_up');
+  const [showForm, setShowForm] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
@@ -44,10 +46,20 @@ export default function WelcomeScreen() {
       'Email sign-up works now — social login needs OAuth set up in the Firebase console first.'
     );
 
+  const openForm = (targetMode: 'sign_up' | 'log_in') => {
+    setError(null);
+    setMode(targetMode);
+    setShowForm(true);
+  };
+
   const handleSubmit = async () => {
     setError(null);
     if (!email || !password) {
       setError('Enter an email and password.');
+      return;
+    }
+    if (mode === 'sign_up' && password !== confirmPassword) {
+      setError('Passwords do not match.');
       return;
     }
     setLoading(true);
@@ -117,7 +129,7 @@ export default function WelcomeScreen() {
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <Logo size="lg" />
-          <Text style={styles.sectionLabel}>{mode === 'sign_up' ? 'Sign-up' : 'Log in'}</Text>
+          <Text style={styles.sectionLabel}>{mode === 'sign_up' ? 'Sign up' : 'Log in'}</Text>
 
           <View style={styles.socialGroup}>
             {googleAvailable ? (
@@ -138,54 +150,84 @@ export default function WelcomeScreen() {
                 onPress={() => socialComingSoon('Apple')}
               />
             )}
+            <Button
+              label="Continue with Email"
+              variant="primary"
+              onPress={() => openForm('sign_up')}
+            />
           </View>
 
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
+            <Text style={styles.dividerText}>Already have an account?</Text>
             <View style={styles.dividerLine} />
           </View>
 
-          <View style={styles.fieldGroup}>
-            <TextField
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholder="you@example.com"
-            />
-            <TextField
-              label="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="At least 6 characters"
-            />
-          </View>
+          <Button label="Log in" variant="primary" onPress={() => openForm('log_in')} />
 
-          {mode === 'log_in' && (
-            <Text style={styles.forgotPasswordLink} onPress={handleForgotPassword}>
-              Forgot password?
-            </Text>
+          {showForm && (
+            <>
+              <Text style={styles.backLink} onPress={() => setShowForm(false)}>
+                ‹ Back
+              </Text>
+
+              <View style={styles.fieldGroup}>
+                <TextField
+                  label="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  placeholder="you@example.com"
+                />
+                <TextField
+                  label="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  placeholder="At least 6 characters"
+                />
+                {mode === 'sign_up' && (
+                  <TextField
+                    label="Confirm Password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry
+                    placeholder="Re-enter your password"
+                  />
+                )}
+              </View>
+
+              {mode === 'log_in' && (
+                <Text style={styles.forgotPasswordLink} onPress={handleForgotPassword}>
+                  Forgot password?
+                </Text>
+              )}
+
+              {error && <Text style={styles.error}>{error}</Text>}
+
+              <View style={styles.submitGroup}>
+                <Button
+                  label={mode === 'sign_up' ? 'Sign up' : 'Log in'}
+                  onPress={handleSubmit}
+                  loading={loading}
+                />
+
+                <Text
+                  style={styles.switchModeLink}
+                  onPress={() => {
+                    setMode(mode === 'sign_up' ? 'log_in' : 'sign_up');
+                    setError(null);
+                    setConfirmPassword('');
+                  }}
+                >
+                  {mode === 'sign_up'
+                    ? 'Already have an account? Log in'
+                    : "Don't have an account? Sign up"}
+                </Text>
+              </View>
+            </>
           )}
-
-          {error && <Text style={styles.error}>{error}</Text>}
-
-          <View style={styles.submitGroup}>
-            <Button
-              label={mode === 'sign_up' ? 'Sign up' : 'Log in'}
-              onPress={handleSubmit}
-              loading={loading}
-            />
-
-            <Text
-              style={styles.switchModeLink}
-              onPress={() => setMode(mode === 'sign_up' ? 'log_in' : 'sign_up')}
-            >
-              {mode === 'sign_up' ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
-            </Text>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -223,6 +265,10 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: spacing.sm,
     color: colors.textMuted,
+  },
+  backLink: {
+    color: colors.primary,
+    fontWeight: '600',
   },
   fieldGroup: {
     gap: spacing.md,
