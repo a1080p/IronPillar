@@ -91,17 +91,29 @@ export interface ExerciseLog {
   sets: LoggedSet[];
 }
 
+export type OutdoorActivityType = 'walk' | 'run' | 'bike';
+
+export interface RoutePoint {
+  lat: number;
+  lng: number;
+  t: number; // ms since epoch
+}
+
 export interface WorkoutLog {
   id: string;
   workoutId: string;
   workoutName: string;
-  workoutSource: 'preset' | 'quick_start' | 'browse' | 'custom';
+  workoutSource: 'preset' | 'quick_start' | 'browse' | 'custom' | 'outdoor';
   completedAt: string; // ISO timestamp
   durationSeconds: number;
-  exercises: ExerciseLog[];
+  exercises: ExerciseLog[]; // empty for outdoor activities — see activityType below
   xpEarned: number;
   streakBonusEarned: number;
   streakCountAfter: number;
+  // Present only when workoutSource is 'outdoor' (GPS-tracked walk/run/bike).
+  activityType?: OutdoorActivityType;
+  distanceMeters?: number;
+  route?: RoutePoint[];
 }
 
 export interface Badge {

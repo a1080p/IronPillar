@@ -5,6 +5,15 @@ import { colors, radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkoutLogs } from '../hooks/useWorkoutLogs';
 import { formatShortDate } from '../lib/dates';
+import { formatDistanceMiles } from '../lib/geo';
+import type { WorkoutLog } from '../types/models';
+
+function activityMeta(log: WorkoutLog): string {
+  if (log.workoutSource === 'outdoor') {
+    return formatDistanceMiles(log.distanceMeters ?? 0);
+  }
+  return `${log.exercises.length} exercise${log.exercises.length === 1 ? '' : 's'}`;
+}
 
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -35,7 +44,7 @@ export default function HistoryScreen() {
             </View>
             <Text style={styles.meta}>
               {formatShortDate(log.completedAt)} · {formatDuration(log.durationSeconds)} ·{' '}
-              {log.exercises.length} exercise{log.exercises.length === 1 ? '' : 's'}
+              {activityMeta(log)}
             </Text>
             {log.streakBonusEarned > 0 && (
               <Text style={styles.streakBonus}>Streak Bonus: +{log.streakBonusEarned}xp</Text>

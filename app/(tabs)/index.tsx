@@ -81,6 +81,29 @@ export default function HomeScreen() {
           </View>
         )}
 
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Outdoor Activity:</Text>
+          <Text style={styles.sectionSubLabel}>GPS-tracked walk, run, or bike ride</Text>
+          <View style={styles.outdoorRow}>
+            {(['walk', 'run', 'bike'] as const).map((activityType) => (
+              <Pressable
+                key={activityType}
+                style={styles.outdoorCard}
+                onPress={() => router.push({ pathname: '/workout/outdoor/track', params: { activityType } })}
+              >
+                <Ionicons
+                  name={activityType === 'bike' ? 'bicycle' : 'walk'}
+                  size={24}
+                  color={colors.textOnDark}
+                />
+                <Text style={styles.outdoorCardLabel}>
+                  {activityType === 'walk' ? 'Walk' : activityType === 'run' ? 'Run' : 'Bike'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         {recentWorkouts.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Recent Workouts:</Text>
@@ -237,6 +260,16 @@ const styles = StyleSheet.create({
   recommendedTitle: { color: colors.textOnDark, fontSize: typography.sizes.md, fontWeight: '700', marginBottom: spacing.md },
   recommendedMetaRow: { flexDirection: 'row', gap: spacing.md },
   recommendedMeta: { color: colors.textOnDark, fontSize: typography.sizes.small },
+  outdoorRow: { flexDirection: 'row', gap: spacing.md },
+  outdoorCard: {
+    flex: 1,
+    backgroundColor: colors.primary,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  outdoorCardLabel: { color: colors.textOnDark, fontWeight: '700', fontSize: typography.sizes.small },
   quickRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.md, rowGap: spacing.md },
   quickCard: {
     backgroundColor: colors.primary,

@@ -27,6 +27,8 @@ const XP_PER_EXERCISE = 50;
 const XP_PER_SET = 5;
 const XP_PER_STREAK_DAY = 20;
 const STREAK_MILESTONE_INTERVAL = 5;
+const XP_PER_KM = 40;
+const MAX_ROUTE_POINTS = 20000; // ~5.5hrs at one point/sec — well beyond any real workout
 
 const BADGE_NAMES: Record<string, string> = {
   'the-journey-begins': 'The Journey Begins',
@@ -45,14 +47,25 @@ interface ExerciseLog {
   sets: LoggedSet[];
 }
 
+interface RoutePoint {
+  lat: number;
+  lng: number;
+  t: number;
+}
+
 interface CompleteWorkoutRequest {
   workout: {
     id: string;
     name: string;
-    category: 'preset' | 'quick_start' | 'browse' | 'custom';
+    category: 'preset' | 'quick_start' | 'browse' | 'custom' | 'outdoor';
   };
   exercises: ExerciseLog[];
   durationSeconds: number;
+  // Outdoor GPS-tracked activities (walk/run/bike) report these instead of
+  // exercises (exercises is still sent, just empty).
+  activityType?: 'walk' | 'run' | 'bike';
+  distanceMeters?: number;
+  route?: RoutePoint[];
 }
 
 function todayDateString(date = new Date()) {
@@ -65,6 +78,12 @@ function yesterdayDateString(date = new Date()) {
   return todayDateString(d);
 }
 
+function isValidRoutePoint(p: unknown): p is RoutePoint {
+  if (!p || typeof p !== 'object') return false;
+  const r = p as Record<string, unknown>;
+  return typeof r.lat === 'number' && typeof r.lng === 'number' && typeof r.t === 'number';
+}
+
 function isValidCompleteWorkoutRequest(data: unknown): data is CompleteWorkoutRequest {
   if (!data || typeof data !== 'object') return false;
   const d = data as Record<string, unknown>;
@@ -73,8 +92,20 @@ function isValidCompleteWorkoutRequest(data: unknown): data is CompleteWorkoutRe
   if (typeof w.id !== 'string' || typeof w.name !== 'string' || typeof w.category !== 'string') {
     return false;
   }
-  if (!Array.isArray(d.exercises) || d.exercises.length === 0) return false;
   if (typeof d.durationSeconds !== 'number' || d.durationSeconds < 0) return false;
+
+  const isOutdoor = w.category === 'outdoor';
+  if (isOutdoor) {
+    if (d.activityType !== 'walk' && d.activityType !== 'run' && d.activityType !== 'bike') {
+      return false;
+    }
+    if (typeof d.distanceMeters !== 'number' || d.distanceMeters < 0) return false;
+    if (!Array.isArray(d.route) || d.route.length > MAX_ROUTE_POINTS) return false;
+    if (!d.route.every(isValidRoutePoint)) return false;
+  } else if (!Array.isArray(d.exercises) || d.exercises.length === 0) {
+    return false;
+  }
+  if (!Array.isArray(d.exercises)) return false;
   return true;
 }
 
@@ -106,7 +137,8 @@ export const completeWorkout = onCall(async (request) => {
   if (!isValidCompleteWorkoutRequest(request.data)) {
     throw new HttpsError('invalid-argument', 'Malformed workout completion payload.');
   }
-  const { workout, exercises, durationSeconds } = request.data;
+  const { workout, exercises, durationSeconds, activityType, distanceMeters, route } =
+    request.data;
 
   const userRef = db.collection('users').doc(uid);
   const logRef = db.collection('workoutLogs').doc(uid).collection('logs').doc();
@@ -139,7 +171,9 @@ export const completeWorkout = onCall(async (request) => {
 
     const streakBonus = alreadyLoggedToday ? 0 : streakCountAfter * XP_PER_STREAK_DAY;
     const setCount = exercises.reduce((sum, e) => sum + (e.sets?.length ?? 0), 0);
-    const xpEarned = exercises.length * XP_PER_EXERCISE + setCount * XP_PER_SET + streakBonus;
+    const distanceXp = distanceMeters ? Math.round((distanceMeters / 1000) * XP_PER_KM) : 0;
+    const xpEarned =
+      exercises.length * XP_PER_EXERCISE + setCount * XP_PER_SET + distanceXp + streakBonus;
 
     const isFirstWorkout = profile.lastWorkoutDate === null;
     const badgeEarnedId = isFirstWorkout ? 'the-journey-begins' : null;
@@ -157,6 +191,7 @@ export const completeWorkout = onCall(async (request) => {
       xpEarned,
       streakBonusEarned: streakBonus,
       streakCountAfter,
+      ...(activityType ? { activityType, distanceMeters, route: route ?? [] } : {}),
     });
 
     tx.update(userRef, {
