@@ -1,36 +1,22 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/theme';
+import { Image, StyleSheet } from 'react-native';
 
-// Placeholder wordmark until the real Iron Pillar logo asset is exported from Figma.
+const ASPECT_RATIO = 788 / 299;
+
 export function Logo({ size = 'md' }: { size?: 'md' | 'lg' }) {
+  const height = size === 'lg' ? 40 : 24;
   return (
-    <View style={styles.row}>
-      <Text style={[styles.text, size === 'lg' && styles.textLg]}>IRON PILLAR</Text>
-      <Text style={[styles.icon, size === 'lg' && styles.iconLg]}>🏋️</Text>
-    </View>
+    <Image
+      source={require('../assets/logo.png')}
+      style={[styles.logo, { height, width: height * ASPECT_RATIO }]}
+      resizeMode="contain"
+      accessibilityRole="image"
+      accessibilityLabel="Iron Pillar"
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  text: {
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-    color: colors.text,
-  },
-  textLg: {
-    fontSize: 32,
-  },
-  icon: {
-    fontSize: 20,
-  },
-  iconLg: {
-    fontSize: 32,
+  logo: {
+    alignSelf: 'center',
   },
 });

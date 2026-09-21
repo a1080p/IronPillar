@@ -76,7 +76,7 @@ export default function ProfileScreen() {
             {earned.map((badge) => (
               <View key={badge.id} style={styles.badgeItem}>
                 <View style={styles.badgeCircle}>
-                  <Text style={styles.badgeIcon}>🏅</Text>
+                  <Ionicons name="ribbon" size={28} color={colors.primary} />
                 </View>
                 <Text style={styles.badgeName} numberOfLines={2}>
                   {badge.name}
@@ -164,6 +164,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.xs,
   },
-  badgeIcon: { fontSize: 28 },
   badgeName: { fontSize: typography.sizes.small, color: colors.text, textAlign: 'center' },
 });

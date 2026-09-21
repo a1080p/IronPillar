@@ -1,22 +1,27 @@
+import { StyleSheet, Text } from 'react-native';
 import { router } from 'expo-router';
 import { OnboardingScreen } from '../../../components/OnboardingScreen';
 import { SelectableOption } from '../../../components/SelectableOption';
-import { GOAL_OPTIONS as GOALS } from '../../../constants/options';
+import { EXPERIENCE_OPTIONS, GOAL_OPTIONS } from '../../../constants/options';
+import { colors, spacing, typography } from '../../../constants/theme';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
 
 export default function GoalsScreen() {
-  const { data, toggleGoal } = useOnboarding();
+  const { data, toggleGoal, setExperienceLevel } = useOnboarding();
+
+  const canContinue = data.goals.length > 0 && !!data.experienceLevel;
 
   return (
     <OnboardingScreen
       heading={`It's Nice to Meet You, ${data.name || 'there'}!`}
       onBack={() => router.back()}
-      onNext={() => router.push('/onboarding/experience')}
-      nextDisabled={data.goals.length === 0}
+      onNext={() => router.push('/onboarding/avatar')}
+      nextDisabled={!canContinue}
       step={3}
-      totalSteps={5}
+      totalSteps={4}
     >
-      {GOALS.map((goal) => (
+      <Text style={styles.groupLabel}>What are your goals?</Text>
+      {GOAL_OPTIONS.map((goal) => (
         <SelectableOption
           key={goal.value}
           label={goal.label}
@@ -24,6 +29,28 @@ export default function GoalsScreen() {
           onPress={() => toggleGoal(goal.value)}
         />
       ))}
+
+      <Text style={[styles.groupLabel, styles.secondGroup]}>How experienced are you?</Text>
+      {EXPERIENCE_OPTIONS.map((level) => (
+        <SelectableOption
+          key={level.value}
+          label={level.label}
+          selected={data.experienceLevel === level.value}
+          onPress={() => setExperienceLevel(level.value)}
+        />
+      ))}
     </OnboardingScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  groupLabel: {
+    fontSize: typography.sizes.md,
+    fontWeight: '700',
+    color: colors.primary,
+    textAlign: 'center',
+  },
+  secondGroup: {
+    marginTop: spacing.lg,
+  },
+});

@@ -54,8 +54,8 @@ export default function AvatarScreen() {
       onNext={handleFinish}
       nextLabel={saving ? 'Saving...' : 'Finish'}
       nextDisabled={saving}
-      step={5}
-      totalSteps={5}
+      step={4}
+      totalSteps={4}
     >
       <AvatarPicker
         photoUrl={data.avatarPhotoUri}

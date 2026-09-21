@@ -16,18 +16,27 @@ import { colors, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function WelcomeScreen() {
-  const { signUp, signIn, sendPasswordReset, isAppleSignInAvailable, signInWithApple } =
-    useAuth();
+  const {
+    signUp,
+    signIn,
+    sendPasswordReset,
+    isAppleSignInAvailable,
+    signInWithApple,
+    isGoogleSignInAvailable,
+    signInWithGoogle,
+  } = useAuth();
   const [mode, setMode] = useState<'sign_up' | 'log_in'>('sign_up');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
+  const [googleAvailable, setGoogleAvailable] = useState(false);
 
   useEffect(() => {
     isAppleSignInAvailable().then(setAppleAvailable);
-  }, [isAppleSignInAvailable]);
+    isGoogleSignInAvailable().then(setGoogleAvailable);
+  }, [isAppleSignInAvailable, isGoogleSignInAvailable]);
 
   const socialComingSoon = (provider: string) =>
     Alert.alert(
@@ -60,6 +69,18 @@ export default function WelcomeScreen() {
     setLoading(true);
     try {
       await signInWithApple();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await signInWithGoogle();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.');
     } finally {
@@ -106,11 +127,15 @@ export default function WelcomeScreen() {
 
           <View style={styles.socialGroup}>
             <Button label="Continue with Facebook" onPress={() => socialComingSoon('Facebook')} />
-            <Button
-              label="Continue with Google"
-              variant="outline"
-              onPress={() => socialComingSoon('Google')}
-            />
+            {googleAvailable ? (
+              <Button label="Continue with Google" variant="outline" onPress={handleGoogle} />
+            ) : (
+              <Button
+                label="Continue with Google"
+                variant="outline"
+                onPress={() => socialComingSoon('Google')}
+              />
+            )}
             {appleAvailable ? (
               <Button label="Continue with Apple" variant="outline" onPress={handleApple} />
             ) : (

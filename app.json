@@ -31,10 +31,24 @@
         {
           "photosPermission": "Allow Iron Pillar to access your photos so you can set a profile picture."
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3c1efe4d-d3eb-4a8c-8179-677f19e4d0c4"
+      }
+    },
+    "owner": "aidand510",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/3c1efe4d-d3eb-4a8c-8179-677f19e4d0c4"
     }
   }
 }

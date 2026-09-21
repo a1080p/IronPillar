@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TopBar } from '../../components/TopBar';
 import { Button } from '../../components/Button';
@@ -10,10 +11,13 @@ import { useActivityFeed } from '../../hooks/useActivityFeed';
 import { addFriend } from '../../lib/friends';
 import type { ActivityFeedItem } from '../../types/models';
 
-const ICON_FOR_TYPE: Record<ActivityFeedItem['type'], string> = {
-  badge_earned: '🏅',
-  streak_milestone: '🔥',
-  friend_workout: '💪',
+const ICON_FOR_TYPE: Record<
+  ActivityFeedItem['type'],
+  { name: keyof typeof Ionicons.glyphMap; color: string }
+> = {
+  badge_earned: { name: 'ribbon', color: colors.primary },
+  streak_milestone: { name: 'flame', color: colors.accentFlame },
+  friend_workout: { name: 'barbell', color: colors.primary },
 };
 
 function timeAgo(iso: string) {
@@ -86,7 +90,11 @@ export default function SocialScreen() {
         ) : (
           items.map((item) => (
             <View key={item.id} style={styles.feedItem}>
-              <Text style={styles.feedIcon}>{ICON_FOR_TYPE[item.type]}</Text>
+              <Ionicons
+                name={ICON_FOR_TYPE[item.type].name}
+                size={22}
+                color={ICON_FOR_TYPE[item.type].color}
+              />
               <View style={{ flex: 1 }}>
                 <Text style={styles.feedMessage}>{item.message}</Text>
                 <Text style={styles.feedTime}>{timeAgo(item.createdAt)}</Text>
@@ -135,7 +143,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
   },
-  feedIcon: { fontSize: 22 },
   feedMessage: { color: colors.text, fontWeight: '600' },
   feedTime: { color: colors.textMuted, fontSize: typography.sizes.small, marginTop: 2 },
 });

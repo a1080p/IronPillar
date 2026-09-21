@@ -48,7 +48,7 @@ export default function BodyScreen() {
       onNext={handleNext}
       nextDisabled={!canContinue}
       step={2}
-      totalSteps={5}
+      totalSteps={4}
     >
       <Text style={styles.groupLabel}>Sex</Text>
       {SEX_OPTIONS.map((option) => (

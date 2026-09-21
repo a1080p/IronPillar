@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
@@ -51,7 +52,7 @@ export default function WorkoutCompleteScreen() {
           <Text style={styles.congrats}>Congrats!</Text>
           <Text style={styles.subheading}>You Earned a Badge</Text>
           <View style={styles.badgeCircle}>
-            <Text style={styles.badgeIcon}>🏅</Text>
+            <Ionicons name="ribbon" size={56} color={colors.primary} />
           </View>
           <Text style={styles.badgeName}>{badge.name}</Text>
         </View>
@@ -91,8 +92,6 @@ export default function WorkoutCompleteScreen() {
             ))}
           </View>
         )}
-
-        <Text style={styles.rockPile}>🪨</Text>
       </View>
       <View style={styles.footer}>
         <Button label="Next" onPress={handleNext} />
@@ -125,7 +124,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   summaryChipText: { color: colors.text, fontSize: typography.sizes.small, fontWeight: '600' },
-  rockPile: { fontSize: 96, marginTop: spacing.xl },
   congrats: { fontSize: typography.sizes.xl, fontWeight: '800', color: colors.primary, textAlign: 'center' },
   badgeCircle: {
     width: 140,
@@ -138,7 +136,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: spacing.lg,
   },
-  badgeIcon: { fontSize: 56 },
   badgeName: {
     fontSize: typography.sizes.md,
     fontWeight: '700',

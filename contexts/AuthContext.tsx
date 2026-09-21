@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 import {
   AuthErrorCodes,
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   OAuthProvider,
   onAuthStateChanged,
   sendEmailVerification,
@@ -17,6 +19,28 @@ import {
 import { doc, getDoc, onSnapshot, runTransaction, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase/config';
 import type { UserProfile } from '../types/models';
+
+// Google Sign-In needs a native module Expo Go doesn't have. Its package
+// calls TurboModuleRegistry.getEnforcing() at the package's own top level,
+// so even importing it (not just calling it) crashes Expo Go instantly --
+// which would break the shared Expo Go preview for every tester the moment
+// this file loads. We check availability with plain JS/env values only, and
+// dynamically `import()` the package itself, deferred until a real sign-in
+// attempt on a build that actually has the native module.
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+const googleSignInReady = !isExpoGo && !!googleWebClientId;
+let googleSignInConfigured = false;
+
+async function ensureGoogleSignInConfigured() {
+  if (!googleSignInReady) return false;
+  if (!googleSignInConfigured) {
+    const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
+    GoogleSignin.configure({ webClientId: googleWebClientId });
+    googleSignInConfigured = true;
+  }
+  return true;
+}
 
 // Maps common Firebase Auth error codes to copy a user can actually act on,
 // instead of surfacing "Firebase: Error (auth/email-already-in-use)." raw.
@@ -51,6 +75,8 @@ interface AuthContextValue {
   sendPasswordReset: (email: string) => Promise<void>;
   isAppleSignInAvailable: () => Promise<boolean>;
   signInWithApple: () => Promise<void>;
+  isGoogleSignInAvailable: () => Promise<boolean>;
+  signInWithGoogle: () => Promise<void>;
   createProfile: (
     data: Pick<
       UserProfile,
@@ -188,6 +214,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
           await signInWithCredential(auth, firebaseCredential);
         } catch (e) {
+          throw new Error(friendlyAuthError(e));
+        }
+      },
+      async isGoogleSignInAvailable() {
+        return googleSignInReady;
+      },
+      async signInWithGoogle() {
+        const ready = await ensureGoogleSignInConfigured();
+        if (!ready) {
+          throw new Error('Google sign-in is not set up on this build yet.');
+        }
+        const { GoogleSignin, isErrorWithCode, isSuccessResponse, statusCodes } = await import(
+          '@react-native-google-signin/google-signin'
+        );
+        try {
+          await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+          const response = await GoogleSignin.signIn();
+          if (!isSuccessResponse(response)) {
+            return; // user cancelled the Google sheet — not an error to surface
+          }
+          if (!response.data.idToken) {
+            throw new Error('Google sign-in did not return an identity token.');
+          }
+          const credential = GoogleAuthProvider.credential(response.data.idToken);
+          await signInWithCredential(auth, credential);
+        } catch (e) {
+          if (isErrorWithCode(e) && e.code === statusCodes.SIGN_IN_CANCELLED) {
+            return;
+          }
           throw new Error(friendlyAuthError(e));
         }
       },
