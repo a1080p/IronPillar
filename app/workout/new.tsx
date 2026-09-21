@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -89,6 +89,10 @@ export default function NewWorkoutScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <WorkoutHeader />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.heading}>Create Your Own Workout</Text>
 
@@ -178,6 +182,7 @@ export default function NewWorkoutScreen() {
         {saving && savingStatus ? <Text style={styles.savingStatus}>{savingStatus}</Text> : null}
         <Button label="Save Workout" onPress={handleSave} loading={saving} />
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

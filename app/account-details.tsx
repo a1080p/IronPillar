@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WorkoutHeader } from '../components/WorkoutHeader';
 import { Button } from '../components/Button';
@@ -74,6 +74,10 @@ export default function AccountDetailsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <WorkoutHeader />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.heading}>Account Details</Text>
 
@@ -163,6 +167,7 @@ export default function AccountDetailsScreen() {
           )}
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

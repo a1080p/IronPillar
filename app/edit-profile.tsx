@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { WorkoutHeader } from '../components/WorkoutHeader';
@@ -9,6 +9,7 @@ import { TextField } from '../components/TextField';
 import { colors, spacing, typography } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { deleteAvatar, uploadAvatar } from '../lib/avatar';
+import { formatBirthdayInput } from '../lib/dates';
 
 const BIRTHDAY_RE = /^\d{2}-\d{2}-\d{4}$/;
 
@@ -92,6 +93,10 @@ export default function EditProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <WorkoutHeader />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.heading}>Edit Profile</Text>
 
@@ -115,13 +120,15 @@ export default function EditProfileScreen() {
         <TextField
           label="Birthday"
           value={birthday}
-          onChangeText={setBirthday}
+          onChangeText={(text) => setBirthday(formatBirthdayInput(text))}
           placeholder="MM-DD-YYYY"
-          keyboardType="numbers-and-punctuation"
+          keyboardType="number-pad"
+          maxLength={10}
         />
 
         <Button label="Save Changes" onPress={handleSave} loading={saving} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

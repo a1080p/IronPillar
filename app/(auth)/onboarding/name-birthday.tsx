@@ -3,13 +3,7 @@ import { router } from 'expo-router';
 import { OnboardingScreen } from '../../../components/OnboardingScreen';
 import { TextField } from '../../../components/TextField';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
-
-// Auto-inserts dashes as digits come in, so typing "05102004" fills the
-// field as "05-10-2004" without the user typing the dashes themselves.
-function formatBirthdayInput(input: string): string {
-  const digits = input.replace(/\D/g, '').slice(0, 8);
-  return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean).join('-');
-}
+import { formatBirthdayInput } from '../../../lib/dates';
 
 export default function NameBirthdayScreen() {
   const { data, setNameBirthday } = useOnboarding();

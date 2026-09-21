@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
@@ -109,6 +109,10 @@ export default function WorkoutLogScreen() {
         <ProgressBar progress={progress} />
       </View>
 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.exerciseName}>{exercise.name}</Text>
         {exercise.tips && <Text style={styles.tips}>{exercise.tips}</Text>}
@@ -172,6 +176,7 @@ export default function WorkoutLogScreen() {
           loading={finishing}
         />
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

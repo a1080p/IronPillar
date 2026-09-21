@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from './Button';
 import { Logo } from './Logo';
@@ -28,27 +28,32 @@ export function OnboardingScreen({
 }: OnboardingScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Logo />
-        {step != null && totalSteps != null && (
-          <View style={styles.progressGroup}>
-            <Text style={styles.stepLabel}>
-              Step {step} of {totalSteps}
-            </Text>
-            <ProgressBar progress={step / totalSteps} />
-          </View>
-        )}
-        <Text style={styles.heading}>{heading}</Text>
-        <View style={styles.content}>{children}</View>
-      </ScrollView>
-      <View style={styles.footer}>
-        {onBack ? (
-          <Button label="Back" variant="outline" onPress={onBack} />
-        ) : (
-          <View style={{ minWidth: 120 }} />
-        )}
-        <Button label={nextLabel} onPress={onNext} disabled={nextDisabled} />
-      </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <Logo />
+          {step != null && totalSteps != null && (
+            <View style={styles.progressGroup}>
+              <Text style={styles.stepLabel}>
+                Step {step} of {totalSteps}
+              </Text>
+              <ProgressBar progress={step / totalSteps} />
+            </View>
+          )}
+          <Text style={styles.heading}>{heading}</Text>
+          <View style={styles.content}>{children}</View>
+        </ScrollView>
+        <View style={styles.footer}>
+          {onBack ? (
+            <Button label="Back" variant="outline" onPress={onBack} />
+          ) : (
+            <View style={{ minWidth: 120 }} />
+          )}
+          <Button label={nextLabel} onPress={onNext} disabled={nextDisabled} />
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

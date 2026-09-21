@@ -20,7 +20,10 @@ if (!existsSync(keyPath)) {
 
 const serviceAccount = JSON.parse(readFileSync(keyPath, 'utf8'));
 
-initializeApp({ credential: cert(serviceAccount) });
+// storageBucket is required here — releaseStorageRuleset needs to resolve a
+// bucket name, and without it this silently fails to deploy storage.rules
+// while still reporting success for firestore.rules in the same run.
+initializeApp({ credential: cert(serviceAccount), storageBucket: 'iron-piller.firebasestorage.app' });
 
 async function deploy() {
   const rules = getSecurityRules();

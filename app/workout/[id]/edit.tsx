@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
@@ -133,6 +133,10 @@ export default function EditWorkoutDetailsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <WorkoutHeader />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Text style={styles.heading}>Edit Details</Text>
 
@@ -195,6 +199,7 @@ export default function EditWorkoutDetailsScreen() {
       <View style={styles.footer}>
         <Button label="Save Changes" onPress={handleSave} loading={saving} />
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

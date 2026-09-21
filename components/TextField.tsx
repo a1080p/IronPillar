@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primary,
     marginBottom: spacing.sm,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   input: {
     borderWidth: 1.5,

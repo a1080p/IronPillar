@@ -10,13 +10,33 @@ import type { RoutePoint } from '../types/models';
 // update, which is what lets tracking survive the screen being locked.
 export const LOCATION_TASK_NAME = 'iron-pillar-outdoor-tracking';
 const STORAGE_KEY = 'outdoorTracking.points';
+const STARTED_AT_KEY = 'outdoorTracking.startedAt';
 
 type Listener = (points: RoutePoint[]) => void;
 let listeners: Listener[] = [];
 let buffer: RoutePoint[] = [];
+// The OS can kill this app's process entirely during a long background
+// session and later relaunch it *headlessly* — no screen, no mount, no
+// React — purely to run this task and hand it the next location batch. On
+// that fresh JS load, `buffer` above starts empty again, so without this
+// hydration a headless relaunch would silently overwrite everything
+// recorded before the kill with just the new points.
+let hydrated = false;
 
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   if (error || !data) return;
+  if (!hydrated) {
+    hydrated = true;
+    const raw = await AsyncStorage.getItem(STORAGE_KEY).catch(() => null);
+    if (raw) {
+      try {
+        buffer = JSON.parse(raw) as RoutePoint[];
+      } catch {
+        // corrupt/partial write — better to keep tracking than to throw away
+        // the whole session, so fall through with an empty buffer.
+      }
+    }
+  }
   const { locations } = data as { locations: Location.LocationObject[] };
   const newPoints: RoutePoint[] = locations.map((loc) => ({
     lat: loc.coords.latitude,
@@ -49,19 +69,43 @@ export async function requestTrackingPermissions(): Promise<boolean> {
   return bg.granted;
 }
 
-export async function startTracking(): Promise<void> {
-  buffer = [];
-  await AsyncStorage.removeItem(STORAGE_KEY);
-  await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-    accuracy: Location.Accuracy.BestForNavigation,
-    timeInterval: 3000,
-    distanceInterval: 5,
-    showsBackgroundLocationIndicator: true,
-    foregroundService: {
-      notificationTitle: 'Iron Pillar',
-      notificationBody: 'Tracking your outdoor workout',
-    },
-  });
+// Starts a session, or reattaches to one already running. Location tracking
+// keeps running natively even across the tracking screen being unmounted or
+// the whole process being killed and relaunched — calling this unconditionally
+// on every screen mount used to wipe out an in-progress session's buffer and
+// start time every time. Returns the session's actual start time (ms epoch)
+// so the screen can show a correct elapsed time immediately, even after a
+// remount.
+export async function startTracking(): Promise<number> {
+  const alreadyRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+  if (alreadyRunning) {
+    const existing = await AsyncStorage.getItem(STARTED_AT_KEY);
+    if (existing) return Number(existing);
+    // Tracking is running but we somehow never recorded a start time (should
+    // not normally happen) — treat "now" as the start rather than lose the
+    // session entirely.
+  }
+
+  const startedAt = Date.now();
+  if (!alreadyRunning) {
+    buffer = [];
+    hydrated = true; // nothing to hydrate — this is a genuinely fresh session
+    await AsyncStorage.removeItem(STORAGE_KEY);
+  }
+  await AsyncStorage.setItem(STARTED_AT_KEY, String(startedAt));
+  if (!alreadyRunning) {
+    await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+      accuracy: Location.Accuracy.BestForNavigation,
+      timeInterval: 3000,
+      distanceInterval: 5,
+      showsBackgroundLocationIndicator: true,
+      foregroundService: {
+        notificationTitle: 'Iron Pillar',
+        notificationBody: 'Tracking your outdoor workout',
+      },
+    });
+  }
+  return startedAt;
 }
 
 export async function stopTracking(): Promise<RoutePoint[]> {
@@ -71,18 +115,22 @@ export async function stopTracking(): Promise<RoutePoint[]> {
   }
   const finalPoints = buffer;
   buffer = [];
+  hydrated = false;
   await AsyncStorage.removeItem(STORAGE_KEY);
+  await AsyncStorage.removeItem(STARTED_AT_KEY);
   return finalPoints;
 }
 
-// Picks up any points recorded before the tracking screen was last mounted —
-// covers both a fresh app launch after the OS killed it mid-run, and simply
-// navigating back to an already-in-progress tracking session.
+// Picks up any points (and the true start time) recorded before the tracking
+// screen was last mounted — covers both a fresh app launch after the OS
+// killed it mid-run, and simply navigating back to an already-in-progress
+// tracking session.
 export async function restoreBufferedPoints(): Promise<RoutePoint[]> {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   if (!raw) return [];
   try {
     buffer = JSON.parse(raw) as RoutePoint[];
+    hydrated = true;
     return buffer;
   } catch {
     return [];

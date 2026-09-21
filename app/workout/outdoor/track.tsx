@@ -62,8 +62,8 @@ export default function OutdoorTrackScreen() {
         );
         return;
       }
-      startedAtRef.current = Date.now();
-      await startTracking();
+      startedAtRef.current = await startTracking();
+      setElapsedSeconds(Math.floor((Date.now() - startedAtRef.current) / 1000));
       setTracking(true);
     })();
 
