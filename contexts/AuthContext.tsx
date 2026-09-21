@@ -9,7 +9,6 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   onAuthStateChanged,
-  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithCredential,
   signInWithEmailAndPassword,
@@ -17,8 +16,21 @@ import {
   type User,
 } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, runTransaction, setDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase/config';
+import { httpsCallable } from 'firebase/functions';
+import { auth, db, functions } from '../lib/firebase/config';
 import type { UserProfile } from '../types/models';
+
+// A typed 6-digit code, emailed via the sendVerificationCode Cloud Function
+// (see functions/src/index.ts) instead of Firebase Auth's own clicked-link
+// flow — verifyEmailCode flips the same user.emailVerified flag on success.
+const sendVerificationCodeFn = httpsCallable<void, { sent: true }>(
+  functions,
+  'sendVerificationCode'
+);
+const verifyEmailCodeFn = httpsCallable<{ code: string }, { verified: true }>(
+  functions,
+  'verifyEmailCode'
+);
 
 // Google Sign-In needs a native module Expo Go doesn't have. Its package
 // calls TurboModuleRegistry.getEnforcing() at the package's own top level,
@@ -73,6 +85,8 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  sendVerificationCode: () => Promise<void>;
+  verifyEmailCode: (code: string) => Promise<void>;
   isAppleSignInAvailable: () => Promise<boolean>;
   signInWithApple: () => Promise<void>;
   isGoogleSignInAvailable: () => Promise<boolean>;
@@ -148,9 +162,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hasOnboarded: !!profile,
       async signUp(email, password) {
         try {
-          const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
-          // Best-effort — a failed verification email shouldn't block signup.
-          sendEmailVerification(credential.user).catch(() => {});
+          await createUserWithEmailAndPassword(auth, email.trim(), password);
+          // The verify-email screen (which the root layout routes to right
+          // after this) sends the first code itself on mount — sending it
+          // here too would just race it into an immediate cooldown error.
         } catch (e) {
           throw new Error(friendlyAuthError(e));
         }
@@ -171,6 +186,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
           throw new Error(friendlyAuthError(e));
         }
+      },
+      async sendVerificationCode() {
+        try {
+          await sendVerificationCodeFn();
+        } catch (e) {
+          const code = (e as { code?: string } | undefined)?.code;
+          if (code === 'functions/resource-exhausted') {
+            throw new Error('Please wait a bit before requesting another code.');
+          }
+          throw new Error(
+            e instanceof Error ? e.message : 'Could not send a verification email. Try again.'
+          );
+        }
+      },
+      async verifyEmailCode(code) {
+        try {
+          await verifyEmailCodeFn({ code });
+        } catch (e) {
+          throw new Error(e instanceof Error ? e.message : "That code doesn't match.");
+        }
+        // The Cloud Function updated emailVerified via the Admin SDK; the
+        // client's cached User object won't reflect that until reloaded, and
+        // reload() doesn't itself trigger onAuthStateChanged — force a
+        // re-render with the refreshed user so the root layout's guard sees
+        // emailVerified: true immediately instead of on next app launch.
+        await auth.currentUser?.reload();
+        if (auth.currentUser) setUser({ ...auth.currentUser });
       },
       async isAppleSignInAvailable() {
         if (Platform.OS !== 'ios') return false;

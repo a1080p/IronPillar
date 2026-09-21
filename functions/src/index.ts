@@ -4,12 +4,24 @@ import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { defineSecret } from 'firebase-functions/params';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { randomInt } from 'node:crypto';
+import { Resend } from 'resend';
 
 initializeApp();
 const db = getFirestore();
 
 // Set with: firebase functions:secrets:set ANTHROPIC_API_KEY
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
+
+// Set with: firebase functions:secrets:set RESEND_API_KEY
+// Get a free key at https://resend.com (no credit card needed). Sending from
+// "onboarding@resend.dev" works immediately with no domain setup — fine for
+// a demo; a verified custom domain is only needed before a real launch.
+const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
+const VERIFICATION_EMAIL_FROM = 'Iron Pillar <onboarding@resend.dev>';
+const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
+const VERIFICATION_RESEND_COOLDOWN_MS = 30 * 1000;
+const VERIFICATION_MAX_ATTEMPTS = 5;
 
 const XP_PER_EXERCISE = 50;
 const XP_PER_SET = 5;
@@ -538,3 +550,95 @@ export const generateWorkoutDetails = onCall(
     };
   }
 );
+
+function verificationCodeEmailHtml(code: string) {
+  return (
+    `<div style="font-family:sans-serif;font-size:16px;color:#111">` +
+    `<p>Your Iron Pillar verification code is:</p>` +
+    `<p style="font-size:32px;font-weight:700;letter-spacing:4px">${code}</p>` +
+    `<p>This code expires in 10 minutes.</p>` +
+    `</div>`
+  );
+}
+
+// Sends a fresh 6-digit code to the signed-in user's own email and stores it
+// (function-only Firestore doc) for verifyEmailCode to check against. Called
+// right after sign-up, and again by the verify-email screen's "Resend" button.
+export const sendVerificationCode = onCall({ secrets: [RESEND_API_KEY] }, async (request) => {
+  const uid = request.auth?.uid;
+  const email = request.auth?.token.email;
+  if (!uid || !email) {
+    throw new HttpsError('unauthenticated', 'Must be signed in to request a verification code.');
+  }
+
+  const codeRef = db.collection('emailVerificationCodes').doc(uid);
+  const existing = await codeRef.get();
+  const lastSentAt = existing.exists ? (existing.data()!.lastSentAt as string | undefined) : undefined;
+  if (lastSentAt && Date.now() - new Date(lastSentAt).getTime() < VERIFICATION_RESEND_COOLDOWN_MS) {
+    throw new HttpsError('resource-exhausted', 'Please wait a bit before requesting another code.');
+  }
+
+  const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+  const now = new Date();
+
+  const resend = new Resend(RESEND_API_KEY.value());
+  const { error } = await resend.emails.send({
+    from: VERIFICATION_EMAIL_FROM,
+    to: email,
+    subject: 'Your Iron Pillar verification code',
+    html: verificationCodeEmailHtml(code),
+  });
+  if (error) {
+    throw new HttpsError('internal', `Could not send verification email: ${error.message}`);
+  }
+
+  await codeRef.set({
+    code,
+    email,
+    expiresAt: new Date(now.getTime() + VERIFICATION_CODE_TTL_MS).toISOString(),
+    attempts: 0,
+    lastSentAt: now.toISOString(),
+  });
+
+  return { sent: true };
+});
+
+// Checks a code the user typed in against the stored one, and if it matches,
+// flips the *same* emailVerified flag Firebase Auth's own link-based
+// verification would have set — so the rest of the app (and any future
+// Firebase feature that checks user.emailVerified) sees a normal verified
+// account, just verified via a typed code instead of a clicked link.
+export const verifyEmailCode = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError('unauthenticated', 'Must be signed in to verify a code.');
+  }
+  const rawCode = (request.data as { code?: unknown })?.code;
+  if (typeof rawCode !== 'string' || !/^\d{6}$/.test(rawCode)) {
+    throw new HttpsError('invalid-argument', 'Enter the 6-digit code from your email.');
+  }
+
+  const codeRef = db.collection('emailVerificationCodes').doc(uid);
+  const snap = await codeRef.get();
+  if (!snap.exists) {
+    throw new HttpsError('failed-precondition', 'Request a new code first.');
+  }
+  const data = snap.data()!;
+
+  if (new Date(data.expiresAt as string).getTime() < Date.now()) {
+    throw new HttpsError('deadline-exceeded', 'That code expired. Request a new one.');
+  }
+  if ((data.attempts as number) >= VERIFICATION_MAX_ATTEMPTS) {
+    throw new HttpsError('resource-exhausted', 'Too many wrong attempts. Request a new code.');
+  }
+
+  if (data.code !== rawCode) {
+    await codeRef.update({ attempts: FieldValue.increment(1) });
+    throw new HttpsError('invalid-argument', "That code doesn't match.");
+  }
+
+  await getAuth().updateUser(uid, { emailVerified: true });
+  await codeRef.delete();
+
+  return { verified: true };
+});

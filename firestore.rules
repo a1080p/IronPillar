@@ -90,6 +90,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Verification codes for email sign-up — written and read only by the
+    // sendVerificationCode/verifyEmailCode Cloud Functions. A client that
+    // could read this could just look up its own code instead of checking
+    // its email, and a client that could write it could self-verify.
+    match /emailVerificationCodes/{uid} {
+      allow read, write: if false;
+    }
+
     // Everything else is denied until its collection is built (build steps 9+)
     // and gets its own explicit rule here.
   }
