@@ -116,7 +116,7 @@ export default function WelcomeScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <Logo />
+          <Logo size="lg" />
           <Text style={styles.sectionLabel}>{mode === 'sign_up' ? 'Sign-up' : 'Log in'}</Text>
 
           <View style={styles.socialGroup}>
