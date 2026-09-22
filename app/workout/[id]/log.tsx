@@ -136,6 +136,11 @@ export default function WorkoutLogScreen() {
       >
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.exerciseName}>{exercise.name}</Text>
+        <Text style={styles.exerciseMeta}>
+          {exercise.targetSets} {exercise.targetSets === 1 ? 'Set' : 'Sets'} ·{' '}
+          {exercise.logType === 'duration' ? 'Target: ' : 'Reps: '}
+          {exercise.targetRepsLabel}
+        </Text>
         {exercise.tips && <Text style={styles.tips}>{exercise.tips}</Text>}
 
         <View style={styles.setsHeader}>
@@ -220,6 +225,13 @@ const styles = StyleSheet.create({
     color: colors.primary,
     textAlign: 'center',
     marginBottom: spacing.xs,
+  },
+  exerciseMeta: {
+    textAlign: 'center',
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: typography.sizes.small,
+    marginBottom: spacing.sm,
   },
   tips: { textAlign: 'center', color: colors.textMuted, marginBottom: spacing.lg },
   setsHeader: { flexDirection: 'row', marginBottom: spacing.sm, gap: spacing.md },
