@@ -22,6 +22,22 @@ export default function WorkoutDetailScreen() {
   const isOwnCustom =
     !!template && template.category === 'custom' && template.createdBy === user?.uid;
   const showBanner = !bannerDismissed && (generated === '1' || generated === 'failed');
+  // Flattened, deduped list of equipment items so what's needed is visible up
+  // front, not just in the Equipment tab. Prefers "Essential Equipment"-style
+  // sections over alternates/troubleshooting bullets, which read oddly out of
+  // context (e.g. "No Barbell? Replace with...").
+  const equipmentSummary = template
+    ? Array.from(
+        new Set(
+          (template.equipment.filter((s) => /essential/i.test(s.heading)).length > 0
+            ? template.equipment.filter((s) => /essential/i.test(s.heading))
+            : template.equipment
+          )
+            .flatMap((section) => section.bullets)
+            .map((b) => b.split(' - ')[0].split(' (')[0].trim())
+        )
+      )
+    : [];
 
   if (loading) {
     return (
@@ -66,6 +82,13 @@ export default function WorkoutDetailScreen() {
           <Stat icon="flame" label={template.caloriesRangeLabel} />
         </View>
 
+        {equipmentSummary.length > 0 && (
+          <View style={styles.equipmentSummary}>
+            <Text style={styles.equipmentSummaryHeading}>Equipment Needed</Text>
+            <Text style={styles.equipmentSummaryText}>{equipmentSummary.join(' • ')}</Text>
+          </View>
+        )}
+
         {isOwnCustom && (
           <Pressable
             style={styles.editLink}
@@ -84,7 +107,10 @@ export default function WorkoutDetailScreen() {
 
         {tab === 'overview' && (
           <>
-            {template.overview ? <Text style={styles.overview}>{template.overview}</Text> : null}
+            <Text style={styles.overview}>
+              {template.overview ??
+                `Complete all ${template.exercises.length} exercises below in order, resting between sets as needed.`}
+            </Text>
             {template.exercises.map((ex, i) => (
               <View key={ex.id} style={styles.exerciseRow}>
                 <Text style={styles.exerciseTitle}>
@@ -169,6 +195,19 @@ const styles = StyleSheet.create({
   bannerWarn: { backgroundColor: '#FFF1E0' },
   bannerText: { flex: 1, color: colors.text, fontSize: typography.sizes.small, lineHeight: 18 },
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, marginBottom: spacing.md },
+  equipmentSummary: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  equipmentSummaryHeading: {
+    fontWeight: '700',
+    color: colors.primary,
+    fontSize: typography.sizes.small,
+    marginBottom: spacing.xs,
+  },
+  equipmentSummaryText: { color: colors.text, fontSize: typography.sizes.small, lineHeight: 18 },
   editLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.lg },
   editLinkText: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.small },
   overview: { color: colors.text, lineHeight: 21, marginBottom: spacing.lg },

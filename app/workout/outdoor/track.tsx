@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { MapRoute } from '../../../components/MapRoute';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +46,31 @@ export default function OutdoorTrackScreen() {
   const [finishing, setFinishing] = useState(false);
   const [result, setResult] = useState<CompletionResult | null>(null);
   const startedAtRef = useRef<number | null>(null);
+  const navigation = useNavigation();
+  // Skips the confirm dialog when there's nothing to lose yet — e.g. leaving
+  // because location permission was denied, before tracking ever started.
+  const skipConfirmRef = useRef(false);
+
+  useEffect(() => {
+    // Once the activity is finished (result is set), tracking has already
+    // stopped and there's nothing left to lose — let navigation through.
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (result || skipConfirmRef.current) return;
+      e.preventDefault();
+      Alert.alert('Quit workout?', 'All progress will be lost if you quit now.', [
+        { text: 'Keep Going', style: 'cancel' },
+        {
+          text: 'Quit',
+          style: 'destructive',
+          onPress: () => {
+            stopTracking().catch(() => {});
+            navigation.dispatch(e.data.action);
+          },
+        },
+      ]);
+    });
+    return unsubscribe;
+  }, [navigation, result]);
 
   useEffect(() => {
     const unsubscribe = subscribe(setRoute);
@@ -58,7 +83,15 @@ export default function OutdoorTrackScreen() {
         Alert.alert(
           'Location access needed',
           'Enable location access (Always, so it keeps working with your screen locked) for Iron Pillar in Settings to track an outdoor workout.',
-          [{ text: 'OK', onPress: () => router.back() }]
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                skipConfirmRef.current = true;
+                router.back();
+              },
+            },
+          ]
         );
         return;
       }

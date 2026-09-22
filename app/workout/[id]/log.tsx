@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { WorkoutHeader } from '../../../components/WorkoutHeader';
@@ -17,6 +17,7 @@ export default function WorkoutLogScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { workout: template } = useWorkout(id, user?.uid);
+  const navigation = useNavigation();
 
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [logs, setLogs] = useState<ExerciseLog[]>([]);
@@ -24,6 +25,25 @@ export default function WorkoutLogScreen() {
   const [finishing, setFinishing] = useState(false);
   const startTime = useRef(Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  // Set right before navigating away because the workout finished, so the
+  // beforeRemove guard below doesn't prompt on the way to the complete screen.
+  const isCompletingRef = useRef(false);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (isCompletingRef.current) return;
+      e.preventDefault();
+      Alert.alert('Quit workout?', 'All progress will be lost if you quit now.', [
+        { text: 'Keep Going', style: 'cancel' },
+        {
+          text: 'Quit',
+          style: 'destructive',
+          onPress: () => navigation.dispatch(e.data.action),
+        },
+      ]);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -82,6 +102,7 @@ export default function WorkoutLogScreen() {
     try {
       const result = await completeWorkout(template, nextLogs, elapsedSeconds);
       const totals = summarizeExerciseLogs(nextLogs);
+      isCompletingRef.current = true;
       router.replace({
         pathname: '/workout/[id]/complete',
         params: {
