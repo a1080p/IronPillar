@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActionSheet } from '../../components/ActionSheet';
+import { AppTour, type TourStep } from '../../components/AppTour';
 import { TopBar } from '../../components/TopBar';
 import { colors, radii, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,15 +19,88 @@ import {
 import { formatShortDate } from '../../lib/dates';
 import { pickQuickStartWorkouts, pickRecommendedWorkout } from '../../lib/recommendations';
 import { dedupeRecentWorkouts } from '../../lib/recentWorkouts';
-import type { CustomWorkout, WorkoutTemplate } from '../../types/models';
+import type { CustomWorkout, OutdoorActivityType, WorkoutTemplate } from '../../types/models';
+
+const OUTDOOR_ACTIVITY_TYPES: OutdoorActivityType[] = ['walk', 'run', 'bike'];
+const OUTDOOR_ACTIVITY_LABELS: Record<OutdoorActivityType, string> = {
+  walk: 'Walk',
+  run: 'Run',
+  bike: 'Bike Ride',
+};
 
 const QUICK_START_COUNT = 3;
+
+const TOUR_SEEN_KEY_PREFIX = 'tour_seen_';
+const NAV_BAR_HEIGHT = 64;
 
 export default function HomeScreen() {
   const { user, profile } = useAuth();
   const { templates, loading } = useWorkoutTemplates();
   const { customWorkouts } = useCustomWorkouts(user?.uid);
   const { logs } = useWorkoutLogs(user?.uid);
+  const insets = useSafeAreaInsets();
+
+  const scrollRef = useRef<ScrollView>(null);
+  const recommendedRef = useRef<View>(null);
+  const quickStartsRef = useRef<View>(null);
+  const myWorkoutsRef = useRef<View>(null);
+
+  const [tourVisible, setTourVisible] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const seen = await AsyncStorage.getItem(`${TOUR_SEEN_KEY_PREFIX}${user.uid}`);
+      if (!cancelled && !seen) {
+        // Let the first layout pass finish before measuring anything.
+        setTimeout(() => {
+          if (!cancelled) setTourVisible(true);
+        }, 500);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const finishTour = () => {
+    setTourVisible(false);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    if (user) AsyncStorage.setItem(`${TOUR_SEEN_KEY_PREFIX}${user.uid}`, '1');
+  };
+
+  const measureRef = (ref: RefObject<View | null>) =>
+    new Promise<{ x: number; y: number; width: number; height: number } | null>((resolve) => {
+      if (!ref.current) {
+        resolve(null);
+        return;
+      }
+      ref.current.measureInWindow((x, y, width, height) => resolve({ x, y, width, height }));
+    });
+
+  const scrollToTopAndMeasure = async (ref: RefObject<View | null>) => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    await new Promise((r) => setTimeout(r, 350));
+    return measureRef(ref);
+  };
+
+  const scrollToEndAndMeasure = async (ref: RefObject<View | null>) => {
+    scrollRef.current?.scrollToEnd({ animated: true });
+    await new Promise((r) => setTimeout(r, 350));
+    return measureRef(ref);
+  };
+
+  const getNavBarRect = () => {
+    const screen = Dimensions.get('window');
+    const bottom = Math.max(spacing.lg, insets.bottom);
+    return {
+      x: spacing.lg,
+      y: screen.height - bottom - NAV_BAR_HEIGHT,
+      width: screen.width - spacing.lg * 2,
+      height: NAV_BAR_HEIGHT,
+    };
+  };
 
   // Both re-derive from `logs` (a live Firestore listener) on every render,
   // so picks update the instant a workout is completed — see lib/recommendations.
@@ -47,10 +122,49 @@ export default function HomeScreen() {
   );
   const recentWorkouts = useMemo(() => dedupeRecentWorkouts(logs), [logs]);
 
+  const tourSteps = useMemo(() => {
+    const steps: TourStep[] = [];
+
+    if (recommended) {
+      steps.push({
+        key: 'recommended',
+        title: "Today's Recommended Workout",
+        description: 'We pick a workout for you each day based on your goals and history — tap it to jump right in.',
+        getRect: () => scrollToTopAndMeasure(recommendedRef),
+      });
+    }
+
+    if (quickStarts.length > 0) {
+      steps.push({
+        key: 'quickStarts',
+        title: 'Quick Start',
+        description: 'Short on time? These are fast workouts you can start with one tap.',
+        getRect: () => scrollToTopAndMeasure(quickStartsRef),
+      });
+    }
+
+    steps.push({
+      key: 'myWorkouts',
+      title: 'My Workouts',
+      description: 'Track outdoor walks, runs, and rides, or build and save your own custom workouts here.',
+      getRect: () => scrollToEndAndMeasure(myWorkoutsRef),
+    });
+
+    steps.push({
+      key: 'navBar',
+      title: 'Get Around the App',
+      description: 'Use the bar below to browse workouts, check your progress, connect with friends, and manage your profile.',
+      getRect: () => getNavBarRect(),
+    });
+
+    return steps;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recommended, quickStarts, insets.bottom]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <TopBar />
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll}>
         <Text style={styles.heading}>
           {profile?.name ? `${profile.name}, Lets Get Started` : 'Lets Get Started'}
         </Text>
@@ -64,7 +178,7 @@ export default function HomeScreen() {
         )}
 
         {recommended && (
-          <View style={styles.section}>
+          <View style={styles.section} ref={recommendedRef}>
             <Text style={styles.sectionLabel}>Todays Recommended Workout:</Text>
             <Pressable
               style={styles.recommendedCard}
@@ -80,29 +194,6 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         )}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Outdoor Activity:</Text>
-          <Text style={styles.sectionSubLabel}>GPS-tracked walk, run, or bike ride</Text>
-          <View style={styles.outdoorRow}>
-            {(['walk', 'run', 'bike'] as const).map((activityType) => (
-              <Pressable
-                key={activityType}
-                style={styles.outdoorCard}
-                onPress={() => router.push({ pathname: '/workout/outdoor/track', params: { activityType } })}
-              >
-                <Ionicons
-                  name={activityType === 'bike' ? 'bicycle' : 'walk'}
-                  size={24}
-                  color={colors.textOnDark}
-                />
-                <Text style={styles.outdoorCardLabel}>
-                  {activityType === 'walk' ? 'Walk' : activityType === 'run' ? 'Run' : 'Bike'}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
 
         {recentWorkouts.length > 0 && (
           <View style={styles.section}>
@@ -130,7 +221,7 @@ export default function HomeScreen() {
         )}
 
         {quickStarts.length > 0 && (
-          <View style={styles.section}>
+          <View style={styles.section} ref={quickStartsRef}>
             <Text style={styles.sectionLabel}>Quick Start:</Text>
             <Text style={styles.sectionSubLabel}>Jump into a fast workout</Text>
             <View style={styles.quickRow}>
@@ -141,10 +232,12 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <View style={styles.section}>
+        <View style={styles.section} ref={myWorkoutsRef}>
           <Text style={styles.sectionLabel}>My Workouts:</Text>
-          <Text style={styles.sectionSubLabel}>Workouts you've built yourself</Text>
           <View style={styles.quickRow}>
+            {OUTDOOR_ACTIVITY_TYPES.map((activityType) => (
+              <OutdoorActivityCard key={activityType} activityType={activityType} />
+            ))}
             {customWorkouts.map((w) => (
               <QuickStartCard key={w.id} workout={w} editable />
             ))}
@@ -155,7 +248,29 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <AppTour visible={tourVisible} steps={tourSteps} onFinish={finishTour} />
     </SafeAreaView>
+  );
+}
+
+function OutdoorActivityCard({ activityType }: { activityType: OutdoorActivityType }) {
+  return (
+    <Pressable
+      style={styles.quickCard}
+      onPress={() => router.push({ pathname: '/workout/outdoor/track', params: { activityType } })}
+    >
+      <View style={styles.quickCardHeader}>
+        <Ionicons
+          name={activityType === 'bike' ? 'bicycle' : 'walk'}
+          size={16}
+          color={colors.textOnDark}
+        />
+        <Text style={styles.quickCardTitle} numberOfLines={2}>
+          {OUTDOOR_ACTIVITY_LABELS[activityType]}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -260,16 +375,6 @@ const styles = StyleSheet.create({
   recommendedTitle: { color: colors.textOnDark, fontSize: typography.sizes.md, fontWeight: '700', marginBottom: spacing.md },
   recommendedMetaRow: { flexDirection: 'row', gap: spacing.md },
   recommendedMeta: { color: colors.textOnDark, fontSize: typography.sizes.small },
-  outdoorRow: { flexDirection: 'row', gap: spacing.md },
-  outdoorCard: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    borderRadius: radii.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  outdoorCardLabel: { color: colors.textOnDark, fontWeight: '700', fontSize: typography.sizes.small },
   quickRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.md, rowGap: spacing.md },
   quickCard: {
     backgroundColor: colors.primary,
