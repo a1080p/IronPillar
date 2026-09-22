@@ -17,7 +17,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'reps_weight',
         targetSets: 4,
         targetRepsLabel: '8-10 reps',
-        tips: 'Aim for 8-10 reps!',
+        tips: 'Retract your shoulder blades, lower the bar to mid-chest with elbows at about 45 degrees, then press up without bouncing.',
       },
       {
         id: 'bent-over-barbell-row',
@@ -25,7 +25,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'reps_weight',
         targetSets: 4,
         targetRepsLabel: '8-10 reps',
-        tips: 'Aim for 8-10 reps!',
+        tips: 'Hinge at the hips with a flat back, pull the bar to your lower ribs, and squeeze your shoulder blades together.',
       },
       {
         id: 'overhead-press',
@@ -33,7 +33,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'reps_weight',
         targetSets: 3,
         targetRepsLabel: '8-10 reps',
-        tips: 'Aim for 8-10 reps!',
+        tips: 'Brace your core, press the bar straight overhead, and avoid arching your lower back.',
       },
       {
         id: 'lat-pulldown',
@@ -41,7 +41,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'reps_weight',
         targetSets: 3,
         targetRepsLabel: '6-12 reps',
-        tips: 'Aim for 8-10 reps!',
+        tips: 'Pull your chin over the bar (or the bar to your chest) by driving your elbows down and back, then return with control.',
       },
       {
         id: 'dumbbell-incline-press',
@@ -49,7 +49,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'reps_weight',
         targetSets: 3,
         targetRepsLabel: '10-12 reps',
-        tips: 'Aim for 8-10 reps!',
+        tips: 'Set the bench to a slight incline and press the dumbbells up and slightly inward without locking your elbows hard.',
       },
       {
         id: 'dumbbell-rows',
@@ -57,7 +57,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'reps_weight',
         targetSets: 3,
         targetRepsLabel: '10-12 reps each arm',
-        tips: 'Aim for 8-10 reps!',
+        tips: 'Support yourself with one hand on a bench, keep your back flat, and pull the dumbbell to your hip.',
       },
       {
         id: 'lateral-raises',
@@ -65,7 +65,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'reps_weight',
         targetSets: 3,
         targetRepsLabel: '12-15 reps',
-        tips: 'Aim for 8-10 reps!',
+        tips: 'Raise the dumbbells out to your sides to shoulder height with a slight elbow bend, leading with your elbows.',
       },
     ],
     workoutTips: [
@@ -138,7 +138,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'duration',
         targetSets: 1,
         targetRepsLabel: '25 minutes',
-        tips: 'Keep a brisk, steady pace!',
+        tips: 'Hold a steady pace you can maintain with relaxed shoulders and a consistent breathing rhythm.',
       },
     ],
     workoutTips: [
@@ -176,6 +176,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'duration',
         targetSets: 4,
         targetRepsLabel: '45 sec work / 15 sec rest',
+        tips: 'Jump your feet out while raising your arms overhead, then back to start, staying light on your feet.',
       },
       {
         id: 'mountain-climbers',
@@ -183,6 +184,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'duration',
         targetSets: 4,
         targetRepsLabel: '45 sec work / 15 sec rest',
+        tips: 'Hold a plank and drive your knees toward your chest quickly while keeping your hips level.',
       },
       {
         id: 'high-knees',
@@ -190,6 +192,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'duration',
         targetSets: 4,
         targetRepsLabel: '45 sec work / 15 sec rest',
+        tips: 'Drive your knees up toward your waist at a quick pace, staying light on your feet.',
       },
       {
         id: 'burpees',
@@ -197,6 +200,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'duration',
         targetSets: 4,
         targetRepsLabel: '45 sec work / 15 sec rest',
+        tips: 'Drop into a squat, kick back into a plank, do a push-up, then jump your feet forward and explode up.',
       },
     ],
     workoutTips: [
@@ -234,6 +238,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         logType: 'duration',
         targetSets: 3,
         targetRepsLabel: '30-45 sec hold',
+        tips: 'Keep a straight line from head to heels, brace your core, and don\'t let your hips sag.',
       },
       {
         id: 'bicycle-crunches',
@@ -242,6 +247,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         tracksWeight: false,
         targetSets: 3,
         targetRepsLabel: '15-20 reps each side',
+        tips: 'Bring opposite elbow to opposite knee with a controlled twist, keeping your lower back pressed to the floor.',
       },
       {
         id: 'leg-raises',
@@ -250,6 +256,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         tracksWeight: false,
         targetSets: 3,
         targetRepsLabel: '12-15 reps',
+        tips: 'Keep your lower back flat on the floor and lower your legs only as far as you can control.',
       },
       {
         id: 'russian-twists',
@@ -258,6 +265,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
         tracksWeight: false,
         targetSets: 3,
         targetRepsLabel: '20 reps total',
+        tips: 'Lean back slightly with a straight spine and rotate your torso side to side, tapping the floor beside your hips.',
       },
     ],
     workoutTips: [
