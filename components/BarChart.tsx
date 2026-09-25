@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
 import Svg, { Line, Rect } from 'react-native-svg';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 
 interface BarPoint {
   label: string;
@@ -19,6 +21,8 @@ const CHART_HEIGHT = 130;
 const PADDING = 20;
 
 export function BarChart({ title, points, formatValue }: BarChartProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const hasData = points.some((p) => p.value > 0);
   const max = Math.max(1, ...points.map((p) => p.value));
   const usableWidth = CHART_WIDTH - PADDING * 2;
@@ -77,7 +81,7 @@ export function BarChart({ title, points, formatValue }: BarChartProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     backgroundColor: colors.surfaceMuted,
     borderRadius: radii.md,

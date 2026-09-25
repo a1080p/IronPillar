@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { MapRoute } from '../../../components/MapRoute';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../../../constants/theme';
+import { spacing, typography } from '../../../constants/theme';
+import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { badges } from '../../../data/badges';
 import {
   formatDistanceMiles,
@@ -36,6 +37,8 @@ const ACTIVITY_ICONS: Record<OutdoorActivityType, keyof typeof Ionicons.glyphMap
 };
 
 export default function OutdoorTrackScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { activityType: rawType } = useLocalSearchParams<{ activityType: string }>();
   const activityType: OutdoorActivityType =
     rawType === 'walk' || rawType === 'bike' ? rawType : 'run';
@@ -202,6 +205,8 @@ export default function OutdoorTrackScreen() {
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <View style={styles.stat}>
       <Text style={styles.statValue}>{value}</Text>
@@ -210,7 +215,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   mapWrap: { flex: 1 },
   summaryMapWrap: { height: '35%' },

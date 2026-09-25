@@ -1,9 +1,11 @@
 // expo-router v57 vendors react-navigation internally rather than shipping
 // @react-navigation/bottom-tabs as a separate dependency.
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 
 const BAR_HEIGHT = 64;
 const ICON_SIZE = 24;
@@ -13,6 +15,8 @@ const ICON_SIZE = 24;
 // centers each icon in its cell. React Navigation's own tabBarStyle wouldn't
 // respect the position/height overrides cleanly here.
 export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const bottom = Math.max(spacing.lg, insets.bottom);
 
@@ -51,7 +55,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   bar: {
     position: 'absolute',
     left: spacing.lg,

@@ -7,7 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActionSheet } from '../../components/ActionSheet';
 import { AppTour, type TourStep } from '../../components/AppTour';
 import { TopBar } from '../../components/TopBar';
-import { colors, radii, spacing, typography } from '../../constants/theme';
+import { radii, spacing, typography } from '../../constants/theme';
+import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWorkoutTemplates } from '../../hooks/useWorkoutTemplates';
 import { useWorkoutLogs } from '../../hooks/useWorkoutLogs';
@@ -34,6 +35,8 @@ const TOUR_SEEN_KEY_PREFIX = 'tour_seen_';
 const NAV_BAR_HEIGHT = 64;
 
 export default function HomeScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { user, profile } = useAuth();
   const { templates, loading } = useWorkoutTemplates();
   const { customWorkouts } = useCustomWorkouts(user?.uid);
@@ -255,6 +258,8 @@ export default function HomeScreen() {
 }
 
 function OutdoorActivityCard({ activityType }: { activityType: OutdoorActivityType }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <Pressable
       style={styles.quickCard}
@@ -281,6 +286,8 @@ function QuickStartCard({
   workout: WorkoutTemplate | CustomWorkout;
   editable?: boolean;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -350,7 +357,7 @@ function QuickStartCard({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 120 },
   heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, marginBottom: spacing.xl },

@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { WorkoutHeader } from '../../../components/WorkoutHeader';
-import { colors, radii, spacing, typography } from '../../../constants/theme';
+import { radii, spacing, typography } from '../../../constants/theme';
+import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { updateCustomWorkout } from '../../../hooks/useCustomWorkouts';
 import { useWorkout } from '../../../hooks/useWorkout';
@@ -32,6 +33,8 @@ function fromDraft(drafts: DraftSection[]): InfoSection[] {
 }
 
 export default function EditWorkoutDetailsScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { workout, loading } = useWorkout(id, user?.uid);
@@ -213,6 +216,8 @@ function Field({
   children: React.ReactNode;
   style?: object;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <View style={[styles.field, style]}>
       <Text style={styles.label}>{label}</Text>
@@ -230,6 +235,8 @@ function SectionEditor({
   sections: DraftSection[];
   onChange: (index: number, patch: Partial<DraftSection>) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <View style={styles.sectionEditor}>
       <Text style={styles.sectionEditorTitle}>{title}</Text>
@@ -255,7 +262,7 @@ function SectionEditor({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   note: { textAlign: 'center', marginTop: spacing.xl, color: colors.textMuted },

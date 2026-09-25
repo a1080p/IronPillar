@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
+import { FlameIcon, GymIcon } from '../../../components/icons/BrandIcons';
 import { WorkoutHeader } from '../../../components/WorkoutHeader';
-import { colors, radii, spacing, typography } from '../../../constants/theme';
+import { radii, spacing, typography } from '../../../constants/theme';
+import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { useWorkout } from '../../../hooks/useWorkout';
 import { useAuth } from '../../../contexts/AuthContext';
 import type { InfoSection } from '../../../types/models';
@@ -13,6 +15,8 @@ import type { InfoSection } from '../../../types/models';
 type Tab = 'overview' | 'tips' | 'equipment';
 
 export default function WorkoutDetailScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { id, generated } = useLocalSearchParams<{ id: string; generated?: string }>();
   const { user } = useAuth();
   const { workout: template, loading } = useWorkout(id, user?.uid);
@@ -77,9 +81,11 @@ export default function WorkoutDetailScreen() {
         )}
 
         <View style={styles.statsRow}>
-          <Stat icon="alarm" label={`${template.durationMinutes} Minutes`} />
-          {template.equipmentRequired && <Stat icon="barbell" label="Equipment Required" />}
-          <Stat icon="flame" label={template.caloriesRangeLabel} />
+          <Stat icon={<Ionicons name="alarm" size={16} color={colors.primary} />} label={`${template.durationMinutes} Minutes`} />
+          {template.equipmentRequired && (
+            <Stat icon={<GymIcon size={16} color={colors.primary} />} label="Equipment Required" />
+          )}
+          <Stat icon={<FlameIcon size={16} color={colors.primary} />} label={template.caloriesRangeLabel} />
         </View>
 
         {equipmentSummary.length > 0 && (
@@ -148,16 +154,20 @@ export default function WorkoutDetailScreen() {
   );
 }
 
-function Stat({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
+function Stat({ icon, label }: { icon: ReactNode; label: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <View style={styles.stat}>
-      <Ionicons name={icon} size={16} color={colors.primary} />
+      {icon}
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
 function TabButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <Text onPress={onPress} style={[styles.tabLabel, active && styles.tabLabelActive]}>
       {label} {'>'}
@@ -166,6 +176,8 @@ function TabButton({ label, active, onPress }: { label: string; active: boolean;
 }
 
 function InfoBlock({ section }: { section: InfoSection }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <View style={styles.infoBlock}>
       <Text style={styles.infoHeading}>{section.heading}</Text>
@@ -178,7 +190,7 @@ function InfoBlock({ section }: { section: InfoSection }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loading: { textAlign: 'center', marginTop: spacing.xl, color: colors.textMuted },
   scroll: { padding: spacing.lg, paddingBottom: 40 },

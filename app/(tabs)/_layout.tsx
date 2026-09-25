@@ -1,18 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { ColorValue, Image } from 'react-native';
 import { FloatingTabBar } from '../../components/FloatingTabBar';
-import { colors } from '../../constants/theme';
+import { CompassIcon, GroupIcon, HomeIcon, StatsIcon, UserIcon } from '../../components/icons/BrandIcons';
+import { useTheme } from '../../contexts/ThemeContext';
 
-// Branded tab icons (Home/Analytics/Social/Profile) come from Figma exports.
-// Browse still uses an Ionicon pending a matching brand icon for it.
-function TabIcon({ source, color, size }: { source: number; color: ColorValue; size: number }) {
-  return (
-    <Image source={source} style={{ width: size, height: size, tintColor: color }} resizeMode="contain" />
-  );
-}
+// FloatingTabBar always passes plain string colors at runtime; React
+// Navigation's tabBarIcon type just declares the wider ColorValue.
+const asString = (c: unknown) => c as string;
 
 export default function TabsLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs
       tabBar={(props) => <FloatingTabBar {...props} />}
@@ -27,43 +23,35 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon source={require('../../assets/tab-icons/home.png')} color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <HomeIcon color={asString(color)} size={size} />,
         }}
       />
       <Tabs.Screen
         name="browse"
         options={{
           title: 'Browse',
-          tabBarIcon: ({ color, size }) => <Ionicons name="compass" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <CompassIcon color={asString(color)} size={size} />,
         }}
       />
       <Tabs.Screen
         name="analytics"
         options={{
           title: 'Analytics',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon source={require('../../assets/tab-icons/analytics.png')} color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <StatsIcon color={asString(color)} size={size} />,
         }}
       />
       <Tabs.Screen
         name="social"
         options={{
           title: 'Social',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon source={require('../../assets/tab-icons/social.png')} color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <GroupIcon color={asString(color)} size={size} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon source={require('../../assets/tab-icons/profile.png')} color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <UserIcon color={asString(color)} size={size} />,
         }}
       />
     </Tabs>

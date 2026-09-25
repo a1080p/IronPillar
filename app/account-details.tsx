@@ -1,17 +1,20 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WorkoutHeader } from '../components/WorkoutHeader';
 import { Button } from '../components/Button';
 import { TextField } from '../components/TextField';
 import { SelectableOption } from '../components/SelectableOption';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { GOAL_OPTIONS, EXPERIENCE_OPTIONS } from '../constants/options';
 import { useAuth } from '../contexts/AuthContext';
 import { deleteAccount } from '../lib/account';
 import type { ExperienceLevel, FitnessGoal } from '../types/models';
 
 export default function AccountDetailsScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { user, profile, updateProfile, signOut } = useAuth();
   const [name, setName] = useState(profile?.name ?? '');
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
@@ -172,7 +175,7 @@ export default function AccountDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 40, gap: spacing.lg },
   heading: {

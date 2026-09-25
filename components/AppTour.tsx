@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dimensions, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 
 export interface TourRect {
   x: number;
@@ -26,6 +27,8 @@ interface AppTourProps {
 const PADDING = 8;
 
 export function AppTour({ visible, steps, onFinish }: AppTourProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<TourRect | null>(null);
 
@@ -141,7 +144,7 @@ export function AppTour({ visible, steps, onFinish }: AppTourProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   mask: {
     position: 'absolute',
     backgroundColor: 'rgba(0,0,0,0.78)',

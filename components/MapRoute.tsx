@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import { AppleMaps, GoogleMaps } from 'expo-maps';
-import { colors } from '../constants/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import type { RoutePoint } from '../types/models';
 
 // Thin cross-platform wrapper — expo-maps ships separate AppleMaps/GoogleMaps
@@ -8,6 +8,7 @@ import type { RoutePoint } from '../types/models';
 // on whichever the platform provides. Android needs android.config.googleMaps
 // .apiKey set in app.json to render at all; iOS (Apple Maps) needs no key.
 export function MapRoute({ route, style }: { route: RoutePoint[]; style?: object }) {
+  const { colors } = useTheme();
   const coordinates = route.map((p) => ({ latitude: p.lat, longitude: p.lng }));
   const last = coordinates[coordinates.length - 1] ?? { latitude: 0, longitude: 0 };
 

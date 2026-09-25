@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { TopBar } from '../../components/TopBar';
-import { colors, radii, spacing, typography } from '../../constants/theme';
+import { radii, spacing, typography } from '../../constants/theme';
+import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { BROWSE_CATEGORIES } from '../../data/browseWorkoutTemplates';
 import { useWorkoutTemplates } from '../../hooks/useWorkoutTemplates';
 import type { WorkoutTemplate } from '../../types/models';
@@ -22,6 +24,8 @@ const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 export default function BrowseScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { templates, loading } = useWorkoutTemplates();
   const browseWorkouts = templates.filter((t) => t.category === 'browse');
 
@@ -72,6 +76,8 @@ export default function BrowseScreen() {
 }
 
 function BrowseCard({ workout }: { workout: WorkoutTemplate }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <Pressable style={styles.card} onPress={() => router.push(`/workout/${workout.id}`)}>
       <Text style={styles.cardTitle} numberOfLines={2}>
@@ -88,7 +94,7 @@ function BrowseCard({ workout }: { workout: WorkoutTemplate }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 120 },
   heading: {

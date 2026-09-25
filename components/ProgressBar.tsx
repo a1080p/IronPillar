@@ -1,7 +1,11 @@
 import { StyleSheet, View } from 'react-native';
-import { colors, radii } from '../constants/theme';
+import { useMemo } from 'react';
+import { radii } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 
 export function ProgressBar({ progress }: { progress: number }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const clamped = Math.max(0, Math.min(1, progress));
   return (
     <View style={styles.track}>
@@ -10,7 +14,7 @@ export function ProgressBar({ progress }: { progress: number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   track: {
     height: 8,
     backgroundColor: colors.surfaceMuted,

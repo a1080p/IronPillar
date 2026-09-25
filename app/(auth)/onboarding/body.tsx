@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { OnboardingScreen } from '../../../components/OnboardingScreen';
 import { SelectableOption } from '../../../components/SelectableOption';
 import { TextField } from '../../../components/TextField';
 import { SEX_OPTIONS } from '../../../constants/options';
-import { colors, spacing, typography } from '../../../constants/theme';
+import { spacing, typography } from '../../../constants/theme';
+import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
 
 export default function BodyScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { data, setBody } = useOnboarding();
   const [sex, setSex] = useState(data.sex);
   const [feet, setFeet] = useState(
@@ -99,7 +102,7 @@ export default function BodyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   groupLabel: {
     fontSize: typography.sizes.md,
     fontWeight: '700',

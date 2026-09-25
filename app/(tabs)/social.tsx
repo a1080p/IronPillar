@@ -1,24 +1,23 @@
-import { useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TopBar } from '../../components/TopBar';
 import { Button } from '../../components/Button';
-import { colors, radii, spacing, typography } from '../../constants/theme';
+import { FlameIcon, GymIcon } from '../../components/icons/BrandIcons';
+import { radii, spacing, typography } from '../../constants/theme';
+import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFriends } from '../../hooks/useFriends';
 import { useActivityFeed } from '../../hooks/useActivityFeed';
 import { addFriend } from '../../lib/friends';
 import type { ActivityFeedItem } from '../../types/models';
 
-const ICON_FOR_TYPE: Record<
-  ActivityFeedItem['type'],
-  { name: keyof typeof Ionicons.glyphMap; color: string }
-> = {
-  badge_earned: { name: 'ribbon', color: colors.primary },
-  streak_milestone: { name: 'flame', color: colors.accentFlame },
-  friend_workout: { name: 'barbell', color: colors.primary },
-};
+const getIconForType = (colors: ThemeColors): Record<ActivityFeedItem['type'], ReactNode> => ({
+  badge_earned: <Ionicons name="ribbon" size={22} color={colors.primary} />,
+  streak_milestone: <FlameIcon size={22} color={colors.accentFlame} />,
+  friend_workout: <GymIcon size={22} color={colors.primary} />,
+});
 
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -32,6 +31,9 @@ function timeAgo(iso: string) {
 }
 
 export default function SocialScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  const iconForType = useMemo(() => getIconForType(colors), [colors]);
   const { user, profile } = useAuth();
   const { friends } = useFriends(user?.uid);
   const { items } = useActivityFeed(user?.uid);
@@ -90,11 +92,7 @@ export default function SocialScreen() {
         ) : (
           items.map((item) => (
             <View key={item.id} style={styles.feedItem}>
-              <Ionicons
-                name={ICON_FOR_TYPE[item.type].name}
-                size={22}
-                color={ICON_FOR_TYPE[item.type].color}
-              />
+              {iconForType[item.type]}
               <View style={{ flex: 1 }}>
                 <Text style={styles.feedMessage}>{item.message}</Text>
                 <Text style={styles.feedTime}>{timeAgo(item.createdAt)}</Text>
@@ -107,7 +105,7 @@ export default function SocialScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 120 },
   heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, marginBottom: spacing.lg },

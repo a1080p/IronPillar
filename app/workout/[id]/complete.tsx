@@ -1,15 +1,18 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
-import { colors, radii, spacing, typography } from '../../../constants/theme';
+import { radii, spacing, typography } from '../../../constants/theme';
+import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { badges } from '../../../data/badges';
 import { formatVolume } from '../../../lib/workoutStats';
 import { useAuth } from '../../../contexts/AuthContext';
 
 export default function WorkoutCompleteScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { xpEarned, streakBonus, streakCountAfter, badgeEarnedId, volume, reps, sets, durationSeconds } =
     useLocalSearchParams<{
       xpEarned: string;
@@ -100,7 +103,7 @@ export default function WorkoutCompleteScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, textAlign: 'center' },

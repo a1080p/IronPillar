@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -6,7 +6,8 @@ import { WorkoutHeader } from '../components/WorkoutHeader';
 import { AvatarPicker } from '../components/AvatarPicker';
 import { Button } from '../components/Button';
 import { TextField } from '../components/TextField';
-import { colors, spacing, typography } from '../constants/theme';
+import { spacing, typography } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { deleteAvatar, uploadAvatar } from '../lib/avatar';
 import { formatBirthdayInput } from '../lib/dates';
@@ -14,6 +15,8 @@ import { formatBirthdayInput } from '../lib/dates';
 const BIRTHDAY_RE = /^\d{2}-\d{2}-\d{4}$/;
 
 export default function EditProfileScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { user, profile, updateProfile } = useAuth();
 
   const [name, setName] = useState(profile?.name ?? '');
@@ -133,7 +136,7 @@ export default function EditProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 40, gap: spacing.lg },
   heading: {

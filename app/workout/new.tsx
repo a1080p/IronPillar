@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Button } from '../../components/Button';
 import { WorkoutHeader } from '../../components/WorkoutHeader';
-import { colors, radii, spacing, typography } from '../../constants/theme';
+import { radii, spacing, typography } from '../../constants/theme';
+import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { createCustomWorkout } from '../../hooks/useCustomWorkouts';
 import { generateWorkoutDetails } from '../../lib/workoutDetails';
@@ -14,6 +15,8 @@ import type { ExerciseSpec, GeneratedWorkoutDetails } from '../../types/models';
 type LogType = ExerciseSpec['logType'];
 
 export default function NewWorkoutScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { user } = useAuth();
   const [workoutName, setWorkoutName] = useState('');
   const [exercises, setExercises] = useState<ExerciseSpec[]>([]);
@@ -187,7 +190,7 @@ export default function NewWorkoutScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   heading: {

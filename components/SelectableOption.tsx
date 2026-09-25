@@ -1,5 +1,7 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { useMemo } from 'react';
+import { radii, spacing, typography } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 
 interface SelectableOptionProps {
   label: string;
@@ -8,6 +10,8 @@ interface SelectableOptionProps {
 }
 
 export function SelectableOption({ label, selected, onPress }: SelectableOptionProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <Pressable
       onPress={onPress}
@@ -18,7 +22,7 @@ export function SelectableOption({ label, selected, onPress }: SelectableOptionP
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   base: {
     borderWidth: 1.5,
     borderColor: colors.primary,

@@ -1,9 +1,11 @@
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from './Button';
 import { Logo } from './Logo';
 import { ProgressBar } from './ProgressBar';
-import { colors, spacing, typography } from '../constants/theme';
+import { spacing, typography } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 
 interface OnboardingScreenProps {
   heading: string;
@@ -26,6 +28,8 @@ export function OnboardingScreen({
   totalSteps,
   children,
 }: OnboardingScreenProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -58,7 +62,7 @@ export function OnboardingScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

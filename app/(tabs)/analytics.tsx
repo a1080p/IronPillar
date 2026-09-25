@@ -6,7 +6,8 @@ import { Button } from '../../components/Button';
 import { BarChart } from '../../components/BarChart';
 import { LineChart } from '../../components/LineChart';
 import { StatTile } from '../../components/StatTile';
-import { colors, radii, spacing, typography } from '../../constants/theme';
+import { radii, spacing, typography } from '../../constants/theme';
+import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWorkoutLogs } from '../../hooks/useWorkoutLogs';
 import { useProgressMetrics } from '../../hooks/useProgressMetrics';
@@ -39,6 +40,8 @@ function delta(current: number, previous: number, unit: string) {
 }
 
 export default function AnalyticsScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { user, profile } = useAuth();
   const { logs } = useWorkoutLogs(user?.uid);
   const { metrics, addMetric } = useProgressMetrics(user?.uid);
@@ -227,6 +230,8 @@ export default function AnalyticsScreen() {
 }
 
 function Chip({ text }: { text: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <View style={styles.chip}>
       <Text style={styles.chipText}>{text}</Text>
@@ -234,7 +239,7 @@ function Chip({ text }: { text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 120 },
   heading: {

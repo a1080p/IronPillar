@@ -1,17 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { TopBar } from '../../components/TopBar';
 import { ProgressBar } from '../../components/ProgressBar';
 import { Avatar } from '../../components/Avatar';
-import { colors, radii, spacing, typography } from '../../constants/theme';
+import { FlameIcon, GroupIcon, GymIcon } from '../../components/icons/BrandIcons';
+import { radii, spacing, typography } from '../../constants/theme';
+import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { levelForXp, xpIntoLevel, XP_PER_LEVEL } from '../../constants/gamification';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWorkoutLogs } from '../../hooks/useWorkoutLogs';
 import { useEarnedBadges } from '../../hooks/useEarnedBadges';
 
 export default function ProfileScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { user, profile } = useAuth();
   const { logs } = useWorkoutLogs(user?.uid);
   const { earned } = useEarnedBadges(user?.uid);
@@ -62,10 +67,10 @@ export default function ProfileScreen() {
         </Text>
 
         <View style={styles.statsRow}>
-          <Stat icon="flame" iconColor={colors.accentFlame} value={profile.streakCount} />
-          <Stat icon="barbell" iconColor={colors.primary} value={logs.length} />
+          <Stat icon={<FlameIcon size={16} color={colors.accentFlame} />} value={profile.streakCount} />
+          <Stat icon={<GymIcon size={16} color={colors.primary} />} value={logs.length} />
           <Stat label="xp" value={profile.xp} />
-          <Stat icon="people" iconColor={colors.primary} value={profile.friendCount} />
+          <Stat icon={<GroupIcon size={16} color={colors.primary} />} value={profile.friendCount} />
         </View>
 
         <Text style={styles.sectionHeading}>Collection</Text>
@@ -92,28 +97,24 @@ export default function ProfileScreen() {
 
 function Stat({
   icon,
-  iconColor,
   label,
   value,
 }: {
-  icon?: keyof typeof Ionicons.glyphMap;
-  iconColor?: string;
+  icon?: ReactNode;
   label?: string;
   value: number;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <View style={styles.stat}>
       <Text style={styles.statValue}>{value}</Text>
-      {icon ? (
-        <Ionicons name={icon} size={16} color={iconColor} />
-      ) : (
-        <Text style={styles.statUnit}>{label}</Text>
-      )}
+      {icon ?? <Text style={styles.statUnit}>{label}</Text>}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 120 },
   headingRow: {

@@ -1,5 +1,7 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { useMemo } from 'react';
+import { radii, spacing, typography } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 
 type Variant = 'primary' | 'outline' | 'ghost';
 
@@ -12,6 +14,8 @@ interface ButtonProps {
 }
 
 export function Button({ label, onPress, variant = 'primary', disabled, loading }: ButtonProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const isDisabled = disabled || loading;
   return (
     <Pressable
@@ -44,7 +48,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading 
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   base: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,

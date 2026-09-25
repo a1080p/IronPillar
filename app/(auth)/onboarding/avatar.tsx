@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text } from 'react-native';
 import { router } from 'expo-router';
 import { AvatarPicker } from '../../../components/AvatarPicker';
 import { OnboardingScreen } from '../../../components/OnboardingScreen';
-import { colors, spacing, typography } from '../../../constants/theme';
+import { spacing, typography } from '../../../constants/theme';
+import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
 import { uploadAvatar } from '../../../lib/avatar';
 
 export default function AvatarScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { data, setAvatarKey, setAvatarPhotoUri, clearAvatarPhoto } = useOnboarding();
   const { user, createProfile } = useAuth();
   const [saving, setSaving] = useState(false);
@@ -72,7 +75,7 @@ export default function AvatarScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   helper: {
     color: colors.textMuted,
     fontSize: typography.sizes.small,

@@ -1,12 +1,16 @@
 import { StyleSheet, Text } from 'react-native';
+import { useMemo } from 'react';
 import { router } from 'expo-router';
 import { OnboardingScreen } from '../../../components/OnboardingScreen';
 import { SelectableOption } from '../../../components/SelectableOption';
 import { EXPERIENCE_OPTIONS, GOAL_OPTIONS } from '../../../constants/options';
-import { colors, spacing, typography } from '../../../constants/theme';
+import { spacing, typography } from '../../../constants/theme';
+import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
 
 export default function GoalsScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { data, toggleGoal, setExperienceLevel } = useOnboarding();
 
   const canContinue = data.goals.length > 0 && !!data.experienceLevel;
@@ -43,7 +47,7 @@ export default function GoalsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   groupLabel: {
     fontSize: typography.sizes.md,
     fontWeight: '700',

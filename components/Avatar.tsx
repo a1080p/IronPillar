@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { parseAvatarKey } from '../constants/avatars';
-import { colors, radii } from '../constants/theme';
+import { radii } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 
 // Renders a user's avatar: an uploaded photo if present, otherwise a chosen
 // icon+color combo, otherwise the neutral person placeholder.
@@ -14,6 +16,8 @@ export function Avatar({
   presetKey?: string | null;
   size?: number;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const parsed = parseAvatarKey(presetKey);
   const iconSize = Math.round(size * 0.5);
 
@@ -53,7 +57,7 @@ export function Avatar({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   base: {
     borderWidth: 2,
     borderColor: colors.primary,

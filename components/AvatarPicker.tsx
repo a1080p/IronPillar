@@ -1,12 +1,13 @@
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActionSheet } from './ActionSheet';
 import { Avatar } from './Avatar';
 import { Button } from './Button';
 import { AVATAR_PRESETS, buildAvatarKey, parseAvatarKey } from '../constants/avatars';
-import { colors, radii, spacing } from '../constants/theme';
+import { radii, spacing } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 
 const PHOTO_OPTIONS: ImagePicker.ImagePickerOptions = {
   mediaTypes: ['images'],
@@ -36,6 +37,8 @@ export function AvatarPicker({
   showRemove?: boolean;
   size?: number;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
 
   const parsed = parseAvatarKey(avatarKey);
@@ -117,7 +120,7 @@ export function AvatarPicker({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { alignItems: 'center', gap: spacing.md },
   grid: {
     flexDirection: 'row',

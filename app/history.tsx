@@ -1,7 +1,9 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WorkoutHeader } from '../components/WorkoutHeader';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkoutLogs } from '../hooks/useWorkoutLogs';
 import { formatShortDate } from '../lib/dates';
@@ -22,6 +24,8 @@ function formatDuration(seconds: number) {
 }
 
 export default function HistoryScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { user } = useAuth();
   const { logs, loading } = useWorkoutLogs(user?.uid);
 
@@ -56,7 +60,7 @@ export default function HistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, marginBottom: spacing.lg },

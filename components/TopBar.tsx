@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlameIcon } from './icons/BrandIcons';
+import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Logo } from './Logo';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
 const MENU_ITEMS = [
@@ -14,6 +16,8 @@ const MENU_ITEMS = [
 ];
 
 export function TopBar() {
+  const { colors, isDark, toggleTheme } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { profile, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -27,7 +31,7 @@ export function TopBar() {
       <Logo />
       <View style={styles.streak}>
         <Text style={styles.streakCount}>{profile?.streakCount ?? 0}</Text>
-        <Ionicons name="flame" size={20} color={colors.accentFlame} />
+        <FlameIcon size={20} color={colors.accentFlame} />
       </View>
 
       <Modal visible={menuOpen} animationType="slide" transparent onRequestClose={close}>
@@ -57,6 +61,16 @@ export function TopBar() {
 
               <View style={{ flex: 1 }} />
 
+              <View style={[styles.row, styles.darkModeRow]}>
+                <Text style={styles.rowLabel}>Dark Mode</Text>
+                <Switch
+                  value={isDark}
+                  onValueChange={toggleTheme}
+                  trackColor={{ false: colors.divider, true: colors.primary }}
+                  thumbColor={colors.background}
+                />
+              </View>
+
               <Pressable
                 style={({ pressed }) => [styles.row, styles.signOutRow, pressed && styles.rowPressed]}
                 onPress={async () => {
@@ -76,7 +90,7 @@ export function TopBar() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -140,10 +154,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
   },
-  signOutRow: {
+  darkModeRow: {
     borderBottomWidth: 0,
     borderTopWidth: 1,
     borderTopColor: colors.divider,
+  },
+  signOutRow: {
+    borderBottomWidth: 0,
   },
   signOutLabel: {
     fontSize: typography.sizes.body,

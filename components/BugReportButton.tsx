@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,7 +12,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { submitBugReport } from '../lib/bugReports';
 import type { BugReportCategory } from '../types/models';
 
@@ -29,6 +30,8 @@ const CATEGORIES: { value: BugReportCategory; label: string }[] = [
 // collection (create-only from the client — see firestore.rules); Claude
 // triages new reports server-side and turns valid ones into Jira tickets.
 export function BugReportButton({ uid }: { uid: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -128,7 +131,7 @@ export function BugReportButton({ uid }: { uid: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   fab: {
     position: 'absolute',
     right: spacing.lg,

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BugReportButton } from '../components/BugReportButton';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
 
 function RootNavigation() {
   const { user, hasOnboarded, initializing } = useAuth();
@@ -42,13 +43,20 @@ function RootNavigation() {
   );
 }
 
+function RootStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <RootNavigation />
-        <StatusBar style="dark" />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <RootNavigation />
+          <RootStatusBar />
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

@@ -5,7 +5,8 @@ import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { WorkoutHeader } from '../../../components/WorkoutHeader';
-import { colors, radii, spacing, typography } from '../../../constants/theme';
+import { radii, spacing, typography } from '../../../constants/theme';
+import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { motivationalMessages } from '../../../constants/motivation';
 import { useWorkout } from '../../../hooks/useWorkout';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -14,6 +15,8 @@ import { summarizeExerciseLogs } from '../../../lib/workoutStats';
 import type { ExerciseLog, LoggedSet } from '../../../types/models';
 
 export default function WorkoutLogScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { workout: template } = useWorkout(id, user?.uid);
@@ -213,7 +216,7 @@ function formatTime(totalSeconds: number) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loading: { textAlign: 'center', marginTop: spacing.xl, color: colors.textMuted },
   progressWrap: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },

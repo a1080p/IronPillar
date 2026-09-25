@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { radii, spacing, typography } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 
 interface ChartPoint {
   label: string;
@@ -18,6 +20,8 @@ const CHART_HEIGHT = 140;
 const PADDING = 24;
 
 export function LineChart({ title, points, unit = '' }: LineChartProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   if (points.length === 0) {
     return (
       <View style={styles.card}>
@@ -84,7 +88,7 @@ export function LineChart({ title, points, unit = '' }: LineChartProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     backgroundColor: colors.surfaceMuted,
     borderRadius: radii.md,

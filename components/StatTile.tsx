@@ -1,5 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, radii, spacing, typography } from '../constants/theme';
+import { useMemo } from 'react';
+import { radii, spacing, typography } from '../constants/theme';
+import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 
 interface StatTileProps {
   value: string | number;
@@ -9,6 +11,8 @@ interface StatTileProps {
 }
 
 export function StatTile({ value, label, hint, hintTone = 'neutral' }: StatTileProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <View style={styles.tile}>
       <Text style={styles.value} numberOfLines={1}>
@@ -30,7 +34,7 @@ export function StatTile({ value, label, hint, hintTone = 'neutral' }: StatTileP
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   tile: {
     flexGrow: 1,
     flexBasis: '40%',
