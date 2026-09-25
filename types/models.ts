@@ -142,3 +142,23 @@ export interface ActivityFeedItem {
   message: string;
   createdAt: string;
 }
+
+export type BugReportCategory = 'bug' | 'crash' | 'confusing_ui' | 'feature_idea' | 'other';
+export type BugReportStatus = 'new' | 'triaged' | 'ticketed' | 'fixed' | 'dismissed';
+
+// In-app bug/feedback report, filed from the floating report button on any
+// screen. Read/triaged server-side only (see firestore.rules) — a Claude Code
+// job reviews `status: 'new'` reports, files a Jira ticket, and updates
+// status/jiraKey as it works the fix.
+export interface BugReport {
+  id: string;
+  uid: string;
+  screen: string; // route pathname the report was filed from, e.g. "/workout/abc123"
+  category: BugReportCategory;
+  description: string;
+  platform: 'ios' | 'android' | 'web';
+  appVersion: string;
+  status: BugReportStatus;
+  jiraKey?: string;
+  createdAt: string; // ISO timestamp
+}

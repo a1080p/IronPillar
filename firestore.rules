@@ -98,6 +98,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // In-app bug/feedback reports (floating report button, any screen). A
+    // user can file their own report but can't read any back — triage
+    // (reviewing, filing a Jira ticket, flipping status) happens server-side
+    // via the Admin SDK, which bypasses these rules entirely. Once filed, a
+    // report is immutable from the client (no editing/deleting your own
+    // report after the fact).
+    match /bugReports/{reportId} {
+      allow read, update, delete: if false;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'new';
+    }
+
     // Everything else is denied until its collection is built (build steps 9+)
     // and gets its own explicit rule here.
   }

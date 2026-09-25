@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { BugReportButton } from '../components/BugReportButton';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 
 function RootNavigation() {
@@ -31,7 +32,14 @@ function RootNavigation() {
     }
   }, [user, hasOnboarded, initializing, segments]);
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }} />
+      {/* Only once fully onboarded — a pre-account user has no uid to attach
+          a report to, and won't hit real app screens yet anyway. */}
+      {user && hasOnboarded ? <BugReportButton uid={user.uid} /> : null}
+    </>
+  );
 }
 
 export default function RootLayout() {
