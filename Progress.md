@@ -4,6 +4,15 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-24 (later still) — Dark-mode contrast + accessibility scan
+
+- **Bug report FAB contrast fixed**: its background was tied to `colors.text`, which flips from dark (light mode) to near-white (dark mode) — leaving the white bug icon nearly invisible on itself in dark mode. Switched to `colors.primary` (the brand blue), which stays visually distinct from a white icon in both palettes — same pattern already used for the tab bar and primary buttons. Verified live in both themes.
+- **Scanned the whole app for other hardcoded colors bypassing the theme** (the same class of bug as the FAB and the logo fixed earlier tonight) and found two more real ones:
+  - A hardcoded `#D33` red for error/danger text and the Account Details "Danger Zone" border, in 4 places (`welcome.tsx`, `verify-email.tsx`, `account-details.tsx` ×2) — bypassed the theme's `colors.danger`, which was specifically tuned brighter for dark-mode legibility (`#FF6B6F` vs the light theme's `#E5484D`). All 4 switched to `colors.danger`.
+  - The "AI details" banner on the workout detail screen (`workout/[id]/index.tsx`) had a hardcoded light-cream background (`#FFF1E0`) paired with `colors.text` for its text — in dark mode that's near-white text on a light cream background, unreadable. Added a proper `warningBg` token to both palettes in `constants/theme.ts` (light: same cream `#FFF1E0`; dark: a dark amber `#3A2A12` that keeps near-white text legible) and wired the banner to it.
+  - Confirmed both chart components (`BarChart.tsx`, `LineChart.tsx`) were already fully theme-aware — no fix needed there.
+- **Screen-reader accessibility labels**: found the app has only 3 `accessibilityLabel`s total despite many icon-only buttons. Added labels + `accessibilityRole="button"` to the 4 highest-traffic ones (appear on nearly every screen): the hamburger menu icon (`TopBar`), the back chevron (`WorkoutHeader`, used on every workout screen), a workout card's kebab/options menu (Home), and the AI-details banner's dismiss button. **Not done**: a full audit of every icon-only control app-wide — this was a targeted pass on the most-encountered ones, not exhaustive; worth a dedicated VoiceOver/TalkBack pass before relying on it for accessibility compliance.
+- **Verified**: full TypeScript typecheck clean after every change; live-verified the FAB contrast fix in both themes in the iOS Simulator dev client.
 ## 2026-09-24 (night) — Fixed: Dark Mode switch didn't respond to taps
 
 - **Root cause found**: the bare `Switch` control in the hamburger drawer (`TopBar.tsx`) required more than an instant tap to register — a quick tap did nothing, only a held touch triggered it. Reproduced directly: isolated a debug `Switch` on the Home screen (outside the Modal entirely) and it had the identical symptom, ruling out anything Modal/drawer-specific. Confirmed via a held `touch_path` that the underlying theme system itself was working correctly the whole time — the app re-themed perfectly the moment the switch did register, it just needed the extra-long touch.

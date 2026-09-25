@@ -283,7 +283,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: -spacing.sm,
   },
   error: {
-    color: '#D33',
+    color: colors.danger,
     textAlign: 'center',
   },
   submitGroup: {

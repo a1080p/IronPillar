@@ -14,7 +14,12 @@ export function WorkoutHeader({ onBack }: { onBack?: () => void }) {
   const { profile } = useAuth();
   return (
     <View style={styles.bar}>
-      <Pressable onPress={onBack ?? (() => router.back())} hitSlop={12}>
+      <Pressable
+        onPress={onBack ?? (() => router.back())}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="Go back"
+      >
         <Ionicons name="chevron-back" size={26} color={colors.primary} />
       </Pressable>
       <Logo />

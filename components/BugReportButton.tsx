@@ -138,7 +138,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: radii.pill,
-    backgroundColor: colors.text,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 50,

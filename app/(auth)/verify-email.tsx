@@ -126,7 +126,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primary,
   },
   error: {
-    color: '#D33',
+    color: colors.danger,
     textAlign: 'center',
   },
   resendLink: {

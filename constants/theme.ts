@@ -13,7 +13,8 @@ export const lightColors: Record<
   | 'surfaceMuted'
   | 'divider'
   | 'success'
-  | 'danger',
+  | 'danger'
+  | 'warningBg',
   string
 > = {
   background: '#FFFFFF',
@@ -29,6 +30,7 @@ export const lightColors: Record<
   divider: '#E4E4E4',
   success: '#FF8A00',
   danger: '#E5484D',
+  warningBg: '#FFF1E0',
 };
 
 // Dark-mode counterpart — same brand hues, re-balanced for a dark surface
@@ -47,6 +49,7 @@ export const darkColors: typeof lightColors = {
   divider: '#2C2C36',
   success: '#FF9C33',
   danger: '#FF6B6F',
+  warningBg: '#3A2A12',
 };
 
 export type ThemeColors = typeof lightColors;

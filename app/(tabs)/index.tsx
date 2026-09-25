@@ -325,7 +325,13 @@ function QuickStartCard({
           {workout.name}
         </Text>
         {editable && (
-          <Pressable hitSlop={8} onPress={() => setMenuOpen(true)} style={styles.kebab}>
+          <Pressable
+            hitSlop={8}
+            onPress={() => setMenuOpen(true)}
+            style={styles.kebab}
+            accessibilityRole="button"
+            accessibilityLabel={`Options for ${workout.name}`}
+          >
             <Ionicons name="ellipsis-vertical" size={16} color={colors.textOnDark} />
           </Pressable>
         )}

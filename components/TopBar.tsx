@@ -25,7 +25,12 @@ export function TopBar() {
 
   return (
     <View style={styles.bar}>
-      <Pressable onPress={() => setMenuOpen(true)} hitSlop={12}>
+      <Pressable
+        onPress={() => setMenuOpen(true)}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="Open menu"
+      >
         <Ionicons name="menu" size={26} color={colors.text} />
       </Pressable>
       <Logo />

@@ -74,7 +74,12 @@ export default function WorkoutDetailScreen() {
                 ? "Couldn't auto-generate details this time. Add them with Edit Details."
                 : 'Overview, time, calories, equipment and tips were filled in by AI. Tap Edit Details to tweak them.'}
             </Text>
-            <Pressable onPress={() => setBannerDismissed(true)} hitSlop={12}>
+            <Pressable
+              onPress={() => setBannerDismissed(true)}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss"
+            >
               <Ionicons name="close" size={18} color={colors.primary} />
             </Pressable>
           </View>
@@ -204,7 +209,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
-  bannerWarn: { backgroundColor: '#FFF1E0' },
+  bannerWarn: { backgroundColor: colors.warningBg },
   bannerText: { flex: 1, color: colors.text, fontSize: typography.sizes.small, lineHeight: 18 },
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, marginBottom: spacing.md },
   equipmentSummary: {
