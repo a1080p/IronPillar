@@ -4,6 +4,17 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-24 (later) — Rules deployed, bug-report feature live-verified, stale blockers cleared
+
+- **Deployed + shipped**: `firestore.rules`/`storage.rules` deployed live (`npm run deploy:rules`); all of today's code committed and pushed to `main` (`8eaf916`).
+- **Two Progress.md claims turned out to be stale — checked directly, not assumed**:
+  - The Storage bucket (`iron-piller.firebasestorage.app`), earlier logged as "never provisioned," **now exists** — confirmed via a direct Admin SDK `.exists()` check. Someone provisioned it since 9/21 (matches Jira IP-20 already being Done). Photo avatar upload should work now.
+  - The iOS Simulator + Android dev-client builds, earlier logged as "blocked on EAS build queue," **both finished successfully on 9/21** (`eas build:list` confirms). Not actually blocked — just never re-checked after they finished.
+- **EAS Update published** to the `preview` channel (group `d78789df`, matching commit `8eaf916`) so the already-built dev clients pick up today's changes without a new native build.
+- **Live-verified in the iOS Simulator dev-client build**: app boots to a fully populated, correctly-styled Home screen for the existing signed-in test account (streak, recommended workout, recent workouts, quick-start, my-workouts). Navigated into a real workout detail page (Sledgehammer Tire HIIT) — full exercise instructions, sets/reps/tips, equipment all render correctly. The new bug-report button renders on **both** screens tested (confirms it's truly global per `app/_layout.tsx`), and tapping it opens the "Report an issue" modal with working category chips and correct route capture (`/workout/sledgehammer-tire-hiit`, then `/` on Home).
+- **Not fully verified**: the modal's text field and Submit button, specifically — hit the same simulator input flakiness noted repeatedly elsewhere in this log (hardware-keyboard text injection closed the modal instead of typing into it; imprecise tap targeting couldn't reliably land the Submit button vs. Cancel vs. backdrop). The component logic is simple and typechecked, and reuses the same Firestore create-pattern already working elsewhere in the app, so this is a low-risk gap — but worth a real-device tap-through before the demo, not just Simulator.
+- **New finding, not yet ticketed**: in the dev-client build specifically, the bug-report FAB sits close enough to Expo dev-client's own floating "Tools" menu bubble (bottom-right corner) that a real tester could hit the wrong one. Not an issue in a production/preview (non-dev-client) build, since that bubble only exists in dev builds.
+
 ## 2026-09-24 — Monetization + wearables research, in-app bug reporting, recurring pulse-check skill
 
 - **Demo readiness assessment**: the core loop (sign-up → onboarding → home → workout logging of every type → completion/XP/streak/badges → history → analytics → social) is solid and has been live-verified repeatedly per this log. What's *not* demo-safe yet: Apple/Google Sign-In (client done, needs console setup + dev-client build), photo avatar upload (Storage bucket never provisioned), outdoor GPS/maps (blocked on EAS dev-client build + Google Maps API key), no push notifications/dark mode, and the usual iOS Simulator text-input flakiness that's blocked several prior live walk-throughs — recommend testing the demo on a real device. Logged as [IP-25](https://studiogreatt.atlassian.net/browse/IP-25).
