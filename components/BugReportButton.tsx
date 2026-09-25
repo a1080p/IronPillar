@@ -134,7 +134,10 @@ export function BugReportButton({ uid }: { uid: string }) {
 const getStyles = (colors: ThemeColors) => StyleSheet.create({
   fab: {
     position: 'absolute',
-    right: spacing.lg,
+    // Left, not right — Expo dev-client's own floating "Tools" bubble
+    // always sits bottom-right in dev builds, so this avoids any overlap
+    // regardless of screen size (see IP-34).
+    left: spacing.lg,
     width: 48,
     height: 48,
     borderRadius: radii.pill,
