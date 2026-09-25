@@ -4,6 +4,14 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-24 (night) — Fixed: Dark Mode switch didn't respond to taps
+
+- **Root cause found**: the bare `Switch` control in the hamburger drawer (`TopBar.tsx`) required more than an instant tap to register — a quick tap did nothing, only a held touch triggered it. Reproduced directly: isolated a debug `Switch` on the Home screen (outside the Modal entirely) and it had the identical symptom, ruling out anything Modal/drawer-specific. Confirmed via a held `touch_path` that the underlying theme system itself was working correctly the whole time — the app re-themed perfectly the moment the switch did register, it just needed the extra-long touch.
+- **Fix**: wrapped the whole "Dark Mode" row in a `Pressable` (`onPress={toggleTheme}`, `pointerEvents="none"` on the `Switch` itself so it doesn't double-fire) — matching the same pattern already used for every other drawer row (Settings/History/Sign out). A normal, instant tap anywhere on the row now toggles it reliably. Also makes the tap target much bigger than the tiny native switch, which should help regardless of the exact root cause.
+- **Bonus bug found and fixed along the way**: the `Logo` (`assets/logo.png`) had no theme awareness — a solid black mark that went invisible against the dark background once dark mode actually worked. Added a `tintColor` (`colors.text`) so it renders white-on-dark / black-on-light correctly. Affects all 5 places `Logo` is used (Welcome, verify-email, onboarding, TopBar, WorkoutHeader).
+- **Verified live** in the iOS Simulator dev client: a single normal tap on the Dark Mode row now toggles instantly, the whole app (background, text, cards, drawer itself) re-themes correctly in both directions, the preference persists across an app reload, and the logo is now legible in both themes.
+- Three EAS Updates published during this diagnosis (debug-only, then the real fix, then the logo fix) — all superseded by the final one on the `preview` channel.
+
 ## 2026-09-24 (evening) — New brand icon set + full app-wide dark mode
 
 - **New icon set wired in**: 7 line-style SVGs the user exported (user, group, stats-up-square, home-simple-door, compass, gym, fire-flame) converted into `react-native-svg` components at `components/icons/BrandIcons.tsx` (`color`/`size` props, no more static PNG/Ionicons stand-ins for these). Replaces: all 5 tab-bar icons (finally fills in Browse, which had been stuck on a generic Ionicon since 2026-09-17 pending a matching brand asset), the streak flame in `TopBar`/`WorkoutHeader`, and the barbell/flame/people stats in Profile, workout detail, and the Social activity feed — the exact swap Progress.md's 2026-09-17 entry flagged as pending. Two minor incidental Ionicons `barbell` references (Browse's 10-icon category map, a small card-corner glyph) were deliberately left alone — not worth restructuring a 10-entry map for one icon.

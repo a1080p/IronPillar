@@ -61,15 +61,19 @@ export function TopBar() {
 
               <View style={{ flex: 1 }} />
 
-              <View style={[styles.row, styles.darkModeRow]}>
+              <Pressable
+                style={({ pressed }) => [styles.row, styles.darkModeRow, pressed && styles.rowPressed]}
+                onPress={toggleTheme}
+              >
                 <Text style={styles.rowLabel}>Dark Mode</Text>
                 <Switch
                   value={isDark}
                   onValueChange={toggleTheme}
                   trackColor={{ false: colors.divider, true: colors.primary }}
                   thumbColor={colors.background}
+                  pointerEvents="none"
                 />
-              </View>
+              </Pressable>
 
               <Pressable
                 style={({ pressed }) => [styles.row, styles.signOutRow, pressed && styles.rowPressed]}
