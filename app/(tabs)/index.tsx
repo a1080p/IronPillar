@@ -211,7 +211,14 @@ export default function HomeScreen() {
                 <Pressable
                   key={log.workoutId}
                   style={styles.recentCard}
-                  onPress={() => router.push(`/workout/${log.workoutId}`)}
+                  onPress={() =>
+                    log.workoutSource === 'outdoor' && log.activityType
+                      ? router.push({
+                          pathname: '/workout/outdoor/track',
+                          params: { activityType: log.activityType },
+                        })
+                      : router.push(`/workout/${log.workoutId}`)
+                  }
                 >
                   <Text style={styles.quickCardTitle} numberOfLines={2}>
                     {log.workoutName}

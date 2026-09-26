@@ -124,44 +124,6 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
     ],
   },
   {
-    id: 'outdoor-walk',
-    name: 'Outdoor Walk',
-    durationMinutes: 25,
-    caloriesRangeLabel: '150-220 Calories',
-    equipmentRequired: false,
-    category: 'quick_start',
-    tags: ['lose_weight', 'build_endurance'],
-    exercises: [
-      {
-        id: 'outdoor-walk',
-        name: 'Outdoor Walk',
-        logType: 'duration',
-        targetSets: 1,
-        targetRepsLabel: '25 minutes',
-        tips: 'Hold a steady pace you can maintain with relaxed shoulders and a consistent breathing rhythm.',
-      },
-    ],
-    workoutTips: [
-      {
-        heading: 'Pacing',
-        bullets: [
-          "Brisk means you can talk but couldn't sing",
-          'Swing your arms to engage your upper body too',
-        ],
-      },
-      {
-        heading: 'Safety Essentials',
-        bullets: ['Wear reflective gear if it is dark out', 'Stay hydrated, especially in heat'],
-      },
-    ],
-    equipment: [
-      {
-        heading: 'Essential Equipment',
-        bullets: ['Comfortable walking shoes'],
-      },
-    ],
-  },
-  {
     id: 'hiit-fat-burner',
     name: 'HIIT Fat Burner',
     durationMinutes: 30,

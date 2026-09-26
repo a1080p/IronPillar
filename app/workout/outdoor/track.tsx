@@ -15,8 +15,11 @@ import {
   routeDistanceMeters,
 } from '../../../lib/geo';
 import {
+  getPauseState,
+  pauseTracking,
   requestTrackingPermissions,
   restoreBufferedPoints,
+  resumeTracking,
   startTracking,
   stopTracking,
   subscribe,
@@ -46,9 +49,12 @@ export default function OutdoorTrackScreen() {
   const [route, setRoute] = useState<RoutePoint[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [tracking, setTracking] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [pausing, setPausing] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [result, setResult] = useState<CompletionResult | null>(null);
   const startedAtRef = useRef<number | null>(null);
+  const totalPausedMsRef = useRef(0);
   const navigation = useNavigation();
   // Skips the confirm dialog when there's nothing to lose yet — e.g. leaving
   // because location permission was denied, before tracking ever started.
@@ -99,7 +105,16 @@ export default function OutdoorTrackScreen() {
         return;
       }
       startedAtRef.current = await startTracking();
-      setElapsedSeconds(Math.floor((Date.now() - startedAtRef.current) / 1000));
+      const pauseState = await getPauseState();
+      totalPausedMsRef.current = pauseState.totalPausedMs;
+      if (pauseState.pausedAt) {
+        // App was killed/backgrounded mid-pause — come back up still paused
+        // rather than silently resuming without the user asking to.
+        setPaused(true);
+      }
+      setElapsedSeconds(
+        Math.floor((Date.now() - startedAtRef.current - totalPausedMsRef.current) / 1000)
+      );
       setTracking(true);
     })();
 
@@ -109,16 +124,40 @@ export default function OutdoorTrackScreen() {
   }, []);
 
   useEffect(() => {
-    if (!tracking) return;
+    if (!tracking || paused) return;
     const interval = setInterval(() => {
       if (startedAtRef.current) {
-        setElapsedSeconds(Math.floor((Date.now() - startedAtRef.current) / 1000));
+        setElapsedSeconds(
+          Math.floor((Date.now() - startedAtRef.current - totalPausedMsRef.current) / 1000)
+        );
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [tracking]);
+  }, [tracking, paused]);
 
   const distanceMeters = routeDistanceMeters(route);
+
+  const handlePause = async () => {
+    setPausing(true);
+    try {
+      await pauseTracking();
+      setPaused(true);
+    } finally {
+      setPausing(false);
+    }
+  };
+
+  const handleResume = async () => {
+    setPausing(true);
+    try {
+      await resumeTracking();
+      const pauseState = await getPauseState();
+      totalPausedMsRef.current = pauseState.totalPausedMs;
+      setPaused(false);
+    } finally {
+      setPausing(false);
+    }
+  };
 
   const handleFinish = async () => {
     setFinishing(true);
@@ -156,7 +195,7 @@ export default function OutdoorTrackScreen() {
           <View style={styles.statsRow}>
             <Stat label="Distance" value={formatDistanceMiles(distanceMeters)} />
             <Stat label="Time" value={formatElapsed(elapsedSeconds)} />
-            <Stat label="Pace" value={formatPacePerMile(distanceMeters, elapsedSeconds)} />
+            <Stat label="Avg Pace" value={formatPacePerMile(distanceMeters, elapsedSeconds)} />
           </View>
           <Text style={styles.xpLine}>
             +{result.xpEarned}
@@ -181,24 +220,42 @@ export default function OutdoorTrackScreen() {
       <View style={styles.mapWrap}>
         <MapRoute route={route} style={StyleSheet.absoluteFill} />
       </View>
-      <View style={styles.body}>
+
+      <View style={styles.panel}>
         <View style={styles.titleRow}>
-          <Ionicons name={ACTIVITY_ICONS[activityType]} size={22} color={colors.primary} />
-          <Text style={styles.heading}>{ACTIVITY_LABELS[activityType]}</Text>
+          <Ionicons name={ACTIVITY_ICONS[activityType]} size={18} color={colors.primary} />
+          <Text style={styles.activityLabel}>{ACTIVITY_LABELS[activityType]}</Text>
         </View>
-        <View style={styles.statsRow}>
+
+        <Text style={styles.bigTimer}>{formatElapsed(elapsedSeconds)}</Text>
+        <Text style={styles.timerCaption}>{paused ? 'PAUSED' : 'TIME'}</Text>
+
+        <View style={styles.secondaryStatsRow}>
           <Stat label="Distance" value={formatDistanceMiles(distanceMeters)} />
-          <Stat label="Time" value={formatElapsed(elapsedSeconds)} />
-          <Stat label="Pace" value={formatPacePerMile(distanceMeters, elapsedSeconds)} />
+          <Stat label="Avg Pace" value={formatPacePerMile(distanceMeters, elapsedSeconds)} />
         </View>
       </View>
+
       <View style={styles.footer}>
-        <Button
-          label={finishing ? 'Saving...' : 'Finish'}
-          onPress={handleFinish}
-          loading={finishing}
-          disabled={!tracking && !finishing}
-        />
+        <View style={styles.buttonRow}>
+          <View style={styles.buttonHalf}>
+            <Button
+              label={paused ? 'Resume' : 'Pause'}
+              variant="outline"
+              onPress={paused ? handleResume : handlePause}
+              loading={pausing}
+              disabled={!tracking || finishing}
+            />
+          </View>
+          <View style={styles.buttonHalf}>
+            <Button
+              label={finishing ? 'Saving...' : 'Stop'}
+              onPress={handleFinish}
+              loading={finishing}
+              disabled={!tracking && !finishing}
+            />
+          </View>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -219,9 +276,11 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   mapWrap: { flex: 1 },
   summaryMapWrap: { height: '35%' },
-  body: {
+  panel: {
     padding: spacing.lg,
-    gap: spacing.md,
+    paddingTop: spacing.md,
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   summaryBody: {
     padding: spacing.lg,
@@ -232,13 +291,39 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
+  },
+  activityLabel: {
+    fontSize: typography.sizes.body,
+    fontWeight: '700',
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   heading: {
     fontSize: typography.sizes.lg,
     fontWeight: '800',
     color: colors.primary,
     textAlign: 'center',
+  },
+  bigTimer: {
+    fontSize: 64,
+    fontWeight: '800',
+    color: colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  timerCaption: {
+    fontSize: typography.sizes.small,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 2,
+    marginTop: -spacing.xs,
+  },
+  secondaryStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginTop: spacing.md,
   },
   statsRow: {
     flexDirection: 'row',
@@ -253,5 +338,12 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   badgeText: { color: colors.primary, fontWeight: '700' },
   footer: {
     padding: spacing.lg,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  buttonHalf: {
+    flex: 1,
   },
 });
