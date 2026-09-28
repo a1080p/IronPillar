@@ -4,6 +4,36 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-28 (later) — WHOOP wearable integration (OAuth, sync, Profile UI)
+
+- **Confirmed exact WHOOP API v2 details against their live docs before writing any code** (auth/token endpoints, scopes, redirect URI formats, response field paths for recovery/sleep/cycle) rather than relying on the general research from the 2026-09-24 entry, since that was a scoping pass, not an implementation-accurate spec.
+- **OAuth client**: installed `expo-auth-session` + `expo-web-browser` — both pure-JS Expo modules already present in any existing build (Expo Go included), so unlike RevenueCat this did **not** need a new native rebuild. New `lib/whoop.ts`: `connectWhoop()` runs the authorization-code flow (fixed redirect URI `ironpillar://whoop-callback`, `usePKCE: false` since WHOOP's docs don't document PKCE support and the server-side exchange doesn't send a `code_verifier`), then hands the resulting code to a Cloud Function — the WHOOP client secret never enters the app bundle.
+- **Server-side** (`functions/src/index.ts`): `exchangeWhoopCode` (token exchange + stores tokens + runs an initial sync), `syncWhoopData` (callable "sync now"), `disconnectWhoop` (deletes tokens). Access-token refresh is automatic and transparent (`getValidWhoopAccessToken` refreshes 60s before expiry). Sync pulls the latest recovery/sleep/cycle records and writes a display snapshot — recovery score, HRV, resting HR, sleep performance %, day strain.
+- **Data model**: two new Firestore collections, both locked down the same way `xp`/`streakCount` already are — `wearableTokens/{uid}` (fully server-only, never client-readable) and `wearableSnapshots/{uid}` (owner-read, function-write-only). New `WearableProvider`/`WearableSnapshot` types in `types/models.ts`.
+- **UI**: new "Wearables" section on the Profile screen (`app/(tabs)/profile.tsx`) — Connect WHOOP button when not connected; once connected, shows the live snapshot stats plus Sync now / Disconnect.
+- **Still needed, account-setup steps only the project owner can do**: register an app in the WHOOP Developer Dashboard for redirect URI `ironpillar://whoop-callback`, set `EXPO_PUBLIC_WHOOP_CLIENT_ID` in `.env`, and `firebase functions:secrets:set WHOOP_CLIENT_ID` / `WHOOP_CLIENT_SECRET`. WHOOP also requires app review past 10 connected members (per their docs) — fine for demo/early testing, worth planning for before a real launch.
+- **Note**: this flow needs a build with this app's own `ironpillar://` scheme (any dev-client/preview/production build) to complete the redirect — same requirement Google/Apple Sign-In already have, not a new constraint. Plain Expo Go can't complete it.
+- **Verified**: full TypeScript typecheck clean, both app and `functions`. **Not live-verified** — blocked on the WHOOP Developer Dashboard registration above, same shape as the Monetization blockers earlier today.
+- Jira: IP-30 moved to In Progress with a setup-blocker comment. IP-29 (HealthKit) and IP-31 (Health Connect) left in To Do — out of scope for this pass, WHOOP only per explicit priority.
+
+---
+
+## 2026-09-28 — Monetization: RevenueCat entitlements, paywall, server-side enforcement; nav bar shadow
+
+- **Apple Developer Program is now Active** — the "pending" blocker from last session cleared. User has device-registered and can now run `eas-cli build --profile preview --platform ios` for a real installable build.
+- **Monetization (IP-22 epic), all 3 sub-tasks in progress**, per the user choosing "RevenueCat + native IAP" as the billing approach:
+  - Installed `react-native-purchases` (v10.10.2) — a native module like Google Sign-In/GPS/Maps before it, so **one more `eas build` is needed** before this is testable on-device (bundle it into the same build as the pending device build so it's not a second round-trip).
+  - New `contexts/PurchasesContext.tsx`: RevenueCat configure/login keyed to the Firebase uid, `customerInfo` listener, offerings fetch, `purchasePackage()`/`restorePurchases()`. Follows the exact same Expo-Go-safety pattern as `AuthContext`'s Google Sign-In (dynamic `import()`, plain-JS availability check) so importing it doesn't crash the shared Expo Go preview. `isPro` derives from the RevenueCat `pro` entitlement.
+  - New `app/paywall.tsx`: monthly/annual pricing cards (live from RevenueCat offerings when configured, static $9.99/mo · $79.99/yr fallback otherwise), feature list (AI workout details live now; wearable sync/advanced analytics/unlimited custom workouts/data export listed as coming soon since those features don't exist standalone yet), Restore Purchases.
+  - **First real gate wired end-to-end**: AI-generated workout details (`app/workout/new.tsx`'s "Generate with AI" step) now skip for non-Pro users instead of calling the Cloud Function — the workout detail screen's banner (`app/workout/[id]/index.tsx`) shows an "Upgrade to Pro" prompt linking to `/paywall` in that case, reusing the existing banner UI pattern (dismissible, same style as the AI-success/AI-failed states).
+  - **Server-side enforcement**: `functions/src/index.ts` gained `isProSubscriber(uid, secret)`, which calls RevenueCat's REST subscriber API directly (not just trusting the client's `isPro`) and is wired into `generateWorkoutDetails`. Deliberately **fails open** (skips the check) while the new `REVENUECAT_SECRET_KEY` secret is unset — doesn't break the feature for anyone until RevenueCat is actually configured and the secret is deliberately set.
+  - **Still needed, all account-setup steps only the project owner can do**: create a free RevenueCat project for `com.aidand510.ironpillar`, add an entitlement named exactly `pro`, set `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`/`_ANDROID_API_KEY` in `.env`; create the actual subscription products in App Store Connect (unblocked now that the Apple Developer Program is Active) and mirror them as a RevenueCat Offering; `firebase functions:secrets:set REVENUECAT_SECRET_KEY` once RevenueCat's secret key exists.
+  - **Verified**: full TypeScript typecheck clean, both app and `functions`. **Not live-verified** — can't be, until the native rebuild + RevenueCat/App Store Connect setup above happen. Jira: IP-26/IP-27/IP-28 moved to In Progress with detailed setup-blocker comments on each.
+- **Nav bar drop shadow**: `components/FloatingTabBar.tsx`'s floating pill now casts a real shadow (`elevation` for Android, `shadow*` for iOS) — same treatment already used on the bug-report FAB — so it reads as floating above page content instead of blending into it.
+- Wearables (IP-23) and bug-triage automation (IP-33) work queued next per user's stated priority order (Monetization first).
+
+---
+
 ## 2026-09-26 — Google Maps key wired up; found + fixed a real "Outdoor Walk" bug; redesigned tracking screen
 
 - **Google Maps API key**: confirmed the key already in `app.json` is real (tied to an actual Google Cloud project, not a placeholder — verified by a direct Geocoding API test call, which returned a legitimate "API not enabled" error rather than an invalid-key error). User enabled Maps SDK for Android and added an Android application restriction (package `com.aidand510.ironpillar` + the SHA-1 pulled fresh from the EAS-managed keystore via `eas credentials`). iOS needs no key at all (Apple Maps).

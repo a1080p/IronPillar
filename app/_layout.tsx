@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BugReportButton } from '../components/BugReportButton';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { PurchasesProvider } from '../contexts/PurchasesContext';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
 
 function RootNavigation() {
@@ -53,8 +54,10 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <RootNavigation />
-          <RootStatusBar />
+          <PurchasesProvider>
+            <RootNavigation />
+            <RootStatusBar />
+          </PurchasesProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

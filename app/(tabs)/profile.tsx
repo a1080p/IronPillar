@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState, type ReactNode } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { TopBar } from '../../components/TopBar';
@@ -13,6 +13,8 @@ import { levelForXp, xpIntoLevel, XP_PER_LEVEL } from '../../constants/gamificat
 import { useAuth } from '../../contexts/AuthContext';
 import { useWorkoutLogs } from '../../hooks/useWorkoutLogs';
 import { useEarnedBadges } from '../../hooks/useEarnedBadges';
+import { useWearableSnapshot } from '../../hooks/useWearableSnapshot';
+import { connectWhoop, disconnectWhoop, isWhoopConfigured, syncWhoop } from '../../lib/whoop';
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
@@ -90,8 +92,123 @@ export default function ProfileScreen() {
             ))}
           </View>
         )}
+
+        <WearablesSection uid={user.uid} />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function WearablesSection({ uid }: { uid: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  const { snapshot } = useWearableSnapshot(uid);
+  const [busy, setBusy] = useState(false);
+  const connected = !!snapshot?.connected;
+
+  const handleConnect = async () => {
+    setBusy(true);
+    try {
+      await connectWhoop();
+    } catch (e) {
+      Alert.alert('Could not connect WHOOP', e instanceof Error ? e.message : 'Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setBusy(true);
+    try {
+      await syncWhoop();
+    } catch (e) {
+      Alert.alert('Sync failed', e instanceof Error ? e.message : 'Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setBusy(true);
+    try {
+      await disconnectWhoop();
+    } catch (e) {
+      Alert.alert('Could not disconnect', e instanceof Error ? e.message : 'Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const hasStats =
+    snapshot?.recoveryScore != null || snapshot?.sleepPerformancePct != null || snapshot?.dayStrain != null;
+
+  return (
+    <>
+      <Text style={styles.sectionHeading}>Wearables</Text>
+      {!isWhoopConfigured ? (
+        <Text style={styles.note}>WHOOP isn't set up on this build yet.</Text>
+      ) : connected ? (
+        <View style={styles.wearableCard}>
+          <View style={styles.wearableHeader}>
+            <Text style={styles.wearableTitle}>WHOOP</Text>
+            <Text style={styles.wearableConnected}>Connected</Text>
+          </View>
+          {hasStats && (
+            <View style={styles.wearableStatsRow}>
+              {snapshot?.recoveryScore != null && (
+                <WearableStat label="Recovery" value={`${Math.round(snapshot.recoveryScore)}%`} />
+              )}
+              {snapshot?.hrvMs != null && (
+                <WearableStat label="HRV" value={`${Math.round(snapshot.hrvMs)}ms`} />
+              )}
+              {snapshot?.sleepPerformancePct != null && (
+                <WearableStat label="Sleep" value={`${Math.round(snapshot.sleepPerformancePct)}%`} />
+              )}
+              {snapshot?.dayStrain != null && (
+                <WearableStat label="Strain" value={snapshot.dayStrain.toFixed(1)} />
+              )}
+            </View>
+          )}
+          <View style={styles.wearableActions}>
+            <Text
+              style={styles.wearableAction}
+              onPress={busy ? undefined : handleSync}
+              accessibilityRole="button"
+            >
+              {busy ? 'Working...' : 'Sync now'}
+            </Text>
+            <Text
+              style={styles.wearableActionMuted}
+              onPress={busy ? undefined : handleDisconnect}
+              accessibilityRole="button"
+            >
+              Disconnect
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <Pressable
+          style={styles.connectButton}
+          onPress={handleConnect}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Connect WHOOP"
+        >
+          <Text style={styles.connectButtonLabel}>{busy ? 'Connecting...' : 'Connect WHOOP'}</Text>
+        </Pressable>
+      )}
+    </>
+  );
+}
+
+function WearableStat({ label, value }: { label: string; value: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  return (
+    <View style={styles.wearableStat}>
+      <Text style={styles.wearableStatValue}>{value}</Text>
+      <Text style={styles.wearableStatLabel}>{label}</Text>
+    </View>
   );
 }
 
@@ -166,4 +283,28 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.xs,
   },
   badgeName: { fontSize: typography.sizes.small, color: colors.text, textAlign: 'center' },
+  connectButton: {
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  connectButtonLabel: { color: colors.primary, fontWeight: '700' },
+  wearableCard: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  wearableHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  wearableTitle: { fontWeight: '700', color: colors.text },
+  wearableConnected: { color: colors.success, fontWeight: '700', fontSize: typography.sizes.small },
+  wearableStatsRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  wearableStat: { alignItems: 'center' },
+  wearableStatValue: { fontWeight: '700', color: colors.primary, fontSize: typography.sizes.body },
+  wearableStatLabel: { fontSize: typography.sizes.small, color: colors.textMuted },
+  wearableActions: { flexDirection: 'row', justifyContent: 'space-between' },
+  wearableAction: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.small },
+  wearableActionMuted: { color: colors.textMuted, fontWeight: '600', fontSize: typography.sizes.small },
 });

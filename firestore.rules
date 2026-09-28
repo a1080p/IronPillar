@@ -111,6 +111,24 @@ service cloud.firestore {
         && request.resource.data.status == 'new';
     }
 
+    // WHOOP (and future wearable) OAuth access/refresh tokens — never
+    // exposed to the client. Written only by the exchangeWhoopCode /
+    // syncWhoopData / disconnectWhoop Cloud Functions via the Admin SDK,
+    // which bypasses these rules entirely.
+    match /wearableTokens/{uid} {
+      allow read, write: if false;
+    }
+
+    // Non-sensitive connection status + latest synced snapshot (recovery
+    // score, HRV, resting HR, sleep performance, day strain) — safe for the
+    // owner to read for display, but only ever written by the same Cloud
+    // Functions above, so a raw client write can't fake a connection or
+    // spoof wearable data (same pattern as xp/streakCount on users/{uid}).
+    match /wearableSnapshots/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
     // Everything else is denied until its collection is built (build steps 9+)
     // and gets its own explicit rule here.
   }

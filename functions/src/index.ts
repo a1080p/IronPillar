@@ -19,6 +19,27 @@ const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
 // a demo; a verified custom domain is only needed before a real launch.
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 const VERIFICATION_EMAIL_FROM = 'Iron Pillar <onboarding@resend.dev>';
+
+// Set with: firebase functions:secrets:set REVENUECAT_SECRET_KEY
+// Get it from the RevenueCat dashboard (Project Settings > API Keys > Secret
+// key), once a RevenueCat project + "pro" entitlement exist. Left unset,
+// generateWorkoutDetails below skips the Pro check entirely — the feature
+// keeps working for everyone exactly as it did before, until this secret is
+// deliberately configured to turn enforcement on.
+const REVENUECAT_SECRET_KEY = defineSecret('REVENUECAT_SECRET_KEY');
+const PRO_ENTITLEMENT_ID = 'pro';
+
+// Set with: firebase functions:secrets:set WHOOP_CLIENT_ID
+//           firebase functions:secrets:set WHOOP_CLIENT_SECRET
+// From the WHOOP Developer Dashboard (developer.whoop.com) once an app is
+// registered there. The client ID isn't secret by OAuth convention (it's
+// also sent from the app as EXPO_PUBLIC_WHOOP_CLIENT_ID to build the
+// authorization URL), but is kept as a Functions secret too so the token
+// exchange/refresh calls below don't need a second source of truth for it.
+const WHOOP_CLIENT_ID = defineSecret('WHOOP_CLIENT_ID');
+const WHOOP_CLIENT_SECRET = defineSecret('WHOOP_CLIENT_SECRET');
+const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
+const WHOOP_API_BASE = 'https://api.prod.whoop.com/developer/v2';
 const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
 const VERIFICATION_RESEND_COOLDOWN_MS = 30 * 1000;
 const VERIFICATION_MAX_ATTEMPTS = 5;
@@ -510,8 +531,29 @@ function cleanInfoSections(value: unknown): { heading: string; bullets: string[]
     .filter((s) => s.heading && s.bullets.length > 0);
 }
 
+// Looks up whether a user currently holds the "pro" RevenueCat entitlement.
+// Fails closed on a clean "not entitled" answer from RevenueCat, but fails
+// *open* (throws, caller decides) on a network/API error — a RevenueCat
+// outage shouldn't silently lock every user out of a feature they're paying
+// for, but it also shouldn't silently unlock it for free.
+async function isProSubscriber(uid: string, secretValue: string): Promise<boolean> {
+  const res = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(uid)}`, {
+    headers: { Authorization: `Bearer ${secretValue}` },
+  });
+  if (!res.ok) {
+    throw new HttpsError('internal', 'Could not verify subscription status. Try again.');
+  }
+  const data = (await res.json()) as {
+    subscriber?: { entitlements?: Record<string, { expires_date: string | null }> };
+  };
+  const entitlement = data.subscriber?.entitlements?.[PRO_ENTITLEMENT_ID];
+  if (!entitlement) return false;
+  if (!entitlement.expires_date) return true; // lifetime/non-expiring grant
+  return new Date(entitlement.expires_date).getTime() > Date.now();
+}
+
 export const generateWorkoutDetails = onCall(
-  { secrets: [ANTHROPIC_API_KEY] },
+  { secrets: [ANTHROPIC_API_KEY, REVENUECAT_SECRET_KEY] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -521,6 +563,17 @@ export const generateWorkoutDetails = onCall(
       throw new HttpsError('invalid-argument', 'Malformed generate-details payload.');
     }
     const { name, exercises } = request.data;
+
+    // AI-generated workout details are a Pro feature (see app/paywall.tsx).
+    // Skipped entirely while REVENUECAT_SECRET_KEY is unset, so this doesn't
+    // break the feature before RevenueCat is actually configured.
+    const revenueCatSecret = REVENUECAT_SECRET_KEY.value();
+    if (revenueCatSecret) {
+      const isPro = await isProSubscriber(uid, revenueCatSecret);
+      if (!isPro) {
+        throw new HttpsError('permission-denied', 'Upgrade to Pro to generate AI workout details.');
+      }
+    }
 
     const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
 
@@ -676,4 +729,195 @@ export const verifyEmailCode = onCall(async (request) => {
   await codeRef.delete();
 
   return { verified: true };
+});
+
+// ---------------------------------------------------------------------------
+// WHOOP wearable integration (IP-30)
+// ---------------------------------------------------------------------------
+
+interface WhoopTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+}
+
+interface WhoopRecoveryRecord {
+  score?: {
+    recovery_score?: number;
+    hrv_rmssd_milli?: number;
+    resting_heart_rate?: number;
+  };
+}
+interface WhoopSleepRecord {
+  score?: { sleep_performance_percentage?: number };
+}
+interface WhoopCycleRecord {
+  score?: { strain?: number };
+}
+interface WhoopCollection<T> {
+  records?: T[];
+}
+
+async function whoopTokenRequest(params: Record<string, string>): Promise<WhoopTokenResponse> {
+  const res = await fetch(WHOOP_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params).toString(),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new HttpsError('internal', `WHOOP token request failed: ${detail || res.status}`);
+  }
+  return (await res.json()) as WhoopTokenResponse;
+}
+
+async function whoopGet<T>(accessToken: string, path: string): Promise<T> {
+  const res = await fetch(`${WHOOP_API_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    throw new HttpsError('internal', `WHOOP API request failed (${res.status}) for ${path}`);
+  }
+  return (await res.json()) as T;
+}
+
+async function storeWhoopTokens(uid: string, tokens: WhoopTokenResponse) {
+  await db.collection('wearableTokens').doc(uid).set(
+    {
+      provider: 'whoop',
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiresAt: Date.now() + tokens.expires_in * 1000,
+    },
+    { merge: true }
+  );
+}
+
+// Returns a valid (non-expired) WHOOP access token for a user, refreshing it
+// first if it's expired or within 60s of expiring. Throws if the user never
+// connected WHOOP at all.
+async function getValidWhoopAccessToken(uid: string): Promise<string> {
+  const snap = await db.collection('wearableTokens').doc(uid).get();
+  if (!snap.exists) {
+    throw new HttpsError('failed-precondition', 'WHOOP is not connected for this account.');
+  }
+  const data = snap.data()!;
+  if (Date.now() < (data.expiresAt as number) - 60_000) {
+    return data.accessToken as string;
+  }
+  const refreshed = await whoopTokenRequest({
+    grant_type: 'refresh_token',
+    refresh_token: data.refreshToken as string,
+    client_id: WHOOP_CLIENT_ID.value(),
+    client_secret: WHOOP_CLIENT_SECRET.value(),
+  });
+  await storeWhoopTokens(uid, refreshed);
+  return refreshed.access_token;
+}
+
+// Pulls the latest recovery/sleep/cycle records and writes a display-ready
+// snapshot to wearableSnapshots/{uid}. Best-effort per metric — a WHOOP
+// account with no recovery/sleep/cycle data yet (e.g. day one) shouldn't fail
+// the whole sync over one missing record type.
+async function performWhoopSync(uid: string): Promise<void> {
+  const accessToken = await getValidWhoopAccessToken(uid);
+
+  const [recovery, sleep, cycle] = await Promise.all([
+    whoopGet<WhoopCollection<WhoopRecoveryRecord>>(accessToken, '/recovery?limit=1').catch(() => null),
+    whoopGet<WhoopCollection<WhoopSleepRecord>>(accessToken, '/activity/sleep?limit=1').catch(() => null),
+    whoopGet<WhoopCollection<WhoopCycleRecord>>(accessToken, '/cycle?limit=1').catch(() => null),
+  ]);
+
+  const recoveryRecord = recovery?.records?.[0];
+  const sleepRecord = sleep?.records?.[0];
+  const cycleRecord = cycle?.records?.[0];
+
+  const snapshot: Record<string, unknown> = {
+    provider: 'whoop',
+    connected: true,
+    lastSyncedAt: new Date().toISOString(),
+  };
+  if (recoveryRecord?.score) {
+    snapshot.recoveryScore = recoveryRecord.score.recovery_score;
+    snapshot.hrvMs = recoveryRecord.score.hrv_rmssd_milli;
+    snapshot.restingHeartRateBpm = recoveryRecord.score.resting_heart_rate;
+  }
+  if (sleepRecord?.score) {
+    snapshot.sleepPerformancePct = sleepRecord.score.sleep_performance_percentage;
+  }
+  if (cycleRecord?.score) {
+    snapshot.dayStrain = cycleRecord.score.strain;
+  }
+
+  await db.collection('wearableSnapshots').doc(uid).set(snapshot, { merge: true });
+}
+
+// Exchanges an OAuth authorization code (from the client's expo-auth-session
+// flow) for WHOOP tokens, stores them server-side, and runs an initial sync
+// so the user sees real data immediately after connecting.
+export const exchangeWhoopCode = onCall(
+  { secrets: [WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET] },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError('unauthenticated', 'Must be signed in to connect WHOOP.');
+    }
+    const { code, redirectUri } = (request.data ?? {}) as { code?: string; redirectUri?: string };
+    if (!code || !redirectUri) {
+      throw new HttpsError('invalid-argument', 'Missing code or redirectUri.');
+    }
+
+    const tokens = await whoopTokenRequest({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri,
+      client_id: WHOOP_CLIENT_ID.value(),
+      client_secret: WHOOP_CLIENT_SECRET.value(),
+    });
+    await storeWhoopTokens(uid, tokens);
+    await db
+      .collection('wearableSnapshots')
+      .doc(uid)
+      .set(
+        { provider: 'whoop', connected: true, connectedAt: new Date().toISOString() },
+        { merge: true }
+      );
+
+    try {
+      await performWhoopSync(uid);
+    } catch (e) {
+      // The connection itself still succeeded even if the first sync didn't
+      // (e.g. a brand-new WHOOP account with no recovery data yet) — don't
+      // fail the whole connect flow over that.
+      console.warn('Initial WHOOP sync failed', e);
+    }
+
+    return { connected: true };
+  }
+);
+
+// Callable so the client can trigger a manual "Sync now".
+export const syncWhoopData = onCall(
+  { secrets: [WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET] },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError('unauthenticated', 'Must be signed in to sync WHOOP data.');
+    }
+    await performWhoopSync(uid);
+    return { synced: true };
+  }
+);
+
+export const disconnectWhoop = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError('unauthenticated', 'Must be signed in.');
+  }
+  await db.collection('wearableTokens').doc(uid).delete();
+  await db
+    .collection('wearableSnapshots')
+    .doc(uid)
+    .set({ provider: 'whoop', connected: false }, { merge: true });
+  return { disconnected: true };
 });

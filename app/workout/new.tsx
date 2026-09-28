@@ -8,6 +8,7 @@ import { WorkoutHeader } from '../../components/WorkoutHeader';
 import { radii, spacing, typography } from '../../constants/theme';
 import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePurchases } from '../../contexts/PurchasesContext';
 import { createCustomWorkout } from '../../hooks/useCustomWorkouts';
 import { generateWorkoutDetails } from '../../lib/workoutDetails';
 import type { ExerciseSpec, GeneratedWorkoutDetails } from '../../types/models';
@@ -18,6 +19,7 @@ export default function NewWorkoutScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { user } = useAuth();
+  const { isPro } = usePurchases();
   const [workoutName, setWorkoutName] = useState('');
   const [exercises, setExercises] = useState<ExerciseSpec[]>([]);
 
@@ -69,19 +71,26 @@ export default function NewWorkoutScreen() {
 
     // Let AI fill in the overview / time / calories / equipment / tips. This is
     // best-effort — if it fails, the workout still saves without those extras
-    // and the detail screen surfaces a "couldn't generate" note.
-    setSavingStatus('Generating workout details with AI...');
+    // and the detail screen surfaces a "couldn't generate" note. Pro-only: the
+    // Cloud Function itself also enforces this once a RevenueCat secret key is
+    // configured, so a client bypass alone can't unlock it either.
     let details: GeneratedWorkoutDetails | null = null;
-    try {
-      details = await generateWorkoutDetails(workoutName.trim(), exercises);
-    } catch (e) {
-      console.warn('generateWorkoutDetails failed', e);
+    let generatedParam: '1' | 'failed' | 'locked' = 'locked';
+    if (isPro) {
+      setSavingStatus('Generating workout details with AI...');
+      try {
+        details = await generateWorkoutDetails(workoutName.trim(), exercises);
+        generatedParam = details ? '1' : 'failed';
+      } catch (e) {
+        console.warn('generateWorkoutDetails failed', e);
+        generatedParam = 'failed';
+      }
     }
 
     setSavingStatus('Saving...');
     try {
       const id = await createCustomWorkout(user.uid, workoutName.trim(), exercises, details);
-      router.replace(`/workout/${id}?generated=${details ? '1' : 'failed'}`);
+      router.replace(`/workout/${id}?generated=${generatedParam}`);
     } catch (e) {
       Alert.alert('Could not save workout', e instanceof Error ? e.message : 'Try again.');
       setSaving(false);

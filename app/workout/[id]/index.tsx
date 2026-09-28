@@ -25,7 +25,8 @@ export default function WorkoutDetailScreen() {
 
   const isOwnCustom =
     !!template && template.category === 'custom' && template.createdBy === user?.uid;
-  const showBanner = !bannerDismissed && (generated === '1' || generated === 'failed');
+  const showBanner =
+    !bannerDismissed && (generated === '1' || generated === 'failed' || generated === 'locked');
   // Flattened, deduped list of equipment items so what's needed is visible up
   // front, not just in the Equipment tab. Prefers "Essential Equipment"-style
   // sections over alternates/troubleshooting bullets, which read oddly out of
@@ -68,12 +69,21 @@ export default function WorkoutDetailScreen() {
         <Text style={styles.title}>{template.name}</Text>
 
         {showBanner && (
-          <View style={[styles.banner, generated === 'failed' && styles.bannerWarn]}>
-            <Text style={styles.bannerText}>
-              {generated === 'failed'
-                ? "Couldn't auto-generate details this time. Add them with Edit Details."
-                : 'Overview, time, calories, equipment and tips were filled in by AI. Tap Edit Details to tweak them.'}
-            </Text>
+          <View style={[styles.banner, generated !== '1' && styles.bannerWarn]}>
+            {generated === 'locked' ? (
+              <Pressable style={styles.bannerTextWrap} onPress={() => router.push('/paywall')}>
+                <Text style={styles.bannerText}>
+                  AI-generated overview, tips, equipment and calories are a Pro feature.{' '}
+                  <Text style={styles.bannerLink}>Upgrade to Pro</Text>
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.bannerText}>
+                {generated === 'failed'
+                  ? "Couldn't auto-generate details this time. Add them with Edit Details."
+                  : 'Overview, time, calories, equipment and tips were filled in by AI. Tap Edit Details to tweak them.'}
+              </Text>
+            )}
             <Pressable
               onPress={() => setBannerDismissed(true)}
               hitSlop={12}
@@ -210,7 +220,9 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.lg,
   },
   bannerWarn: { backgroundColor: colors.warningBg },
+  bannerTextWrap: { flex: 1 },
   bannerText: { flex: 1, color: colors.text, fontSize: typography.sizes.small, lineHeight: 18 },
+  bannerLink: { color: colors.primary, fontWeight: '700' },
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, marginBottom: spacing.md },
   equipmentSummary: {
     backgroundColor: colors.surfaceMuted,

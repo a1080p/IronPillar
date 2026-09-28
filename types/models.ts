@@ -162,3 +162,21 @@ export interface BugReport {
   jiraKey?: string;
   createdAt: string; // ISO timestamp
 }
+
+export type WearableProvider = 'whoop';
+
+// Non-sensitive connection status + latest synced metrics for a wearable
+// integration — safe for the client to read directly (see firestore.rules).
+// The actual OAuth access/refresh tokens live in a separate, fully
+// server-only `wearableTokens/{uid}` doc that this type never represents.
+export interface WearableSnapshot {
+  provider: WearableProvider;
+  connected: boolean;
+  connectedAt?: string; // ISO timestamp
+  lastSyncedAt?: string; // ISO timestamp
+  recoveryScore?: number; // 0-100
+  hrvMs?: number;
+  restingHeartRateBpm?: number;
+  sleepPerformancePct?: number; // 0-100
+  dayStrain?: number; // WHOOP's 0-21 strain scale
+}
