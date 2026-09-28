@@ -267,11 +267,24 @@ export default function HomeScreen() {
 function OutdoorActivityCard({ activityType }: { activityType: OutdoorActivityType }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
+  const label = OUTDOOR_ACTIVITY_LABELS[activityType];
+
+  const handlePress = () => {
+    // Tapping straight into GPS tracking + a location-permission prompt from
+    // a single tap on a small card was too easy to trigger by accident — a
+    // quick confirm gives a misclick an easy way out before anything starts.
+    Alert.alert(`Start a ${label}?`, 'This begins GPS tracking right away.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Start',
+        onPress: () =>
+          router.push({ pathname: '/workout/outdoor/track', params: { activityType } }),
+      },
+    ]);
+  };
+
   return (
-    <Pressable
-      style={styles.quickCard}
-      onPress={() => router.push({ pathname: '/workout/outdoor/track', params: { activityType } })}
-    >
+    <Pressable style={styles.quickCard} onPress={handlePress}>
       <View style={styles.quickCardHeader}>
         <Ionicons
           name={activityType === 'bike' ? 'bicycle' : 'walk'}

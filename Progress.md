@@ -4,6 +4,21 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-28 (even later) — Worked through 5 real bug reports from live device testing; onboarding tour fixes
+
+- **First real signal from the physical iPhone build**: user filed 5 in-app bug reports while testing today's install. Triaged all 5 via `scripts/triage-bug-reports.ts` (built earlier today, first real use) — 4 were genuine bugs, fixed and shipped; 1 was a stale-data artifact from an already-fixed issue.
+  - **IP-39**: outdoor-tracking result stats read as cramped — widened gaps between stat blocks and between each value/label pair (`app/workout/outdoor/track.tsx`).
+  - **IP-40**: bug-report modal's text box couldn't be tapped out of without closing the whole form — `components/BugReportButton.tsx` now wraps in `KeyboardAvoidingView` and tapping the card (not the input) calls `Keyboard.dismiss()` instead of closing the modal; only the true backdrop closes it now.
+  - **IP-41**: tapping an outdoor activity card started GPS tracking (and the location-permission prompt) instantly, with no misclick protection — added a confirm `Alert` ("Start a Walk? This begins GPS tracking right away.") before navigating, in `app/(tabs)/index.tsx`.
+  - **IP-42**: Recent Workouts repeated the same outdoor activity every time it was logged — `lib/recentWorkouts.ts`'s dedupe keyed on `workoutId`, but outdoor sessions get a fresh synthetic id every time; now keys outdoor logs on `activityType` instead, so "Walk" shows once.
+  - **Dismissed** (not a new bug): a report about `/workout/outdoor-walk` being broken — this is the legacy template collision already root-caused and fixed on 2026-09-26 (commit `72d5697`); the report is a stale Recent Workouts card from before that fix. Also improved the generic "workout not found" fallback screen (`app/workout/[id]/index.tsx`) to explain what happened and add a "Back to Home" button, regardless of cause.
+  - All 4 real bugs filed as Jira issues (IP-39–42, created directly in Done since the fix shipped alongside triage) and their `bugReports` docs updated to `status: 'fixed'` with the matching `jiraKey`.
+- **Onboarding/app-tour fixes** (`components/AppTour.tsx`, the Home-screen spotlight walkthrough, not the auth sign-up onboarding): added a blue outline to the tooltip box (`colors.border`), a cross-fade between steps (`Animated.Value` tied to highlight-rect readiness) instead of an instant snap, and fixed the tooltip overlapping the highlighted element — root cause was a fixed ~190px "place above" offset that didn't account for the tooltip's real rendered height, which broke specifically for the nav-bar step (longest description, element pinned near the bottom). Tooltip now measures its own height via `onLayout` and picks above/below using real, safe-area-aware available space.
+- **Verified**: full TypeScript typecheck clean after every change. Not yet live-verified on device — next real-device pass should confirm all 5.
+- New standing preference noted: commit + push after every round of changes, without waiting for a separate ask.
+
+---
+
 ## 2026-09-28 (later) — WHOOP wearable integration (OAuth, sync, Profile UI)
 
 - **Confirmed exact WHOOP API v2 details against their live docs before writing any code** (auth/token endpoints, scopes, redirect URI formats, response field paths for recovery/sleep/cycle) rather than relying on the general research from the 2026-09-24 entry, since that was a scoping pass, not an implementation-accurate spec.

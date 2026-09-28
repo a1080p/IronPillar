@@ -57,7 +57,13 @@ export default function WorkoutDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <WorkoutHeader />
-        <Text style={styles.loading}>Workout not found.</Text>
+        <View style={styles.notFoundBody}>
+          <Text style={styles.loading}>
+            This workout is no longer available — it may have been removed or renamed since you
+            last logged it.
+          </Text>
+          <Button label="Back to Home" onPress={() => router.replace('/')} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -208,6 +214,7 @@ function InfoBlock({ section }: { section: InfoSection }) {
 const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loading: { textAlign: 'center', marginTop: spacing.xl, color: colors.textMuted },
+  notFoundBody: { flex: 1, padding: spacing.lg, justifyContent: 'center', gap: spacing.lg },
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   title: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, marginBottom: spacing.md },
   banner: {

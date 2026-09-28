@@ -4,7 +4,10 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -74,8 +77,22 @@ export function BugReportButton({ uid }: { uid: string }) {
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+        <KeyboardAvoidingView
+          style={styles.backdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+        <Pressable style={styles.backdropTouch} onPress={() => setOpen(false)}>
+          {/* Tapping inside the card (but outside the input/chips/buttons)
+              only dismisses the keyboard, not the whole modal — previously
+              the only way to get the keyboard out of the way was the
+              backdrop tap above, which closed the report entirely. */}
+          <Pressable
+            style={styles.card}
+            onPress={(e) => {
+              e.stopPropagation();
+              Keyboard.dismiss();
+            }}
+          >
             <Text style={styles.title}>Report an issue</Text>
             <Text style={styles.subtitle}>On: {pathname}</Text>
 
@@ -126,6 +143,7 @@ export function BugReportButton({ uid }: { uid: string }) {
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );
@@ -153,9 +171,12 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   backdrop: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  backdropTouch: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
     padding: spacing.lg,
   },
   card: {
