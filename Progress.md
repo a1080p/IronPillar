@@ -4,6 +4,19 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-28 (night) — App Store Connect listing filled in
+
+Filled in the Iron Pillar App Store Connect record (app ID 6817053711) via the browser, all saved:
+- **Version 1.0 page**: promotional text, full description (only features that actually ship — WHOOP and the paywall's "coming soon" items deliberately left out so App Review doesn't flag advertised-but-missing features; includes the auto-renewal disclosure + Apple standard EULA link that subscription apps need), keywords, copyright, App Review notes (explains sign-in, background location use, and how to reach the paywall).
+- **App Information**: subtitle "Workout Tracker & Streaks", category Health & Fitness / Sports, content rights (no third-party content), age rating questionnaire → **9+**, declared not a regulated medical device.
+- **Pricing & Availability**: free app, all 175 countries/regions.
+- **Subscriptions** (group "Iron Pillar Pro", created earlier by the user): both `ironpillar_pro_monthly` ($9.99) and `ironpillar_pro_Yearly` ($79.99 — note the capital Y, product IDs are permanent, RevenueCat must match exactly) now have availability, pricing, display names, and review notes.
+- **App Privacy**: all 11 collected data types declared from what the code actually collects (name, email, health, fitness, precise location, photos, customer support, other user content, user ID, purchases, other data e.g. birthday/sex) — all App Functionality (fitness also Product Personalization), all linked to identity, none used for tracking. **Not published yet** — Apple requires a Privacy Policy URL first.
+
+**Still needed from the account owner** (not things Claude should enter): App Store screenshots + a paywall screenshot for each subscription's review info, a hosted Privacy Policy URL + Support URL, App Review contact phone number + demo account credentials, Paid Apps Agreement + banking/tax, EU trader status (DSA), a production build uploaded via `eas build --profile production` + `eas submit`, and the App-Specific Shared Secret for RevenueCat. Also: `app.json` has `supportsTablet: true`, which makes iPad screenshots mandatory too — worth turning off unless iPad is intentionally supported.
+
+---
+
 ## 2026-09-28 (even later) — Worked through 5 real bug reports from live device testing; onboarding tour fixes
 
 - **First real signal from the physical iPhone build**: user filed 5 in-app bug reports while testing today's install. Triaged all 5 via `scripts/triage-bug-reports.ts` (built earlier today, first real use) — 4 were genuine bugs, fixed and shipped; 1 was a stale-data artifact from an already-fixed issue.
