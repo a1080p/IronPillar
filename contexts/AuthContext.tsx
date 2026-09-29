@@ -102,7 +102,7 @@ interface AuthContextValue {
       | 'heightInches'
       | 'startingWeightLb'
     > &
-      Partial<Pick<UserProfile, 'avatarKey' | 'avatarUrl'>>
+      Partial<Pick<UserProfile, 'avatarKey' | 'avatarUrl' | 'units'>>
   ) => Promise<void>;
   updateProfile: (
     data: Partial<
@@ -299,6 +299,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         startingWeightLb,
         avatarKey,
         avatarUrl,
+        units,
       }) {
         if (!user) throw new Error('Must be signed in to create a profile');
         const ref = doc(db, 'users', user.uid);
@@ -337,6 +338,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             friendCount: 0,
             createdAt: new Date().toISOString(),
           };
+          if (units) newProfile.units = units;
           if (avatarUrl) newProfile.avatarUrl = avatarUrl;
           else if (avatarKey) newProfile.avatarKey = avatarKey;
           tx.set(ref, newProfile);

@@ -52,3 +52,17 @@ export function formatVolume(lb: number, u: UnitSystem): string {
   const n = v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k` : String(Math.round(v));
   return `${n} ${weightUnit(u)}`;
 }
+
+// First-run default before the user chooses: imperial where it's the everyday
+// system (US, Liberia, Myanmar), metric everywhere else.
+export function defaultUnitsForDevice(): UnitSystem {
+  try {
+    const locale = Intl.DateTimeFormat().resolvedOptions().locale; // e.g. "en-US"
+    const region = locale.split(/[-_]/)[1]?.toUpperCase();
+    return region === 'US' || region === 'LR' || region === 'MM' ? 'imperial' : 'metric';
+  } catch {
+    return 'imperial';
+  }
+}
+
+export const CM_PER_INCH = 2.54;

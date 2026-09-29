@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
-import type { ExperienceLevel, FitnessGoal, Sex } from '../types/models';
+import type { ExperienceLevel, FitnessGoal, Sex, UnitSystem } from '../types/models';
+import { defaultUnitsForDevice } from '../lib/units';
 
 interface OnboardingData {
   name: string;
@@ -7,6 +8,7 @@ interface OnboardingData {
   sex: Sex | null;
   heightInches: number | null;
   startingWeightLb: number | null;
+  units: UnitSystem;
   goals: FitnessGoal[];
   experienceLevel: ExperienceLevel | null;
   avatarKey: string | null;
@@ -16,7 +18,7 @@ interface OnboardingData {
 interface OnboardingContextValue {
   data: OnboardingData;
   setNameBirthday: (name: string, birthday: string) => void;
-  setBody: (sex: Sex, heightInches: number, startingWeightLb: number) => void;
+  setBody: (sex: Sex, heightInches: number, startingWeightLb: number, units: UnitSystem) => void;
   toggleGoal: (goal: FitnessGoal) => void;
   setExperienceLevel: (level: ExperienceLevel) => void;
   // A picked photo and a preset icon/color key are mutually exclusive —
@@ -35,6 +37,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     sex: null,
     heightInches: null,
     startingWeightLb: null,
+    units: defaultUnitsForDevice(),
     goals: [],
     experienceLevel: null,
     avatarKey: null,
@@ -44,8 +47,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const value: OnboardingContextValue = {
     data,
     setNameBirthday: (name, birthday) => setData((d) => ({ ...d, name, birthday })),
-    setBody: (sex, heightInches, startingWeightLb) =>
-      setData((d) => ({ ...d, sex, heightInches, startingWeightLb })),
+    setBody: (sex, heightInches, startingWeightLb, units) =>
+      setData((d) => ({ ...d, sex, heightInches, startingWeightLb, units })),
     toggleGoal: (goal) =>
       setData((d) => ({
         ...d,

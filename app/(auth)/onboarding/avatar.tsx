@@ -39,6 +39,7 @@ export default function AvatarScreen() {
         sex: data.sex,
         heightInches: data.heightInches,
         startingWeightLb: data.startingWeightLb,
+        units: data.units,
         avatarKey: avatarUrl ? undefined : data.avatarKey ?? undefined,
         avatarUrl,
       });
