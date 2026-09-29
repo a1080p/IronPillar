@@ -4,6 +4,15 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-28 (late night) — Account deletion now removes avatar + WHOOP data
+
+- **Gap found**: `deleteAccount` (`functions/src/index.ts`) didn't remove three pieces of user data, even though `website/privacy.html` says deleting your account removes your data: the profile photo in Storage (`avatars/<uid>`, uploaded by `lib/avatar.ts`), `wearableTokens/{uid}` (WHOOP OAuth access/refresh tokens), and `wearableSnapshots/{uid}` (WHOOP metrics).
+- **Fix**: `deleteAccount` now deletes both WHOOP docs and calls a new `deleteAvatar(uid)` helper. The helper deletes `avatars/<uid>` with `ignoreNotFound` (users who never set a photo have nothing there) and also sweeps any `avatars/<uid>/...` objects. All three deletes run before the Auth user is removed. `bugReports` are **kept on purpose**, since the privacy policy says bug reports may be retained, and there's now a code comment saying so.
+- **Corrected a misleading comment**: the `REVENUECAT_SECRET_KEY` comments said the Pro check "fails open" while the secret is unset. That can't happen in production: a secret declared with `defineSecret` has to exist in Secret Manager or `firebase deploy --only functions` refuses to deploy. A placeholder value doesn't work as an off switch either, because RevenueCat rejects it and every generate call fails. The empty-value skip only matters in local/emulator runs, and the comments now say that.
+- **Verified**: `cd functions && npx tsc --noEmit` is clean. **Not deployed.** Secret Manager currently has `ANTHROPIC_API_KEY` and `RESEND_API_KEY`, but **not** `REVENUECAT_SECRET_KEY`, `WHOOP_CLIENT_ID`, or `WHOOP_CLIENT_SECRET`, so any functions deploy fails until the project owner runs `firebase functions:secrets:set` for each of the three. That means the live `deleteAccount` still has the old behavior until then.
+
+---
+
 ## 2026-09-28 (night) — App Store Connect listing filled in
 
 Filled in the Iron Pillar App Store Connect record (app ID 6817053711) via the browser, all saved:

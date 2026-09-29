@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { defineSecret } from 'firebase-functions/params';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { randomInt } from 'node:crypto';
@@ -22,10 +23,14 @@ const VERIFICATION_EMAIL_FROM = 'Iron Pillar <onboarding@resend.dev>';
 
 // Set with: firebase functions:secrets:set REVENUECAT_SECRET_KEY
 // Get it from the RevenueCat dashboard (Project Settings > API Keys > Secret
-// key), once a RevenueCat project + "pro" entitlement exist. Left unset,
-// generateWorkoutDetails below skips the Pro check entirely — the feature
-// keeps working for everyone exactly as it did before, until this secret is
-// deliberately configured to turn enforcement on.
+// key), once a RevenueCat project + "pro" entitlement exist.
+// Because it's declared with defineSecret, `firebase deploy --only functions`
+// refuses to deploy until this secret exists in Secret Manager — so it can't
+// be left unset in production, and setting it turns the Pro check in
+// generateWorkoutDetails on. A placeholder value won't work as an "off"
+// switch either: RevenueCat rejects it and every generate call fails. The
+// empty-value skip below only matters locally (e.g. the emulator with no
+// secret provided).
 const REVENUECAT_SECRET_KEY = defineSecret('REVENUECAT_SECRET_KEY');
 const PRO_ENTITLEMENT_ID = 'pro';
 
@@ -420,14 +425,27 @@ async function deleteCollection(colRef: FirebaseFirestore.CollectionReference) {
   await batch.commit();
 }
 
+// Profile photos live at exactly `avatars/<uid>` (see lib/avatar.ts). Also
+// sweeps `avatars/<uid>/...` in case the upload path ever gains a per-file
+// suffix. A user who never set a photo has nothing here, which is fine.
+async function deleteAvatar(uid: string) {
+  const bucket = getStorage().bucket();
+  await Promise.all([
+    bucket.file(`avatars/${uid}`).delete({ ignoreNotFound: true }),
+    bucket.deleteFiles({ prefix: `avatars/${uid}/` }),
+  ]);
+}
+
 // Deletes a user's account: their profile, everything nested under it,
 // their workout history, custom workouts, their own friendships, their
-// username claim, and the Auth account itself — plus removes them from
+// username claim, their profile photo in Storage, their WHOOP tokens and
+// snapshot, and the Auth account itself — plus removes them from
 // each friend's friend list (a plain client write can't touch another
 // user's data, so this has to run with Admin SDK privileges like addFriend).
 // Note: activity feed items this user posted into *other* users' feeds are
 // left as historical record, same as most social apps leave old posts after
-// a deactivation.
+// a deactivation. bugReports are also intentionally kept (the privacy
+// policy says bug reports may be retained).
 export const deleteAccount = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
@@ -458,6 +476,9 @@ export const deleteAccount = onCall(async (request) => {
     deleteCollection(db.collection('userWorkouts').doc(uid).collection('customWorkouts')),
     deleteCollection(db.collection('friendships').doc(uid).collection('friends')),
     deleteCollection(db.collection('activityFeed').doc(uid).collection('items')),
+    db.collection('wearableTokens').doc(uid).delete(),
+    db.collection('wearableSnapshots').doc(uid).delete(),
+    deleteAvatar(uid),
   ]);
 
   await getAuth().deleteUser(uid);
@@ -645,8 +666,9 @@ export const generateWorkoutDetails = onCall(
     const { name, exercises } = request.data;
 
     // AI-generated workout details are a Pro feature (see app/paywall.tsx).
-    // Skipped entirely while REVENUECAT_SECRET_KEY is unset, so this doesn't
-    // break the feature before RevenueCat is actually configured.
+    // Only skipped when the secret's value is empty, which in practice means
+    // local/emulator runs — a deployed function always has it set (see the
+    // REVENUECAT_SECRET_KEY declaration above).
     const revenueCatSecret = REVENUECAT_SECRET_KEY.value();
     if (revenueCatSecret) {
       const isPro = await isProSubscriber(uid, revenueCatSecret);
