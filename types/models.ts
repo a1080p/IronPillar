@@ -2,6 +2,8 @@ export type FitnessGoal = 'lose_weight' | 'build_strength' | 'build_endurance';
 export type ExperienceLevel = 'new' | 'some' | 'experienced';
 export type Sex = 'male' | 'female';
 
+export type UnitSystem = 'imperial' | 'metric';
+
 export interface UserProfile {
   uid: string;
   username: string;
@@ -14,6 +16,7 @@ export interface UserProfile {
   sex: Sex;
   heightInches: number; // total height in inches
   startingWeightLb: number; // weight captured at onboarding
+  units?: UnitSystem; // display units; data is always stored in meters + lb. Default imperial.
   level: number;
   xp: number;
   streakCount: number;

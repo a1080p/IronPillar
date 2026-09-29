@@ -5,6 +5,16 @@ import { router } from 'expo-router';
 import { ProBadge, ProLockCard } from '../../components/ProLock';
 import { useAppleHealth } from '../../hooks/useAppleHealth';
 import { exportWorkoutsCsv } from '../../lib/export';
+import {
+  displayToLb,
+  distanceUnit,
+  formatVolume as formatVolumeIn,
+  lbToDisplay,
+  metersToDistance,
+  weightUnit,
+} from '../../lib/units';
+import { useUnits } from '../../hooks/useUnits';
+import type { UnitSystem } from '../../types/models';
 import { usePurchases } from '../../contexts/PurchasesContext';
 import { activeDays, activityCalendar } from '../../lib/insights';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,7 +32,6 @@ import {
   allTimeStats,
   bmiFrom,
   formatDuration,
-  formatVolume,
   personalRecords,
   strengthTrend,
   summarizeLog,
@@ -35,13 +44,15 @@ function formatShortDate(iso: string) {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-function delta(current: number, previous: number, unit: string) {
+function delta(current: number, previous: number, unit: string, units?: UnitSystem) {
   const diff = current - previous;
   if (diff === 0) return { hint: `same as last wk`, tone: 'neutral' as const };
   const sign = diff > 0 ? '+' : '−';
-  const shown = unit === 'lb' ? formatVolume(Math.abs(diff)) : Math.abs(diff);
+  // `unit === 'volume'`: diff is in stored pounds; show it in the user's unit.
+  const shown =
+    unit === 'volume' ? formatVolumeIn(Math.abs(diff), units ?? 'imperial') : `${Math.abs(diff)}${unit ? ` ${unit}` : ''}`;
   return {
-    hint: `${sign}${shown}${unit ? ` ${unit}` : ''} vs last wk`,
+    hint: `${sign}${shown} vs last wk`,
     tone: diff > 0 ? ('up' as const) : ('down' as const),
   };
 }
@@ -65,6 +76,8 @@ export default function AnalyticsScreen() {
   const calendar = useMemo(() => activityCalendar(logs, 12), [logs]);
   const daysActive = useMemo(() => activeDays(logs, 30), [logs]);
   const { isPro } = usePurchases();
+  const units = useUnits();
+  const wUnit = weightUnit(units);
   const health = useAppleHealth(user?.uid, isPro);
   const [exporting, setExporting] = useState(false);
 
@@ -79,9 +92,9 @@ export default function AnalyticsScreen() {
       ),
     [profile?.longestStreak, profile?.streakCount, logs]
   );
-  const totalMiles = useMemo(
-    () => logs.reduce((sum, l) => sum + (l.distanceMeters ?? 0), 0) / 1609.344,
-    [logs]
+  const totalDistance = useMemo(
+    () => metersToDistance(logs.reduce((sum, l) => sum + (l.distanceMeters ?? 0), 0), units),
+    [logs, units]
   );
 
   const handleExport = async () => {
@@ -95,7 +108,7 @@ export default function AnalyticsScreen() {
     }
     setExporting(true);
     try {
-      await exportWorkoutsCsv(logs);
+      await exportWorkoutsCsv(logs, units);
     } catch (e) {
       Alert.alert('Export failed', e instanceof Error ? e.message : 'Try again.');
     } finally {
@@ -126,14 +139,20 @@ export default function AnalyticsScreen() {
       : null;
 
   const handleAdd = async () => {
-    const weight = Number(weightInput);
-    if (!weight || weight < 60 || weight > 1000 || !user) {
-      Alert.alert('Enter your weight', 'Add your current weight in pounds to save an entry.');
+    // Typed in the user's unit; stored in pounds (to 0.1 so kg entries
+    // round-trip cleanly).
+    const typed = Number(weightInput.replace(',', '.'));
+    const weightLb = displayToLb(typed, units);
+    if (!typed || weightLb < 60 || weightLb > 1000 || !user) {
+      Alert.alert(
+        'Enter your weight',
+        `Add your current weight in ${units === 'metric' ? 'kilograms' : 'pounds'} to save an entry.`
+      );
       return;
     }
     setSaving(true);
     try {
-      await addMetric(user.uid, Math.round(weight));
+      await addMetric(user.uid, Math.round(weightLb * 10) / 10);
       setWeightInput('');
     } finally {
       setSaving(false);
@@ -141,7 +160,7 @@ export default function AnalyticsScreen() {
   };
 
   const wkWorkouts = delta(compare.thisWeek.workouts, compare.lastWeek.workouts, '');
-  const wkVolume = delta(compare.thisWeek.volume, compare.lastWeek.volume, 'lb');
+  const wkVolume = delta(compare.thisWeek.volume, compare.lastWeek.volume, 'volume', units);
   const wkMinutes = delta(compare.thisWeek.minutes, compare.lastWeek.minutes, 'min');
 
   return (
@@ -161,9 +180,9 @@ export default function AnalyticsScreen() {
           <>
             <View style={styles.tileGrid}>
               <StatTile value={stats.workouts} label="Workouts" />
-              <StatTile value={`${formatVolume(stats.volume)} lb`} label="Volume lifted" />
+              <StatTile value={formatVolumeIn(stats.volume, units)} label="Volume lifted" />
               <StatTile
-                value={`${totalMiles >= 100 ? Math.round(totalMiles) : totalMiles.toFixed(1)} mi`}
+                value={`${totalDistance >= 100 ? Math.round(totalDistance) : totalDistance.toFixed(1)} ${distanceUnit(units)}`}
                 label="Distance traveled"
               />
               <StatTile value={formatDuration(stats.minutes)} label="Training time" />
@@ -179,7 +198,7 @@ export default function AnalyticsScreen() {
                 hintTone={wkWorkouts.tone}
               />
               <StatTile
-                value={`${formatVolume(compare.thisWeek.volume)} lb`}
+                value={formatVolumeIn(compare.thisWeek.volume, units)}
                 label="Volume"
                 hint={wkVolume.hint}
                 hintTone={wkVolume.tone}
@@ -224,7 +243,10 @@ export default function AnalyticsScreen() {
               title="Workouts per week"
               points={weeks.map((w) => ({ label: w.label, value: w.workouts }))}
             />
-            <LineChart title="Strength trend (est. 1RM, lb)" points={strengthPoints} />
+            <LineChart
+              title={`Strength trend (est. 1RM, ${wUnit})`}
+              points={strengthPoints.map((p) => ({ ...p, value: lbToDisplay(p.value, units) }))}
+            />
 
             {prs.length > 0 && (
               <View style={styles.panel}>
@@ -235,8 +257,10 @@ export default function AnalyticsScreen() {
                       {pr.exerciseName}
                     </Text>
                     <Text style={styles.prDetail}>
-                      {pr.weight} lb × {pr.reps}
-                      <Text style={styles.prMuted}>  ·  ~{pr.estimatedOneRepMax} lb 1RM</Text>
+                      {lbToDisplay(pr.weight, units)} {wUnit} × {pr.reps}
+                      <Text style={styles.prMuted}>
+                        {'  ·  '}~{lbToDisplay(pr.estimatedOneRepMax, units)} {wUnit} 1RM
+                      </Text>
                     </Text>
                   </View>
                 ))}
@@ -257,7 +281,7 @@ export default function AnalyticsScreen() {
                     </View>
                     <View style={styles.chips}>
                       <Chip text={`${s.minutes}m`} />
-                      {s.volume > 0 && <Chip text={`${formatVolume(s.volume)} lb`} />}
+                      {s.volume > 0 && <Chip text={formatVolumeIn(s.volume, units)} />}
                       {s.reps > 0 && <Chip text={`${s.reps} reps`} />}
                       <Chip text={`${s.sets} sets`} />
                       <Chip text={`+${log.xpEarned} xp`} />
@@ -273,12 +297,13 @@ export default function AnalyticsScreen() {
 
         {currentWeight != null && (
           <View style={styles.tileGrid}>
-            <StatTile value={`${currentWeight} lb`} label="Current weight" />
+            <StatTile value={`${lbToDisplay(currentWeight, units)} ${wUnit}`} label="Current weight" />
             {weightChange != null && (
               <StatTile
-                value={`${weightChange > 0 ? '+' : weightChange < 0 ? '−' : ''}${Math.abs(
-                  weightChange
-                )} lb`}
+                value={`${weightChange > 0 ? '+' : weightChange < 0 ? '−' : ''}${lbToDisplay(
+                  Math.abs(weightChange),
+                  units
+                )} ${wUnit}`}
                 label="Since you started"
               />
             )}
@@ -286,17 +311,20 @@ export default function AnalyticsScreen() {
           </View>
         )}
 
-        <LineChart title="Body weight (lb)" points={weightPoints} />
+        <LineChart
+          title={`Body weight (${wUnit})`}
+          points={weightPoints.map((p) => ({ ...p, value: lbToDisplay(p.value, units) }))}
+        />
 
         <View style={styles.addCard}>
           <Text style={styles.addTitle}>Log today's weight</Text>
           <View style={styles.addRow}>
             <TextInput
               style={styles.input}
-              placeholder="Weight (lb)"
+              placeholder={`Weight (${wUnit})`}
               placeholderTextColor={colors.textMuted}
-              keyboardType="number-pad"
-              maxLength={4}
+              keyboardType="decimal-pad"
+              maxLength={5}
               value={weightInput}
               onChangeText={setWeightInput}
             />

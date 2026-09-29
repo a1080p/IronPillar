@@ -7,7 +7,8 @@ import { Button } from '../../../components/Button';
 import { radii, spacing, typography } from '../../../constants/theme';
 import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { badges } from '../../../data/badges';
-import { formatVolume } from '../../../lib/workoutStats';
+import { formatVolume } from '../../../lib/units';
+import { useUnits } from '../../../hooks/useUnits';
 import { useAuth } from '../../../contexts/AuthContext';
 import { XpBreakdown } from '../../../components/XpBreakdown';
 import type { CompletionResult } from '../../../lib/workoutCompletion';
@@ -40,6 +41,7 @@ export default function WorkoutCompleteScreen() {
       durationSeconds: string;
     }>();
   const { profile } = useAuth();
+  const units = useUnits();
   const [showBadge, setShowBadge] = useState(false);
 
   const badge = badgeEarnedId ? badges[badgeEarnedId] : null;
@@ -69,7 +71,7 @@ export default function WorkoutCompleteScreen() {
   const minutes = Math.round((Number(durationSeconds) || 0) / 60);
   const summaryChips = [
     `${minutes} min`,
-    volumeNum > 0 ? `${formatVolume(volumeNum)} lb lifted` : null,
+    volumeNum > 0 ? `${formatVolume(volumeNum, units)} lifted` : null,
     repsNum > 0 ? `${repsNum} reps` : null,
     setsNum > 0 ? `${setsNum} sets` : null,
   ].filter(Boolean) as string[];

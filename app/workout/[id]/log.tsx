@@ -14,6 +14,9 @@ import { completeWorkout } from '../../../lib/workoutCompletion';
 import { noteWorkoutStarted } from '../../../lib/gymReminders';
 import { summarizeExerciseLogs } from '../../../lib/workoutStats';
 import { lastPerformance } from '../../../lib/insights';
+import { displayToLb, lbToDisplay, weightUnit } from '../../../lib/units';
+import { useUnits } from '../../../hooks/useUnits';
+import type { UnitSystem } from '../../../types/models';
 import { useWorkoutLogs } from '../../../hooks/useWorkoutLogs';
 import { usePurchases } from '../../../contexts/PurchasesContext';
 import { syncCompletedWorkoutToHealth } from '../../../hooks/useAppleHealth';
@@ -29,12 +32,16 @@ export default function WorkoutLogScreen() {
   const { workout: template } = useWorkout(id, user?.uid);
   const navigation = useNavigation();
   const { isPro } = usePurchases();
+  const units = useUnits();
   const { logs: history } = useWorkoutLogs(user?.uid);
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
 
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [logs, setLogs] = useState<ExerciseLog[]>([]);
   const [sets, setSets] = useState<LoggedSet[]>([]);
+  // Raw text of each weight box, so a half-typed decimal like "22." isn't
+  // parsed away mid-typing (kg users need decimals).
+  const [weightText, setWeightText] = useState<Record<number, string>>({});
   const [finishing, setFinishing] = useState(false);
   const startTime = useRef(Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -91,6 +98,7 @@ export default function WorkoutLogScreen() {
   useEffect(() => {
     if (!exercise) return;
     setSets(Array.from({ length: exercise.targetSets }, () => ({})));
+    setWeightText({});
   }, [exercise?.id]);
 
   const totalSeconds = (template?.durationMinutes ?? 30) * 60;
@@ -121,7 +129,10 @@ export default function WorkoutLogScreen() {
       exerciseId: exercise.id,
       exerciseName: exercise.name,
       logType: exercise.logType,
-      sets,
+      // Weights are typed in the user's unit; storage is always pounds.
+      sets: sets.map((set) =>
+        set.weight != null ? { ...set, weight: displayToLb(set.weight, units) } : set
+      ),
     };
     const nextLogs = [...logs, finishedExerciseLog];
 
@@ -183,7 +194,7 @@ export default function WorkoutLogScreen() {
           {exercise.targetRepsLabel}
         </Text>
         {exercise.tips && <Text style={styles.tips}>{exercise.tips}</Text>}
-        {last && <Text style={styles.lastTime}>Last time: {formatLastSets(last.sets)}</Text>}
+        {last && <Text style={styles.lastTime}>Last time: {formatLastSets(last.sets, units)}</Text>}
 
         <View style={styles.restRow}>
           {restRemaining != null ? (
@@ -248,11 +259,19 @@ export default function WorkoutLogScreen() {
                 {exercise.tracksWeight !== false && (
                   <TextInput
                     style={styles.input}
-                    keyboardType="number-pad"
-                    placeholder={last?.sets[i]?.weight?.toString() ?? 'lbs'}
+                    keyboardType="decimal-pad"
+                    placeholder={
+                      last?.sets[i]?.weight != null
+                        ? String(lbToDisplay(last.sets[i].weight!, units))
+                        : weightUnit(units)
+                    }
                     placeholderTextColor={colors.textMuted}
-                    value={set.weight?.toString() ?? ''}
-                    onChangeText={(v) => updateSet(i, { weight: Number(v) || undefined })}
+                    value={weightText[i] ?? set.weight?.toString() ?? ''}
+                    onChangeText={(v) => {
+                      const cleaned = v.replace(',', '.');
+                      setWeightText((prev) => ({ ...prev, [i]: cleaned }));
+                      updateSet(i, { weight: Number(cleaned) || undefined });
+                    }}
                   />
                 )}
               </>
@@ -275,14 +294,14 @@ export default function WorkoutLogScreen() {
   );
 }
 
-function formatLastSets(sets: LoggedSet[]) {
+function formatLastSets(sets: LoggedSet[], units: UnitSystem) {
   return sets
     .filter((set) => set.reps != null || set.durationSeconds != null)
     .map((set) =>
       set.durationSeconds != null
         ? `${set.durationSeconds}s`
         : set.weight
-          ? `${set.weight}×${set.reps}`
+          ? `${lbToDisplay(set.weight, units)}×${set.reps}`
           : `${set.reps} reps`
     )
     .join(' · ');

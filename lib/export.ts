@@ -1,21 +1,22 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import type { WorkoutLog } from '../types/models';
+import type { UnitSystem, WorkoutLog } from '../types/models';
+import { distanceUnit, lbToDisplay, metersToDistance, weightUnit } from './units';
 
 // Pro data export: one CSV row per logged set (or one row per workout for
 // outdoor activities, which have no sets), then the system share sheet so the
 // user can save it to Files, AirDrop it, or open it in Numbers/Sheets.
 
-const HEADER = [
+const header = (units: UnitSystem) => [
   'date',
   'workout',
   'type',
   'exercise',
   'set',
   'reps',
-  'weight_lb',
+  `weight_${weightUnit(units)}`,
   'duration_sec',
-  'distance_mi',
+  `distance_${distanceUnit(units)}`,
   'total_minutes',
   'xp',
 ];
@@ -26,15 +27,17 @@ function cell(value: string | number | undefined | null): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-export function workoutsToCsv(logs: WorkoutLog[]): string {
-  const rows: string[] = [HEADER.join(',')];
+export function workoutsToCsv(logs: WorkoutLog[], units: UnitSystem = 'imperial'): string {
+  const rows: string[] = [header(units).join(',')];
   const oldestFirst = [...logs].sort((a, b) => a.completedAt.localeCompare(b.completedAt));
 
   for (const log of oldestFirst) {
     const type =
       log.workoutSource === 'outdoor' ? (log.activityType ?? 'outdoor') : log.workoutSource;
     const minutes = Math.round(log.durationSeconds / 60);
-    const miles = log.distanceMeters ? (log.distanceMeters / 1609.344).toFixed(2) : '';
+    const distance = log.distanceMeters
+      ? metersToDistance(log.distanceMeters, units).toFixed(2)
+      : '';
 
     const setRows = log.exercises.flatMap((exercise) =>
       exercise.sets
@@ -44,7 +47,7 @@ export function workoutsToCsv(logs: WorkoutLog[]): string {
 
     if (setRows.length === 0) {
       rows.push(
-        [log.completedAt, log.workoutName, type, '', '', '', '', '', miles, minutes, log.xpEarned]
+        [log.completedAt, log.workoutName, type, '', '', '', '', '', distance, minutes, log.xpEarned]
           .map(cell)
           .join(',')
       );
@@ -60,9 +63,9 @@ export function workoutsToCsv(logs: WorkoutLog[]): string {
           exercise.exerciseName,
           i + 1,
           set.reps,
-          set.weight,
+          set.weight != null ? lbToDisplay(set.weight, units) : undefined,
           set.durationSeconds,
-          miles,
+          distance,
           minutes,
           log.xpEarned,
         ]
@@ -75,7 +78,10 @@ export function workoutsToCsv(logs: WorkoutLog[]): string {
   return rows.join('\n');
 }
 
-export async function exportWorkoutsCsv(logs: WorkoutLog[]): Promise<void> {
+export async function exportWorkoutsCsv(
+  logs: WorkoutLog[],
+  units: UnitSystem = 'imperial'
+): Promise<void> {
   if (!(await Sharing.isAvailableAsync())) {
     throw new Error('Sharing isn’t available on this device.');
   }
@@ -83,7 +89,7 @@ export async function exportWorkoutsCsv(logs: WorkoutLog[]): Promise<void> {
   const file = new File(Paths.cache, `iron-pillar-workouts-${stamp}.csv`);
   if (file.exists) file.delete();
   file.create();
-  file.write(workoutsToCsv(logs));
+  file.write(workoutsToCsv(logs, units));
   await Sharing.shareAsync(file.uri, {
     mimeType: 'text/csv',
     UTI: 'public.comma-separated-values-text',

@@ -26,21 +26,8 @@ export function routeDistanceMeters(route: RoutePoint[]): number {
   return total;
 }
 
-export function formatDistanceMiles(meters: number): string {
-  const miles = meters / 1609.344;
-  return `${miles.toFixed(2)} mi`;
-}
-
-// "M:SS per mi" — undefined/zero distance shows as a dash rather than
-// dividing by zero or printing a huge number.
-export function formatPacePerMile(meters: number, seconds: number): string {
-  const miles = meters / 1609.344;
-  if (miles < 0.05 || seconds <= 0) return '--:--';
-  const secPerMile = seconds / miles;
-  const min = Math.floor(secPerMile / 60);
-  const sec = Math.round(secPerMile % 60);
-  return `${min}:${String(sec).padStart(2, '0')} /mi`;
-}
+// Distance/pace formatting lives in lib/units.ts (miles or km per the
+// user's Units setting).
 
 export function formatElapsed(seconds: number): string {
   const h = Math.floor(seconds / 3600);

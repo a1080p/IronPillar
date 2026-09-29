@@ -1,4 +1,5 @@
-import type { WorkoutLog } from '../types/models';
+import type { UnitSystem, WorkoutLog } from '../types/models';
+import { displayToLb, formatWeight, metersToDistance } from './units';
 import { summarizeLog, weekStart } from './workoutStats';
 
 // Pro "Insights" math (plus the free consistency calendar and "last time"
@@ -53,7 +54,7 @@ export function exerciseHistories(logs: WorkoutLog[]): ExerciseHistory[] {
 }
 
 export interface ProgressionTarget {
-  weight: number;
+  weight: number; // lb (storage unit); format with lib/units for display
   reps: number;
   action: 'add_weight' | 'add_rep';
   reason: string;
@@ -63,20 +64,30 @@ export interface ProgressionTarget {
 // top weight held the first set's rep count (no drop-off) and that count was
 // at least 5, the weight is ready to go up. Otherwise stay put and add a rep
 // to the sets that fell short.
-export function nextTarget(history: ExerciseHistory): ProgressionTarget | null {
+export function nextTarget(
+  history: ExerciseHistory,
+  units: UnitSystem = 'imperial'
+): ProgressionTarget | null {
   const last = history.sessions[history.sessions.length - 1];
   if (!last || last.repsAtTopWeight.length === 0) return null;
 
   const firstSetReps = last.repsAtTopWeight[0];
   const minReps = Math.min(...last.repsAtTopWeight);
-  const increment = last.topWeight >= 50 ? 5 : 2.5;
+  // Smallest sensible jump in the user's unit: 5 lb (2.5 under 50 lb), or
+  // 2.5 kg (1.25 under ~22 kg) — i.e. the smallest plate pair.
+  const increment =
+    units === 'metric'
+      ? displayToLb(last.topWeight >= 50 ? 2.5 : 1.25, 'metric')
+      : last.topWeight >= 50
+        ? 5
+        : 2.5;
 
   if (minReps >= firstSetReps && firstSetReps >= 5) {
     return {
       weight: last.topWeight + increment,
       reps: Math.max(5, firstSetReps - 2),
       action: 'add_weight',
-      reason: `You held ${firstSetReps} reps on every set at ${last.topWeight} lb.`,
+      reason: `You held ${firstSetReps} reps on every set at ${formatWeight(last.topWeight, units)}.`,
     };
   }
   return {
@@ -158,13 +169,17 @@ function emptyWeeks(weeks: number) {
   });
 }
 
-export function outdoorMilesByWeek(logs: WorkoutLog[], weeks = 8) {
+export function outdoorDistanceByWeek(
+  logs: WorkoutLog[],
+  weeks = 8,
+  units: UnitSystem = 'imperial'
+) {
   const buckets = emptyWeeks(weeks);
   for (const log of logs) {
     if (log.workoutSource !== 'outdoor' || !log.distanceMeters) continue;
     const ws = weekStart(new Date(log.completedAt)).getTime();
     const bucket = buckets.find((b) => b.start === ws);
-    if (bucket) bucket.value += log.distanceMeters / 1609.344;
+    if (bucket) bucket.value += metersToDistance(log.distanceMeters, units);
   }
   return buckets.map(({ label, value }) => ({ label, value: Math.round(value * 10) / 10 }));
 }

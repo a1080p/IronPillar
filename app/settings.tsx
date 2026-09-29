@@ -10,11 +10,21 @@ import { usePurchases } from '../contexts/PurchasesContext';
 import { useWorkoutLogs } from '../hooks/useWorkoutLogs';
 import { exportWorkoutsCsv } from '../lib/export';
 import { ProBadge } from '../components/ProLock';
+import { useUnits } from '../hooks/useUnits';
+import type { UnitSystem } from '../types/models';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const { signOut, user } = useAuth();
+  const { signOut, user, updateProfile } = useAuth();
+  const units = useUnits();
+
+  const setUnits = (next: UnitSystem) => {
+    if (next === units) return;
+    updateProfile({ units: next }).catch((e) =>
+      Alert.alert('Could not save', e instanceof Error ? e.message : 'Try again.')
+    );
+  };
   const { isPro, presentCustomerCenter } = usePurchases();
   const { logs } = useWorkoutLogs(user?.uid);
   const [exporting, setExporting] = useState(false);
@@ -30,7 +40,7 @@ export default function SettingsScreen() {
     }
     setExporting(true);
     try {
-      await exportWorkoutsCsv(logs);
+      await exportWorkoutsCsv(logs, units);
     } catch (e) {
       Alert.alert('Export failed', e instanceof Error ? e.message : 'Try again.');
     } finally {
@@ -43,6 +53,34 @@ export default function SettingsScreen() {
       <WorkoutHeader />
       <View style={styles.content}>
         <Text style={styles.heading}>Settings</Text>
+
+        <View style={styles.unitsRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowLabel}>Units</Text>
+            <Text style={styles.unitsHint}>
+              {units === 'metric' ? 'Kilometers & kilograms' : 'Miles & pounds'}
+            </Text>
+          </View>
+          <View style={styles.segment} accessibilityRole="radiogroup">
+            {(['imperial', 'metric'] as const).map((option) => {
+              const active = units === option;
+              return (
+                <Pressable
+                  key={option}
+                  onPress={() => setUnits(option)}
+                  style={[styles.segmentOption, active && styles.segmentOptionActive]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: active }}
+                  accessibilityLabel={option === 'metric' ? 'Metric' : 'Imperial'}
+                >
+                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                    {option === 'metric' ? 'km · kg' : 'mi · lb'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
         <View style={styles.rowGroup}>
           <Pressable style={styles.row} onPress={() => router.push('/paywall')}>
@@ -98,6 +136,24 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary },
   rowGroup: { gap: spacing.lg },
   row: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.surfaceMuted },
+  unitsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceMuted,
+  },
+  unitsHint: { color: colors.textMuted, fontSize: typography.sizes.small, marginTop: 2 },
+  segment: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    padding: 3,
+  },
+  segmentOption: { paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: 999 },
+  segmentOptionActive: { backgroundColor: colors.primary },
+  segmentText: { color: colors.text, fontWeight: '700', fontSize: typography.sizes.small },
+  segmentTextActive: { color: colors.textOnDark },
   rowInline: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   rowLabel: { fontSize: typography.sizes.body, color: colors.primary, fontWeight: '600' },
 });

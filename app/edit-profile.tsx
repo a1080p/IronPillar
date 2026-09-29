@@ -25,8 +25,13 @@ export default function EditProfileScreen() {
   const [pickedUri, setPickedUri] = useState<string | null>(null);
   // Selected icon+color avatar key, or null.
   const [avatarKey, setAvatarKeyState] = useState<string | null>(profile?.avatarKey ?? null);
-  // Whether the already-uploaded photo should be kept.
-  const [keepPhoto, setKeepPhoto] = useState(!!profile?.avatarUrl);
+  // Whether the user removed/replaced the existing photo in this session.
+  // Tracked as "removed" rather than "keep", so a profile that finishes
+  // loading after this screen mounts still keeps its photo by default
+  // (a `useState(!!profile?.avatarUrl)` snapshot would read false then, and
+  // saving would wipe the photo).
+  const [photoRemoved, setPhotoRemoved] = useState(false);
+  const keepPhoto = !photoRemoved && !!profile?.avatarUrl;
   const [saving, setSaving] = useState(false);
   const navigation = useNavigation();
   // Set right before navigating away after a successful save, so the
@@ -75,19 +80,19 @@ export default function EditProfileScreen() {
   const handlePickedPhoto = (uri: string) => {
     setPickedUri(uri);
     setAvatarKeyState(null);
-    setKeepPhoto(false);
+    setPhotoRemoved(true);
   };
 
   const handleChangeAvatarKey = (key: string) => {
     setAvatarKeyState(key);
     setPickedUri(null);
-    setKeepPhoto(false);
+    setPhotoRemoved(true);
   };
 
   const removeImage = () => {
     setPickedUri(null);
     setAvatarKeyState(null);
-    setKeepPhoto(false);
+    setPhotoRemoved(true);
   };
 
   const handleSave = async () => {
@@ -106,8 +111,11 @@ export default function EditProfileScreen() {
       if (pickedUri) {
         avatarUrl = await uploadAvatar(user.uid, pickedUri);
       }
-      // Drop the old photo from storage if it's no longer referenced.
-      if (profile.avatarUrl && avatarUrl !== profile.avatarUrl) {
+      // Only delete from storage when the photo was removed outright. A new
+      // upload overwrites the same `avatars/<uid>` object, so deleting after
+      // a replacement would delete the photo that was just uploaded — which
+      // is exactly how new profile photos were vanishing after a reload.
+      if (profile.avatarUrl && !avatarUrl) {
         await deleteAvatar(user.uid).catch(() => {});
       }
 

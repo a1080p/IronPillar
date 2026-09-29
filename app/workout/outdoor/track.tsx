@@ -9,9 +9,7 @@ import { spacing, typography } from '../../../constants/theme';
 import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { badges } from '../../../data/badges';
 import {
-  formatDistanceMiles,
   formatElapsed,
-  formatPacePerMile,
   routeDistanceMeters,
 } from '../../../lib/geo';
 import {
@@ -29,6 +27,8 @@ import { noteWorkoutStarted } from '../../../lib/gymReminders';
 import type { OutdoorActivityType, RoutePoint } from '../../../types/models';
 import { useAuth } from '../../../contexts/AuthContext';
 import { XpBreakdown } from '../../../components/XpBreakdown';
+import { formatDistance, formatPace } from '../../../lib/units';
+import { useUnits } from '../../../hooks/useUnits';
 import { usePurchases } from '../../../contexts/PurchasesContext';
 import { syncCompletedWorkoutToHealth } from '../../../hooks/useAppleHealth';
 
@@ -63,6 +63,7 @@ export default function OutdoorTrackScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { isPro } = usePurchases();
+  const units = useUnits();
   // Skips the confirm dialog when there's nothing to lose yet — e.g. leaving
   // because location permission was denied, before tracking ever started.
   const skipConfirmRef = useRef(false);
@@ -210,9 +211,9 @@ export default function OutdoorTrackScreen() {
         <ScrollView contentContainerStyle={styles.summaryBody}>
           <Text style={styles.heading}>{ACTIVITY_LABELS[activityType]} Complete!</Text>
           <View style={styles.statsRow}>
-            <Stat label="Distance" value={formatDistanceMiles(distanceMeters)} />
+            <Stat label="Distance" value={formatDistance(distanceMeters, units)} />
             <Stat label="Time" value={formatElapsed(elapsedSeconds)} />
-            <Stat label="Avg Pace" value={formatPacePerMile(distanceMeters, elapsedSeconds)} />
+            <Stat label="Avg Pace" value={formatPace(distanceMeters, elapsedSeconds, units)} />
           </View>
           <XpBreakdown result={result} />
           {badge && (
@@ -245,8 +246,8 @@ export default function OutdoorTrackScreen() {
         <Text style={styles.timerCaption}>{paused ? 'PAUSED' : 'TIME'}</Text>
 
         <View style={styles.secondaryStatsRow}>
-          <Stat label="Distance" value={formatDistanceMiles(distanceMeters)} />
-          <Stat label="Avg Pace" value={formatPacePerMile(distanceMeters, elapsedSeconds)} />
+          <Stat label="Distance" value={formatDistance(distanceMeters, units)} />
+          <Stat label="Avg Pace" value={formatPace(distanceMeters, elapsedSeconds, units)} />
         </View>
       </View>
 

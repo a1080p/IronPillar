@@ -8,13 +8,15 @@ import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkoutLogs } from '../hooks/useWorkoutLogs';
 import { formatShortDate } from '../lib/dates';
-import { formatDistanceMiles } from '../lib/geo';
+import { formatDistance } from '../lib/units';
+import { useUnits } from '../hooks/useUnits';
+import type { UnitSystem } from '../types/models';
 import { deleteWorkoutLog } from '../lib/workoutCompletion';
 import type { WorkoutLog } from '../types/models';
 
-function activityMeta(log: WorkoutLog): string {
+function activityMeta(log: WorkoutLog, units: UnitSystem): string {
   if (log.workoutSource === 'outdoor') {
-    return formatDistanceMiles(log.distanceMeters ?? 0);
+    return formatDistance(log.distanceMeters ?? 0, units);
   }
   return `${log.exercises.length} exercise${log.exercises.length === 1 ? '' : 's'}`;
 }
@@ -30,6 +32,7 @@ export default function HistoryScreen() {
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { user } = useAuth();
   const { logs, loading } = useWorkoutLogs(user?.uid);
+  const units = useUnits();
 
   const confirmDelete = (log: WorkoutLog) => {
     Alert.alert(
@@ -81,7 +84,7 @@ export default function HistoryScreen() {
             </View>
             <Text style={styles.meta}>
               {formatShortDate(log.completedAt)} · {formatDuration(log.durationSeconds)} ·{' '}
-              {activityMeta(log)}
+              {activityMeta(log, units)}
             </Text>
             {log.streakBonusEarned > 0 && (
               <Text style={styles.streakBonus}>Streak Bonus: +{log.streakBonusEarned}xp</Text>

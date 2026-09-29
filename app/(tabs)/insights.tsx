@@ -17,13 +17,15 @@ import { useWearableSnapshot } from '../../hooks/useWearableSnapshot';
 import { useAppleHealth } from '../../hooks/useAppleHealth';
 import { activityTypeLabel } from '../../lib/healthkit';
 import { computeReadiness, type ReadinessTone } from '../../lib/readiness';
+import { distanceUnit, formatWeight, weightUnit, lbToDisplay } from '../../lib/units';
+import { useUnits } from '../../hooks/useUnits';
 import {
   e1rmChangePct,
   e1rmSeries,
   exerciseHistories,
   isPlateaued,
   nextTarget,
-  outdoorMilesByWeek,
+  outdoorDistanceByWeek,
   timeOfDayBreakdown,
   trainingMix,
   weeklyMinutes,
@@ -34,6 +36,7 @@ export default function InsightsScreen() {
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { user } = useAuth();
   const { isPro } = usePurchases();
+  const units = useUnits();
   const { logs } = useWorkoutLogs(user?.uid);
   const { snapshot: whoop } = useWearableSnapshot(user?.uid);
   const health = useAppleHealth(user?.uid, isPro);
@@ -49,7 +52,7 @@ export default function InsightsScreen() {
   const minutesByWeek = useMemo(() => weeklyMinutes(logs, 12), [logs]);
   const mix = useMemo(() => trainingMix(logs), [logs]);
   const timeOfDay = useMemo(() => timeOfDayBreakdown(logs), [logs]);
-  const miles = useMemo(() => outdoorMilesByWeek(logs, 8), [logs]);
+  const distanceByWeek = useMemo(() => outdoorDistanceByWeek(logs, 8, units), [logs, units]);
   const plateaued = useMemo(() => histories.filter(isPlateaued), [histories]);
 
   if (!isPro) {
@@ -80,7 +83,7 @@ export default function InsightsScreen() {
     );
   }
 
-  const target = selected ? nextTarget(selected) : null;
+  const target = selected ? nextTarget(selected, units) : null;
   const change = selected ? e1rmChangePct(selected, 30) : null;
   const toneColor = (tone: ReadinessTone) =>
     tone === 'up' ? colors.primary : tone === 'down' ? colors.danger : colors.textMuted;
@@ -165,7 +168,7 @@ export default function InsightsScreen() {
               <>
                 <View style={styles.tileGrid}>
                   <StatTile
-                    value={`${Math.max(...selected.sessions.map((s) => s.bestE1rm))} lb`}
+                    value={formatWeight(Math.max(...selected.sessions.map((s) => s.bestE1rm)), units)}
                     label="Best est. 1RM"
                   />
                   <StatTile value={selected.sessions.length} label="Sessions" />
@@ -177,7 +180,10 @@ export default function InsightsScreen() {
                     />
                   )}
                 </View>
-                <LineChart title={`${selected.name}: est. 1RM (lb)`} points={e1rmSeries(selected)} />
+                <LineChart
+                  title={`${selected.name}: est. 1RM (${weightUnit(units)})`}
+                  points={e1rmSeries(selected).map((p) => ({ ...p, value: lbToDisplay(p.value, units) }))}
+                />
                 {target && (
                   <View style={styles.panel}>
                     <View style={styles.panelTitleRow}>
@@ -189,7 +195,7 @@ export default function InsightsScreen() {
                       <Text style={styles.panelTitle}>Next session target</Text>
                     </View>
                     <Text style={styles.targetValue}>
-                      {target.weight} lb × {target.reps} reps
+                      {formatWeight(target.weight, units)} × {target.reps} reps
                     </Text>
                     <Text style={styles.note}>{target.reason}</Text>
                   </View>
@@ -224,7 +230,12 @@ export default function InsightsScreen() {
         </View>
 
         <BarChart title="When you train" points={timeOfDay} />
-        {mix.outdoor > 0 && <BarChart title="Outdoor miles per week" points={miles} />}
+        {mix.outdoor > 0 && (
+          <BarChart
+            title={`Outdoor ${distanceUnit(units) === 'km' ? 'kilometers' : 'miles'} per week`}
+            points={distanceByWeek}
+          />
+        )}
 
         {recentExternal.length > 0 && (
           <View style={styles.panel}>
