@@ -43,8 +43,13 @@ const PRO_ENTITLEMENT_ID = 'iron_pillar_pro';
 // also sent from the app as EXPO_PUBLIC_WHOOP_CLIENT_ID to build the
 // authorization URL), but is kept as a Functions secret too so the token
 // exchange/refresh calls below don't need a second source of truth for it.
-const WHOOP_CLIENT_ID = defineSecret('WHOOP_CLIENT_ID');
-const WHOOP_CLIENT_SECRET = defineSecret('WHOOP_CLIENT_SECRET');
+// WHOOP is ON HOLD, so these are deliberately NOT defineSecret(): the
+// Firebase CLI prompts for every declared secret on deploy, even ones only
+// used by un-exported functions. To re-enable WHOOP, switch these back to
+// defineSecret('WHOOP_CLIENT_ID') / defineSecret('WHOOP_CLIENT_SECRET'), add
+// them back to the `secrets` arrays below, and re-export the two functions.
+const WHOOP_CLIENT_ID = { value: () => process.env.WHOOP_CLIENT_ID ?? '' };
+const WHOOP_CLIENT_SECRET = { value: () => process.env.WHOOP_CLIENT_SECRET ?? '' };
 const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
 const WHOOP_API_BASE = 'https://api.prod.whoop.com/developer/v2';
 const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
@@ -1167,7 +1172,7 @@ async function requirePro(uid: string, message: string) {
 // and add `export` back to both. The app hides WHOOP while that env var is empty.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const exchangeWhoopCode = onCall(
-  { secrets: [WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, REVENUECAT_SECRET_KEY] },
+  { secrets: [REVENUECAT_SECRET_KEY] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -1211,7 +1216,7 @@ const exchangeWhoopCode = onCall(
 // Callable so the client can trigger a manual "Sync now".
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const syncWhoopData = onCall(
-  { secrets: [WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, REVENUECAT_SECRET_KEY] },
+  { secrets: [REVENUECAT_SECRET_KEY] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
