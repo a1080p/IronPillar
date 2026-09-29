@@ -4,6 +4,16 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-29 (evening): RevenueCat live on the App Store side; listing + TestFlight + Jira
+
+- **RevenueCat ↔ App Store:** added the "Iron Pillar (App Store)" app (`com.aidand510.ironpillar`); the owner uploaded the In-App Purchase key (valid). Created products `ironpillar_pro_monthly` / `ironpillar_pro_Yearly`, attached both to `iron_pillar_pro`, and added them to the `default` offering's `$rc_monthly` / `$rc_annual` next to the Test Store products.
+- **Keys:** the public `appl_` key is in the EAS **preview + production** envs (`EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`); **development** keeps the `test_` key. `eas.json` submit points at ASC app 6817053711.
+- **App Store Connect listing** (v1.0, saved, not submitted): new promotional text, description, keywords, and review notes (Insights/paywall path, HealthKit, GPS intro). The owner entered the review contact info. Note: ASC fields ignore programmatic value setting, so they had to be typed in.
+- **TestFlight:** production build #5 (EAS 84c22630) with `--auto-submit`, using the stored EAS ASC API key.
+- **Jira:** IP-21/26/27/28/29 → Done, IP-30 → To Do (WHOOP on hold), epics IP-22/23 → In Progress. Created IP-45–54 (this session's work, Done) and IP-55–59 (next steps: submission blockers, TestFlight QA, RevenueCat hardening, dependency updates, push notifications).
+
+---
+
 ## 2026-09-29 (later) — 2x XP for Pro; RevenueCat Paywall + Customer Center; WHOOP setup status
 
 - **2x XP for Pro** (`functions/src/index.ts` `completeWorkout`): the server confirms Pro with RevenueCat before the transaction and doubles the whole award, streak bonus included (`xpMultiplier` is stored on the log and returned). Any check failure means normal XP and never blocks finishing a workout. The completion screens show "2× Pro XP applied". **Not live until functions deploy** (needs `REVENUECAT_SECRET_KEY`).
