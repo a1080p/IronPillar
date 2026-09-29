@@ -4,6 +4,18 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-28 (later still) — Streaks now follow the user's local day, not UTC
+
+- **Bug**: `completeWorkout` computed streak days with `toISOString().slice(0, 10)` (UTC). For a US user, a 9 PM Eastern workout counted as the next day, so 7 PM + 9 PM on one evening could be two streak days, and morning + late-night patterns could break streaks.
+- **Fix** (`functions/src/index.ts`): the app now sends its IANA time zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`, via `deviceTimeZone()` in `constants/gamification.ts`) with every completion. The server validates it (IANA names only, so no raw `+05:00` offsets; canonicalized through `Intl`), stores it on the profile as `timeZone` + `timeZoneUpdatedAt`, and computes today/yesterday in that zone **on the server's clock**. "Yesterday" uses plain calendar arithmetic, so 23h/25h DST days can't skip or repeat a date.
+- **Anti-spoofing**: the client still can't pick "today", only whose midnight counts. Without limits, claiming UTC-12 → UTC → UTC+14 in one minute would give three "consecutive" days. Blocked by (1) a zone change counts at most once per 20h (otherwise the stored zone is used), (2) `lastWorkoutDate` never moves backwards, since a westward change just counts as already logged today, and (3) `firestore.rules` now makes `timeZone`/`timeZoneUpdatedAt` server-write-only, like xp/streak. Worst case a zone change pulls one day forward, the same slack an honest eastbound traveler gets.
+- **Existing users**: profiles without `timeZone` have UTC `lastWorkoutDate`s. On their first zone-aware workout the server re-derives that date from the last log's server-written `completedAt` in their zone, so the switch neither breaks a streak nor double-counts a day. Older app builds that send no zone keep exactly the old UTC behavior.
+- **Client consistency**: the client `todayDateString`/`yesterdayDateString` (unused before) now return the local date, and the daily recommendation seed (`lib/recommendations.ts`) rotates at local midnight instead of UTC. Streak displays (TopBar, WorkoutHeader, profile, analytics) just show the server's `streakCount`, so there was nothing else to change there.
+- **Verified**: app + functions typecheck clean. Simulated the logic in Node: the same-evening case, the zone-hopping attack (one day gained, then locked), the legacy-date migration, and old clients with no zone.
+- **Not deployed**: `REVENUECAT_SECRET_KEY`, `WHOOP_CLIENT_ID` and `WHOOP_CLIENT_SECRET` don't exist in the project yet, so a functions deploy would fail. Once they're set, deploy the rules and functions **together** (`firebase deploy --only firestore:rules,functions`), because the server-only protection on `timeZone` depends on the new rules. The app change is safe to ship first: the current function ignores the extra `timeZone` field.
+
+---
+
 ## 2026-09-28 (late night) — Account deletion now removes avatar + WHOOP data
 
 - **Gap found**: `deleteAccount` (`functions/src/index.ts`) didn't remove three pieces of user data, even though `website/privacy.html` says deleting your account removes your data: the profile photo in Storage (`avatars/<uid>`, uploaded by `lib/avatar.ts`), `wearableTokens/{uid}` (WHOOP OAuth access/refresh tokens), and `wearableSnapshots/{uid}` (WHOOP metrics).
