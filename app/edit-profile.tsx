@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { WorkoutHeader } from '../components/WorkoutHeader';
 import { AvatarPicker } from '../components/AvatarPicker';
 import { Button } from '../components/Button';
@@ -28,6 +28,38 @@ export default function EditProfileScreen() {
   // Whether the already-uploaded photo should be kept.
   const [keepPhoto, setKeepPhoto] = useState(!!profile?.avatarUrl);
   const [saving, setSaving] = useState(false);
+  const navigation = useNavigation();
+  // Set right before navigating away after a successful save, so the
+  // beforeRemove guard below doesn't prompt on the way out.
+  const savedRef = useRef(false);
+  // Latest handleSave, so the guard's "Save" option never uses stale state.
+  const saveRef = useRef<() => void>(() => {});
+
+  const isDirty =
+    !!profile &&
+    (name !== (profile.name ?? '') ||
+      birthday !== (profile.birthday ?? '') ||
+      pickedUri !== null ||
+      avatarKey !== (profile.avatarKey ?? null) ||
+      keepPhoto !== !!profile.avatarUrl);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (savedRef.current) return;
+      e.preventDefault();
+      Alert.alert('Save changes?', 'You have unsaved changes to your profile.', [
+        { text: 'Keep Editing', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => navigation.dispatch(e.data.action),
+        },
+        { text: 'Save', onPress: () => saveRef.current() },
+      ]);
+    });
+    return unsubscribe;
+  }, [navigation, isDirty]);
 
   if (!user || !profile) {
     return (
@@ -85,6 +117,7 @@ export default function EditProfileScreen() {
         avatarUrl,
         avatarKey: pickedUri || avatarUrl ? null : avatarKey,
       });
+      savedRef.current = true;
       router.back();
     } catch (e) {
       Alert.alert('Could not save', e instanceof Error ? e.message : 'Try again.');
@@ -92,6 +125,7 @@ export default function EditProfileScreen() {
       setSaving(false);
     }
   };
+  saveRef.current = handleSave;
 
   return (
     <SafeAreaView style={styles.container}>
