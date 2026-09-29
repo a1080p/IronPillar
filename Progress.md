@@ -4,6 +4,16 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-29 (later) — 2x XP for Pro; RevenueCat Paywall + Customer Center; WHOOP setup status
+
+- **2x XP for Pro** (`functions/src/index.ts` `completeWorkout`): the server confirms Pro with RevenueCat before the transaction and doubles the whole award, streak bonus included (`xpMultiplier` is stored on the log and returned). Any check failure means normal XP and never blocks finishing a workout. The completion screens show "2× Pro XP applied". **Not live until functions deploy** (needs `REVENUECAT_SECRET_KEY`).
+- **RevenueCat**: the entitlement is now `iron_pillar_pro` (client + server). `/paywall` shows the RevenueCat Paywall ("Iron Pillar Pro", generated with RevenueCat's AI editor, published, attached to the `default` offering with Test Store `monthly` $9.99 / `yearly` $79.99). The built-in screen stays as the fallback and the Pro summary. "Manage Subscription" (Settings + paywall) opens Customer Center, falling back to Apple's subscription sheet (Customer Center needs a paid RevenueCat plan). `react-native-purchases-ui` 10.10.2 added.
+- **Test Store key**: set in `.env` and the EAS `development` environment only. RevenueCat crashes release builds (ad hoc preview + TestFlight) that use a `test_` key, so the app now ignores `test_` keys outside `__DEV__`. New EAS profile `development-device` builds a debug dev client for a physical iPhone (QR install). TestFlight/App Store builds need the `appl_` key.
+- **Correction**: the RevenueCat/Google/WHOOP `EXPO_PUBLIC_` values in `.env` were blank all along (not "missing from EAS").
+- **WHOOP**: blocked on the owner creating a WHOOP account and signing in to developer-dashboard.whoop.com. The user has no band, so the OAuth flow can be tested but no data will appear.
+
+---
+
 ## 2026-09-29 — Iron Pillar Pro expanded: readiness, Apple Health/Watch, strength analytics; more free features
 
 **Pro now has 7 live features** (paywall's "coming soon" list is gone; single source of truth in `constants/pro.ts`):
