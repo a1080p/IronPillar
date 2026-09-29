@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Iron Pillar</title>
+<meta name="description" content="Iron Pillar is a workout tracker for iPhone. Log any workout in seconds, track outdoor runs with GPS, and turn consistency into streaks, XP, and badges.">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=JetBrains+Mono:wght@500;700&family=Public+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* ---------- hero ---------- */
+  .hero { padding-block: 56px 72px; }
+  .hero .wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 56px;
+    align-items: center;
+  }
+  .hero-copy { display: grid; gap: 22px; min-width: 0; }
+  .hero h1 { font-size: clamp(3.5rem, 10vw, 7.5rem); }
+  .hero h1 .flame { color: var(--flame); }
+
+  /* stacked app cards */
+  .stack { display: grid; gap: 14px; min-width: 0; }
+  .card {
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 18px 20px;
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+  }
+  .card-label {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+  }
+  .streak-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .streak-count {
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 2.75rem;
+    line-height: 1;
+  }
+  .streak-count span { color: var(--flame); }
+  .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+  .day {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+    padding: 8px 0;
+    border-radius: 10px;
+    background: var(--paper);
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: var(--muted);
+  }
+  .day svg { width: 18px; height: 18px; }
+  .day.done { background: var(--flame-soft); color: var(--ink); }
+  .day.done svg { color: var(--flame); }
+  .day.today { outline: 2px solid var(--flame); outline-offset: -2px; }
+  .day:not(.done) svg { color: var(--line); }
+  .xp-bar { height: 8px; border-radius: 99px; background: var(--paper); overflow: hidden; }
+  .xp-bar i { display: block; height: 100%; width: 71%; background: var(--pillar); border-radius: inherit; }
+  .xp-meta { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .workout-title { font-weight: 700; font-size: 1.125rem; color: var(--pillar); margin: 0; }
+  .meta-line { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.8125rem; color: var(--muted); margin: 0; }
+  .ex-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .ex-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+    font-size: 0.875rem;
+  }
+  .ex-list .sets { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); text-align: right; white-space: nowrap; }
+
+  .run { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: center; }
+  .route { width: 96px; height: 96px; border-radius: 12px; background: var(--pillar-soft); }
+  .route path { fill: none; stroke: var(--pillar); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .route circle { fill: var(--flame); }
+  .run-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .run-stats b { display: block; font-family: var(--display); font-weight: 800; font-size: 1.625rem; line-height: 1; font-variant-numeric: tabular-nums; }
+  .run-stats small { font-size: 0.75rem; color: var(--muted); }
+
+  /* ---------- feature sections ---------- */
+  .section { padding-block: 72px; }
+  .section-head { display: grid; gap: 14px; margin-bottom: 36px; max-width: 760px; }
+  .section-head h2 { font-size: var(--step-4); }
+
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+  .points { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; }
+  .points li { display: grid; gap: 4px; padding-left: 18px; border-left: 3px solid var(--ink); }
+  .points strong { font-size: 1.0625rem; }
+  .points span { color: var(--muted); }
+
+  .categories { display: flex; flex-wrap: wrap; gap: 8px; }
+  .categories li {
+    list-style: none;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--pillar);
+    color: var(--pillar);
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+  .categories { padding: 0; margin: 0; }
+  .big-stat { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+  .big-stat b { font-family: var(--display); font-weight: 900; font-size: clamp(4rem, 9vw, 6rem); line-height: 0.9; color: var(--pillar); }
+  .big-stat span { color: var(--muted); max-width: 22ch; }
+
+  /* XP log — set like a training log */
+  .log {
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 20px 22px;
+    font-family: var(--mono);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    min-width: 0;
+  }
+  .log-title { margin: 0 0 14px; font-family: var(--body); font-weight: 700; font-size: 1rem; }
+  .log dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; }
+  .log dt { color: var(--muted); }
+  .log dd { margin: 0; text-align: right; }
+  .log .total { border-top: 2px solid var(--ink); padding-top: 10px; font-weight: 700; color: var(--ink); }
+  .log .total + dd { border-top: 2px solid var(--ink); padding-top: 10px; font-weight: 700; color: var(--flame); }
+  .rules { margin: 16px 0 0; font-family: var(--body); font-size: 0.8125rem; color: var(--muted); }
+
+  /* ---------- pro ---------- */
+  .pro { background: var(--ink); color: var(--paper); }
+  .pro .eyebrow { color: var(--flame); }
+  .pro .lede { color: color-mix(in srgb, var(--paper) 72%, var(--ink)); }
+  .plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 640px; }
+  .plan {
+    border: 2px solid color-mix(in srgb, var(--paper) 30%, var(--ink));
+    border-radius: 18px;
+    padding: 20px 22px;
+    display: grid;
+    gap: 6px;
+  }
+  .plan.best { border-color: var(--flame); }
+  .plan .price { font-family: var(--display); font-weight: 900; font-size: 3rem; line-height: 1; }
+  .plan .price small { font-family: var(--body); font-size: 0.9375rem; font-weight: 500; opacity: 0.75; }
+  .plan .tag { font-family: var(--mono); font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--flame); min-height: 1em; }
+  .fine { font-size: 0.8125rem; color: color-mix(in srgb, var(--paper) 62%, var(--ink)); max-width: 72ch; margin: 24px 0 0; }
+  .fine a { color: var(--paper); }
+  .free-list { margin: 28px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; max-width: 640px; }
+  .free-list li { display: flex; gap: 10px; }
+  .free-list li::before { content: "✓"; color: var(--flame); font-weight: 700; }
+
+  @media (max-width: 860px) {
+    .hero .wrap, .split { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+    .hero { padding-block: 36px 56px; }
+    .section { padding-block: 56px; }
+  }
+  @media (max-width: 480px) {
+    .plans { grid-template-columns: minmax(0, 1fr); }
+    .run { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="Iron Pillar home"><img src="assets/logo.png" alt="Iron Pillar" width="1200" height="338"></a>
+    <nav class="nav" aria-label="Main">
+      <a href="index.html" aria-current="page">Overview</a>
+      <a href="index.html#pro">Pro</a>
+      <a href="support.html">Support</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-copy">
+        <p class="eyebrow">Workout tracker for iPhone</p>
+        <h1 class="display">Show up.<br>Stack the <span class="flame">days.</span></h1>
+        <p class="lede">Iron Pillar logs any workout in seconds, tracks your outdoor runs with GPS, and turns consistency into streaks, XP, and badges you can see growing.</p>
+        <div class="btn-row">
+          <span class="store-badge" aria-label="Coming soon to the App Store"><small>Coming soon to the</small><strong>App Store</strong></span>
+          <a class="btn" href="#pro">See what's in Pro</a>
+        </div>
+      </div>
+
+      <div class="stack" aria-label="Example screens from the app">
+        <div class="card">
+          <div class="streak-row">
+            <p class="card-label">Current streak</p>
+            <p class="card-label">Example</p>
+          </div>
+          <div class="streak-row">
+            <div class="streak-count">12 <span>days</span></div>
+          </div>
+          <div class="days">
+            <div class="day done"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .2 1.8 1 3 2.5 3.5C11 8.5 11 5.5 12 2Z"/></svg>M</div>
+            <div class="day done"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .2 1.8 1 3 2.5 3.5C11 8.5 11 5.5 12 2Z"/></svg>T</div>
+            <div class="day done"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .2 1.8 1 3 2.5 3.5C11 8.5 11 5.5 12 2Z"/></svg>W</div>
+            <div class="day done"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .2 1.8 1 3 2.5 3.5C11 8.5 11 5.5 12 2Z"/></svg>T</div>
+            <div class="day done today"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .2 1.8 1 3 2.5 3.5C11 8.5 11 5.5 12 2Z"/></svg>F</div>
+            <div class="day"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .2 1.8 1 3 2.5 3.5C11 8.5 11 5.5 12 2Z"/></svg>S</div>
+            <div class="day"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .2 1.8 1 3 2.5 3.5C11 8.5 11 5.5 12 2Z"/></svg>S</div>
+          </div>
+          <div class="xp-bar" role="img" aria-label="Level 4, 2,140 of 3,000 XP"><i></i></div>
+          <div class="xp-meta"><span>Lvl 4</span><span>2,140 / 3,000 xp</span></div>
+        </div>
+
+        <div class="card">
+          <p class="card-label">Today's recommended workout</p>
+          <p class="workout-title">Treadmill Interval Sprints</p>
+          <p class="meta-line"><span>30 minutes</span><span>Equipment required</span><span>300–420 calories</span></p>
+          <ul class="ex-list">
+            <li><span>Warm-Up Jog</span><span class="sets">1 set · 5 min easy</span></li>
+            <li><span>Sprint Intervals</span><span class="sets">6 sets · 30s / 90s</span></li>
+            <li><span>Incline Power Walk</span><span class="sets">1 set · 10 min</span></li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <p class="card-label">Run complete</p>
+          <div class="run">
+            <svg class="route" viewBox="0 0 96 96" role="img" aria-label="Map of a run route">
+              <path d="M18 76 C 22 58, 14 46, 26 36 S 50 30, 54 20 S 76 18, 80 34 S 70 54, 78 66 S 58 82, 44 74 S 26 84, 18 76"/>
+              <circle cx="18" cy="76" r="4"/>
+            </svg>
+            <div class="run-stats">
+              <div><b>3.12</b><small>miles</small></div>
+              <div><b>27:14</b><small>time</small></div>
+              <div><b>8:44</b><small>avg /mi</small></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="plate">
+
+  <section class="section" id="workouts">
+    <div class="wrap split">
+      <div class="section-head">
+        <p class="eyebrow">Workouts</p>
+        <h2 class="display">A workout for every day</h2>
+        <p class="lede">Open the app and today's pick is waiting, chosen from what you actually do. It leans toward your favorites and now and then nudges you toward something new.</p>
+      </div>
+      <div>
+        <div class="big-stat"><b>70+</b><span>guided workouts, each with sets, reps, tips, and an equipment list</span></div>
+        <ul class="categories" aria-label="Workout categories">
+          <li>Cardio</li><li>Strength Training</li><li>HIIT</li><li>Yoga</li><li>Pilates &amp; Core</li>
+          <li>Group Fitness</li><li>Swimming</li><li>Cycling</li><li>Sports &amp; Outdoor</li><li>Stretching &amp; Recovery</li>
+        </ul>
+        <ul class="points" style="margin-top:28px">
+          <li><strong>Quick Start</strong><span>Short workouts you can begin with one tap when time is tight.</span></li>
+          <li><strong>Build your own</strong><span>Save custom workouts with your own exercises, sets, and targets.</span></li>
+          <li><strong>Log every set</strong><span>Reps and weight, or time for holds and intervals. History keeps it all.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <hr class="plate">
+
+  <section class="section" id="outdoor">
+    <div class="wrap split">
+      <div class="section-head">
+        <p class="eyebrow">Outdoor tracking</p>
+        <h2 class="display">Walk, run, or ride. It's all on the map.</h2>
+        <p class="lede">Start a walk, run, or bike ride and Iron Pillar draws your route as you go, with a big timer, distance, and average pace you can read mid-stride.</p>
+      </div>
+      <ul class="points">
+        <li><strong>Keeps recording with your screen locked</strong><span>Put your phone in your pocket. Tracking continues until you tap Stop.</span></li>
+        <li><strong>Pause for red lights</strong><span>Pausing really stops recording, so a water break doesn't count against your pace.</span></li>
+        <li><strong>Counts toward your streak</strong><span>Outdoor sessions earn XP by distance and land in your history next to everything else.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <hr class="plate">
+
+  <section class="section" id="streaks">
+    <div class="wrap split">
+      <div class="section-head">
+        <p class="eyebrow">Streaks, XP &amp; badges</p>
+        <h2 class="display">Consistency, scored</h2>
+        <p class="lede">Every workout earns XP, and training on back-to-back days builds a streak that multiplies your bonus. Every 3,000 XP is a new level.</p>
+        <ul class="points" style="margin-top:16px">
+          <li><strong>Badges</strong><span>Unlock them as you hit milestones, starting with The Journey Begins.</span></li>
+          <li><strong>Friends</strong><span>Add friends by username and see their workouts, streaks, and badges in your activity feed.</span></li>
+        </ul>
+      </div>
+      <div class="log">
+        <p class="log-title">Treadmill Interval Sprints · day 12 of your streak</p>
+        <dl>
+          <dt>3 exercises × 50 xp</dt><dd>150</dd>
+          <dt>8 sets × 5 xp</dt><dd>40</dd>
+          <dt>Streak bonus · 12 days × 20 xp</dt><dd>240</dd>
+          <dt class="total">XP earned</dt><dd>+430</dd>
+        </dl>
+        <p class="rules">Outdoor sessions earn 40 xp per kilometer. The streak bonus applies to your first workout each day. A streak milestone lands every 5 days.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section pro" id="pro">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Iron Pillar Pro</p>
+        <h2 class="display">Build a workout. Let Pro fill in the rest.</h2>
+        <p class="lede">Create a custom workout and Pro writes the overview, estimates time and calories, lists the equipment, and adds form tips for every exercise.</p>
+      </div>
+      <div class="plans">
+        <div class="plan">
+          <span class="tag"></span>
+          <span>Monthly</span>
+          <span class="price">$9.99<small> / month</small></span>
+        </div>
+        <div class="plan best">
+          <span class="tag">Best value</span>
+          <span>Annual</span>
+          <span class="price">$79.99<small> / year</small></span>
+        </div>
+      </div>
+      <ul class="free-list" aria-label="Free for everyone">
+        <li>Everything else is free: workout logging, the full workout library, GPS tracking, streaks, XP, badges, friends, history, and analytics.</li>
+      </ul>
+      <p class="fine">Prices are in US dollars and may vary by country. Pro is an auto-renewing subscription. Payment is charged to your Apple ID at confirmation of purchase, and your subscription renews automatically unless you cancel at least 24 hours before the end of the current period. Manage or cancel anytime in your App Store account settings. See the <a href="terms.html">Terms of Use</a> and <a href="privacy.html">Privacy Policy</a>.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer" style="margin-top:0">
+  <div class="wrap">
+    <div>
+      <a class="brand" href="index.html" aria-label="Iron Pillar home"><img src="assets/logo.png" alt="Iron Pillar" width="1200" height="338"></a>
+      <p>A workout tracker built around showing up.</p>
+    </div>
+    <div>
+      <h4>App</h4>
+      <ul>
+        <li><a href="index.html#workouts">Workouts</a></li>
+        <li><a href="index.html#outdoor">Outdoor tracking</a></li>
+        <li><a href="index.html#pro">Iron Pillar Pro</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Help</h4>
+      <ul>
+        <li><a href="support.html">Support &amp; FAQ</a></li>
+        <li><a href="support.html#delete">Delete your account</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="privacy.html">Privacy Policy</a></li>
+        <li><a href="terms.html">Terms of Use</a></li>
+      </ul>
+      <p style="margin-top:14px">© 2026 Aidan Dombrowski</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
