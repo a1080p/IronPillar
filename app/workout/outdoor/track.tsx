@@ -27,6 +27,9 @@ import {
 import { completeOutdoorActivity, type CompletionResult } from '../../../lib/workoutCompletion';
 import { noteWorkoutStarted } from '../../../lib/gymReminders';
 import type { OutdoorActivityType, RoutePoint } from '../../../types/models';
+import { useAuth } from '../../../contexts/AuthContext';
+import { usePurchases } from '../../../contexts/PurchasesContext';
+import { syncCompletedWorkoutToHealth } from '../../../hooks/useAppleHealth';
 
 const ACTIVITY_LABELS: Record<OutdoorActivityType, string> = {
   walk: 'Walk',
@@ -57,6 +60,8 @@ export default function OutdoorTrackScreen() {
   const startedAtRef = useRef<number | null>(null);
   const totalPausedMsRef = useRef(0);
   const navigation = useNavigation();
+  const { user } = useAuth();
+  const { isPro } = usePurchases();
   // Skips the confirm dialog when there's nothing to lose yet — e.g. leaving
   // because location permission was denied, before tracking ever started.
   const skipConfirmRef = useRef(false);
@@ -176,6 +181,15 @@ export default function OutdoorTrackScreen() {
         finalRoute.length > 0 ? finalRoute : route
       );
       setResult(completion);
+      if (user) {
+        // Fire-and-forget: Pro + opt-in only; lands in Apple Fitness with distance.
+        syncCompletedWorkoutToHealth(user.uid, isPro, {
+          startDate: new Date(startedAtRef.current ?? Date.now() - elapsedSeconds * 1000),
+          endDate: new Date(),
+          activityType,
+          distanceMeters: finalDistance,
+        });
+      }
     } catch (e) {
       Alert.alert(
         'Could not save your activity',

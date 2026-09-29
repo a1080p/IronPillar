@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Button } from '../../../components/Button';
@@ -13,7 +13,13 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { completeWorkout } from '../../../lib/workoutCompletion';
 import { noteWorkoutStarted } from '../../../lib/gymReminders';
 import { summarizeExerciseLogs } from '../../../lib/workoutStats';
+import { lastPerformance } from '../../../lib/insights';
+import { useWorkoutLogs } from '../../../hooks/useWorkoutLogs';
+import { usePurchases } from '../../../contexts/PurchasesContext';
+import { syncCompletedWorkoutToHealth } from '../../../hooks/useAppleHealth';
 import type { ExerciseLog, LoggedSet } from '../../../types/models';
+
+const REST_OPTIONS = [60, 90, 120];
 
 export default function WorkoutLogScreen() {
   const { colors } = useTheme();
@@ -22,6 +28,9 @@ export default function WorkoutLogScreen() {
   const { user } = useAuth();
   const { workout: template } = useWorkout(id, user?.uid);
   const navigation = useNavigation();
+  const { isPro } = usePurchases();
+  const { logs: history } = useWorkoutLogs(user?.uid);
+  const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
 
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [logs, setLogs] = useState<ExerciseLog[]>([]);
@@ -62,6 +71,22 @@ export default function WorkoutLogScreen() {
   }, []);
 
   const exercise = template?.exercises[exerciseIndex];
+  // Free: what you did for this exercise last time, shown as a hint and used
+  // as each set's placeholder so matching or beating it is one glance away.
+  const last = useMemo(
+    () => (exercise ? lastPerformance(history, exercise.name) : null),
+    [history, exercise?.name]
+  );
+
+  // Free: rest timer. Rides the existing 1s elapsed tick for re-renders.
+  const restRemaining =
+    restEndsAt != null ? Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000)) : null;
+  useEffect(() => {
+    if (restRemaining === 0) {
+      Vibration.vibrate(400);
+      setRestEndsAt(null);
+    }
+  }, [restRemaining]);
 
   useEffect(() => {
     if (!exercise) return;
@@ -110,6 +135,11 @@ export default function WorkoutLogScreen() {
     setFinishing(true);
     try {
       const result = await completeWorkout(template, nextLogs, elapsedSeconds);
+      // Fire-and-forget: Pro + opt-in only, and never blocks finishing.
+      syncCompletedWorkoutToHealth(user.uid, isPro, {
+        startDate: new Date(startTime.current),
+        endDate: new Date(),
+      });
       const totals = summarizeExerciseLogs(nextLogs);
       isCompletingRef.current = true;
       router.replace({
@@ -151,6 +181,33 @@ export default function WorkoutLogScreen() {
           {exercise.targetRepsLabel}
         </Text>
         {exercise.tips && <Text style={styles.tips}>{exercise.tips}</Text>}
+        {last && <Text style={styles.lastTime}>Last time: {formatLastSets(last.sets)}</Text>}
+
+        <View style={styles.restRow}>
+          {restRemaining != null ? (
+            <>
+              <Text style={styles.restCountdown}>Rest {formatTime(restRemaining)}</Text>
+              <Pressable onPress={() => setRestEndsAt(null)} hitSlop={8}>
+                <Text style={styles.restSkip}>Skip</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={styles.restLabel}>Rest timer</Text>
+              {REST_OPTIONS.map((sec) => (
+                <Pressable
+                  key={sec}
+                  style={styles.restPill}
+                  onPress={() => setRestEndsAt(Date.now() + sec * 1000)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Start ${sec} second rest`}
+                >
+                  <Text style={styles.restPillText}>{sec < 120 ? `${sec}s` : `${sec / 60}:00`}</Text>
+                </Pressable>
+              ))}
+            </>
+          )}
+        </View>
 
         <View style={styles.setsHeader}>
           <Text style={styles.setsHeaderLabel}>Set</Text>
@@ -171,7 +228,7 @@ export default function WorkoutLogScreen() {
               <TextInput
                 style={styles.input}
                 keyboardType="number-pad"
-                placeholder={exercise.targetRepsLabel}
+                placeholder={last?.sets[i]?.durationSeconds?.toString() ?? exercise.targetRepsLabel}
                 placeholderTextColor={colors.textMuted}
                 value={set.durationSeconds?.toString() ?? ''}
                 onChangeText={(v) => updateSet(i, { durationSeconds: Number(v) || undefined })}
@@ -181,7 +238,7 @@ export default function WorkoutLogScreen() {
                 <TextInput
                   style={styles.input}
                   keyboardType="number-pad"
-                  placeholder="reps"
+                  placeholder={last?.sets[i]?.reps?.toString() ?? 'reps'}
                   placeholderTextColor={colors.textMuted}
                   value={set.reps?.toString() ?? ''}
                   onChangeText={(v) => updateSet(i, { reps: Number(v) || undefined })}
@@ -190,7 +247,7 @@ export default function WorkoutLogScreen() {
                   <TextInput
                     style={styles.input}
                     keyboardType="number-pad"
-                    placeholder="lbs"
+                    placeholder={last?.sets[i]?.weight?.toString() ?? 'lbs'}
                     placeholderTextColor={colors.textMuted}
                     value={set.weight?.toString() ?? ''}
                     onChangeText={(v) => updateSet(i, { weight: Number(v) || undefined })}
@@ -214,6 +271,19 @@ export default function WorkoutLogScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+function formatLastSets(sets: LoggedSet[]) {
+  return sets
+    .filter((set) => set.reps != null || set.durationSeconds != null)
+    .map((set) =>
+      set.durationSeconds != null
+        ? `${set.durationSeconds}s`
+        : set.weight
+          ? `${set.weight}×${set.reps}`
+          : `${set.reps} reps`
+    )
+    .join(' · ');
 }
 
 function formatTime(totalSeconds: number) {
@@ -242,7 +312,32 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: typography.sizes.small,
     marginBottom: spacing.sm,
   },
-  tips: { textAlign: 'center', color: colors.textMuted, marginBottom: spacing.lg },
+  tips: { textAlign: 'center', color: colors.textMuted, marginBottom: spacing.md },
+  lastTime: {
+    textAlign: 'center',
+    color: colors.text,
+    fontWeight: '600',
+    fontSize: typography.sizes.small,
+    marginBottom: spacing.md,
+  },
+  restRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  restLabel: { color: colors.textMuted, fontSize: typography.sizes.small },
+  restPill: {
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  restPillText: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.small },
+  restCountdown: { color: colors.accentFlame, fontWeight: '800', fontSize: typography.sizes.md },
+  restSkip: { color: colors.textMuted, fontWeight: '600', fontSize: typography.sizes.small },
   setsHeader: { flexDirection: 'row', marginBottom: spacing.sm, gap: spacing.md },
   setsHeaderLabel: { flex: 1, textAlign: 'center', color: colors.textMuted, fontSize: typography.sizes.small },
   setRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },

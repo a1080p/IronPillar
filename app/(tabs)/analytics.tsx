@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { ProBadge } from '../../components/ProLock';
+import { usePurchases } from '../../contexts/PurchasesContext';
+import { activeDays, activityCalendar } from '../../lib/insights';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TopBar } from '../../components/TopBar';
 import { Button } from '../../components/Button';
@@ -55,6 +60,9 @@ export default function AnalyticsScreen() {
   const prs = useMemo(() => personalRecords(logs, 5), [logs]);
   const recent = useMemo(() => logs.slice(0, 8), [logs]);
   const strengthPoints = useMemo(() => strengthTrend(logs, 10), [logs]);
+  const calendar = useMemo(() => activityCalendar(logs, 12), [logs]);
+  const daysActive = useMemo(() => activeDays(logs, 30), [logs]);
+  const { isPro } = usePurchases();
 
   // Weight line = the starting weight from onboarding, then every logged entry.
   const weightPoints = useMemo(() => {
@@ -106,6 +114,27 @@ export default function AnalyticsScreen() {
           {profile?.name ? `${profile.name}, ` : ''}here's how your training is trending
         </Text>
 
+        <Pressable
+          style={({ pressed }) => [styles.insightsCard, pressed && { opacity: 0.8 }]}
+          onPress={() => router.push('/insights')}
+          accessibilityRole="button"
+          accessibilityLabel="Open Insights"
+        >
+          <Ionicons name="pulse" size={22} color={colors.primary} />
+          <View style={{ flex: 1 }}>
+            <View style={styles.insightsTitleRow}>
+              <Text style={styles.insightsTitle}>Insights</Text>
+              <ProBadge />
+            </View>
+            <Text style={styles.insightsText}>
+              {isPro
+                ? 'Readiness score, next-session targets, and 1RM trends'
+                : 'Readiness score, lift targets, Apple Watch & WHOOP. Tap to preview'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Pressable>
+
         {logs.length === 0 ? (
           <Text style={styles.note}>
             Finish your first workout and your training stats will show up here.
@@ -139,6 +168,34 @@ export default function AnalyticsScreen() {
                 hint={wkMinutes.hint}
                 hintTone={wkMinutes.tone}
               />
+            </View>
+
+            <View style={styles.panel}>
+              <View style={styles.calendarHeader}>
+                <Text style={styles.panelTitle}>Consistency</Text>
+                <Text style={styles.calendarMeta}>{daysActive} of last 30 days</Text>
+              </View>
+              <View style={styles.calendarGrid}>
+                {calendar.map((week, w) => (
+                  <View key={w} style={styles.calendarColumn}>
+                    {week.map((day) => (
+                      <View
+                        key={day.date.toISOString()}
+                        style={[
+                          styles.calendarCell,
+                          day.isFuture
+                            ? styles.calendarFuture
+                            : day.count > 1
+                              ? styles.calendarHot
+                              : day.count === 1
+                                ? styles.calendarOn
+                                : null,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                ))}
+              </View>
             </View>
 
             <BarChart
@@ -270,6 +327,32 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.lg,
   },
   panelTitle: { fontWeight: '700', color: colors.text, marginBottom: spacing.md },
+  insightsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  insightsTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  insightsTitle: { fontWeight: '800', color: colors.primary, fontSize: typography.sizes.md },
+  insightsText: { color: colors.textMuted, fontSize: typography.sizes.small, marginTop: 2 },
+  calendarHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+  calendarMeta: { color: colors.textMuted, fontSize: typography.sizes.small },
+  calendarGrid: { flexDirection: 'row', justifyContent: 'space-between' },
+  calendarColumn: { gap: 4 },
+  calendarCell: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    backgroundColor: colors.background,
+  },
+  calendarOn: { backgroundColor: colors.primary, opacity: 0.55 },
+  calendarHot: { backgroundColor: colors.primary },
+  calendarFuture: { opacity: 0.25 },
   prRow: { marginBottom: spacing.md },
   prName: { fontWeight: '700', color: colors.primary, fontSize: typography.sizes.small },
   prDetail: { color: colors.text, fontSize: typography.sizes.small, marginTop: 2 },

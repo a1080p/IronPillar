@@ -9,7 +9,8 @@ import { radii, spacing, typography } from '../../constants/theme';
 import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePurchases } from '../../contexts/PurchasesContext';
-import { createCustomWorkout } from '../../hooks/useCustomWorkouts';
+import { createCustomWorkout, useCustomWorkouts } from '../../hooks/useCustomWorkouts';
+import { FREE_CUSTOM_WORKOUT_LIMIT } from '../../constants/pro';
 import { generateWorkoutDetails } from '../../lib/workoutDetails';
 import type { ExerciseSpec, GeneratedWorkoutDetails } from '../../types/models';
 
@@ -20,6 +21,8 @@ export default function NewWorkoutScreen() {
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { user } = useAuth();
   const { isPro } = usePurchases();
+  const { customWorkouts } = useCustomWorkouts(user?.uid);
+  const atFreeLimit = !isPro && customWorkouts.length >= FREE_CUSTOM_WORKOUT_LIMIT;
   const [workoutName, setWorkoutName] = useState('');
   const [exercises, setExercises] = useState<ExerciseSpec[]>([]);
 
@@ -65,6 +68,17 @@ export default function NewWorkoutScreen() {
     }
     if (exercises.length === 0) {
       Alert.alert('Add an exercise', 'Add at least one exercise before saving.');
+      return;
+    }
+    if (atFreeLimit) {
+      Alert.alert(
+        'Custom workout limit reached',
+        `Free accounts can save up to ${FREE_CUSTOM_WORKOUT_LIMIT} custom workouts. Upgrade to Pro for unlimited, or delete one you no longer use.`,
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'See Pro', onPress: () => router.push('/paywall') },
+        ]
+      );
       return;
     }
     setSaving(true);
@@ -117,8 +131,13 @@ export default function NewWorkoutScreen() {
         />
 
         <Text style={styles.aiNote}>
-          Just add the exercises — when you save, AI fills in the overview, time, calorie
-          estimate, equipment, and coaching tips. You can edit them afterward.
+          {isPro
+            ? 'Just add the exercises — when you save, AI fills in the overview, time, calorie estimate, equipment, and coaching tips. You can edit them afterward.'
+            : `Just add the exercises. With Pro, AI fills in the overview, calorie estimate, equipment, and coaching tips for you.${
+                atFreeLimit
+                  ? ` You've used all ${FREE_CUSTOM_WORKOUT_LIMIT} free custom workouts.`
+                  : ` ${customWorkouts.length} of ${FREE_CUSTOM_WORKOUT_LIMIT} free custom workouts used.`
+              }`}
         </Text>
 
         {exercises.map((ex, i) => (

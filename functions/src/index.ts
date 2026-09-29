@@ -957,8 +957,17 @@ async function performWhoopSync(uid: string): Promise<void> {
 // Exchanges an OAuth authorization code (from the client's expo-auth-session
 // flow) for WHOOP tokens, stores them server-side, and runs an initial sync
 // so the user sees real data immediately after connecting.
+// WHOOP sync is a Pro feature (see constants/pro.ts). Same empty-secret
+// skip as generateWorkoutDetails: only relevant to local/emulator runs.
+async function requirePro(uid: string, message: string) {
+  const secret = REVENUECAT_SECRET_KEY.value();
+  if (secret && !(await isProSubscriber(uid, secret))) {
+    throw new HttpsError('permission-denied', message);
+  }
+}
+
 export const exchangeWhoopCode = onCall(
-  { secrets: [WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET] },
+  { secrets: [WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, REVENUECAT_SECRET_KEY] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -968,6 +977,7 @@ export const exchangeWhoopCode = onCall(
     if (!code || !redirectUri) {
       throw new HttpsError('invalid-argument', 'Missing code or redirectUri.');
     }
+    await requirePro(uid, 'Upgrade to Pro to connect WHOOP.');
 
     const tokens = await whoopTokenRequest({
       grant_type: 'authorization_code',
@@ -1000,12 +1010,13 @@ export const exchangeWhoopCode = onCall(
 
 // Callable so the client can trigger a manual "Sync now".
 export const syncWhoopData = onCall(
-  { secrets: [WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET] },
+  { secrets: [WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, REVENUECAT_SECRET_KEY] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
       throw new HttpsError('unauthenticated', 'Must be signed in to sync WHOOP data.');
     }
+    await requirePro(uid, 'Upgrade to Pro to sync WHOOP data.');
     await performWhoopSync(uid);
     return { synced: true };
   }

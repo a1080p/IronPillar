@@ -15,6 +15,9 @@ import { useWorkoutLogs } from '../../hooks/useWorkoutLogs';
 import { useEarnedBadges } from '../../hooks/useEarnedBadges';
 import { useWearableSnapshot } from '../../hooks/useWearableSnapshot';
 import { connectWhoop, disconnectWhoop, isWhoopConfigured, syncWhoop } from '../../lib/whoop';
+import { usePurchases } from '../../contexts/PurchasesContext';
+import { useAppleHealth } from '../../hooks/useAppleHealth';
+import { ProBadge, ProLockCard } from '../../components/ProLock';
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
@@ -102,6 +105,111 @@ export default function ProfileScreen() {
 function WearablesSection({ uid }: { uid: string }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
+  const { isPro } = usePurchases();
+
+  if (!isPro) {
+    return (
+      <>
+        <Text style={[styles.sectionHeading, { marginTop: spacing.xl }]}>Connected apps</Text>
+        <ProLockCard
+          title="Apple Health, Apple Watch & WHOOP"
+          description="Save workouts to Apple Health, and use Apple Watch or WHOOP recovery, HRV, and sleep for a daily readiness score."
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <View style={styles.connectedHeadingRow}>
+        <Text style={[styles.sectionHeading, { marginBottom: 0 }]}>Connected apps</Text>
+        <ProBadge />
+      </View>
+      <AppleHealthCard uid={uid} />
+      <WhoopCard uid={uid} />
+    </>
+  );
+}
+
+function AppleHealthCard({ uid }: { uid: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  const health = useAppleHealth(uid, true);
+  const [busy, setBusy] = useState(false);
+
+  if (!health.supported) {
+    return <Text style={[styles.note, styles.cardGap]}>Apple Health is available on iPhone.</Text>;
+  }
+
+  const handleConnect = async () => {
+    setBusy(true);
+    try {
+      const ok = await health.connect();
+      if (!ok) Alert.alert('Apple Health unavailable', 'Health data isn’t available on this device.');
+    } catch (e) {
+      Alert.alert('Could not connect Apple Health', e instanceof Error ? e.message : 'Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!health.enabled) {
+    return (
+      <Pressable
+        style={[styles.connectButton, styles.cardGap]}
+        onPress={handleConnect}
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel="Connect Apple Health"
+      >
+        <Text style={styles.connectButtonLabel}>
+          {busy ? 'Connecting...' : 'Connect Apple Health & Apple Watch'}
+        </Text>
+      </Pressable>
+    );
+  }
+
+  const s = health.snapshot;
+  return (
+    <View style={[styles.wearableCard, styles.cardGap]}>
+      <View style={styles.wearableHeader}>
+        <Text style={styles.wearableTitle}>Apple Health</Text>
+        <Text style={styles.wearableConnected}>Connected</Text>
+      </View>
+      {s && (
+        <View style={styles.wearableStatsRow}>
+          {s.hrvMs != null && <WearableStat label="HRV" value={`${Math.round(s.hrvMs)}ms`} />}
+          {s.restingHeartRateBpm != null && (
+            <WearableStat label="Resting HR" value={`${Math.round(s.restingHeartRateBpm)}`} />
+          )}
+          {s.sleepHours != null && <WearableStat label="Sleep" value={`${s.sleepHours}h`} />}
+          {s.stepsToday != null && (
+            <WearableStat label="Steps" value={s.stepsToday.toLocaleString()} />
+          )}
+        </View>
+      )}
+      <Text style={styles.note}>
+        Completed workouts are saved to Apple Health. Manage permissions in the Health app.
+      </Text>
+      <View style={styles.wearableActions}>
+        <Text
+          style={styles.wearableAction}
+          onPress={health.loading ? undefined : health.refresh}
+          accessibilityRole="button"
+        >
+          {health.loading ? 'Refreshing...' : 'Refresh'}
+        </Text>
+        <Text style={styles.wearableActionMuted} onPress={health.disconnect} accessibilityRole="button">
+          Turn off
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function WhoopCard({ uid }: { uid: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { snapshot } = useWearableSnapshot(uid);
   const [busy, setBusy] = useState(false);
   const connected = !!snapshot?.connected;
@@ -144,9 +252,8 @@ function WearablesSection({ uid }: { uid: string }) {
 
   return (
     <>
-      <Text style={styles.sectionHeading}>Wearables</Text>
       {!isWhoopConfigured ? (
-        <Text style={styles.note}>WHOOP isn't set up on this build yet.</Text>
+        <Text style={styles.note}>WHOOP sync isn't available on this build yet.</Text>
       ) : connected ? (
         <View style={styles.wearableCard}>
           <View style={styles.wearableHeader}>
@@ -283,6 +390,14 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.xs,
   },
   badgeName: { fontSize: typography.sizes.small, color: colors.text, textAlign: 'center' },
+  connectedHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+    marginBottom: spacing.md,
+  },
+  cardGap: { marginBottom: spacing.md },
   connectButton: {
     borderWidth: 1.5,
     borderColor: colors.primary,

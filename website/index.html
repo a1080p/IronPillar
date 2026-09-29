@@ -156,7 +156,12 @@
   .plan .tag { font-family: var(--mono); font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--flame); min-height: 1em; }
   .fine { font-size: 0.8125rem; color: color-mix(in srgb, var(--paper) 62%, var(--ink)); max-width: 72ch; margin: 24px 0 0; }
   .fine a { color: var(--paper); }
-  .free-list { margin: 28px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; max-width: 640px; }
+  .pro-features { list-style: none; margin: 0 0 40px; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 32px; max-width: 900px; }
+  .pro-features li { display: grid; gap: 4px; padding-left: 16px; border-left: 3px solid var(--flame); }
+  .pro-features strong { font-size: 1.0625rem; }
+  .pro-features span { color: color-mix(in srgb, var(--paper) 72%, var(--ink)); }
+  .free-head { margin: 36px 0 0; font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--flame); }
+  .free-list { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; max-width: 640px; }
   .free-list li { display: flex; gap: 10px; }
   .free-list li::before { content: "✓"; color: var(--flame); font-weight: 700; }
 
@@ -167,6 +172,7 @@
   }
   @media (max-width: 480px) {
     .plans { grid-template-columns: minmax(0, 1fr); }
+    .pro-features { grid-template-columns: minmax(0, 1fr); }
     .run { grid-template-columns: minmax(0, 1fr); }
   }
 </style>
@@ -321,9 +327,19 @@
     <div class="wrap">
       <div class="section-head">
         <p class="eyebrow">Iron Pillar Pro</p>
-        <h2 class="display">Build a workout. Let Pro fill in the rest.</h2>
-        <p class="lede">Create a custom workout and Pro writes the overview, estimates time and calories, lists the equipment, and adds form tips for every exercise.</p>
+        <h2 class="display">Know when to push. Know what to lift.</h2>
+        <p class="lede">Pro turns your logs, your Apple Watch, and your WHOOP into coaching: a daily readiness score, the exact weight to aim for next session, and warnings before a lift stalls.</p>
       </div>
+      <ul class="pro-features">
+        <li><strong>Daily readiness score</strong><span>A 0–100 score from your HRV, resting heart rate, sleep, and training load, with a clear call on whether to push or back off.</span></li>
+        <li><strong>Apple Health &amp; Apple Watch</strong><span>Workouts save to Apple Health and count toward your Activity rings. Apple Watch HRV, sleep, and workouts feed your readiness score.</span></li>
+        <li><strong>WHOOP sync</strong><span>Bring in recovery, HRV, sleep performance, and strain from your WHOOP.</span></li>
+        <li><strong>Next-session targets</strong><span>Double-progression targets for every lift: add weight when you've earned it, add a rep when you haven't.</span></li>
+        <li><strong>1RM trends &amp; plateau alerts</strong><span>Estimated one-rep max over time for each exercise, with a flag when a lift hasn't improved in three sessions.</span></li>
+        <li><strong>Training load &amp; habits</strong><span>12 weeks of training minutes, your strength-to-conditioning mix, outdoor miles, and when you train most.</span></li>
+        <li><strong>AI workout details</strong><span>Build a custom workout and Pro writes the overview, estimates time and calories, lists the equipment, and adds form tips.</span></li>
+        <li><strong>Unlimited custom workouts &amp; data export</strong><span>Save as many custom workouts as you want (free accounts get 5), and export every set you've logged to CSV.</span></li>
+      </ul>
       <div class="plans">
         <div class="plan">
           <span class="tag"></span>
@@ -336,8 +352,14 @@
           <span class="price">$79.99<small> / year</small></span>
         </div>
       </div>
+      <p class="free-head">Free, forever</p>
       <ul class="free-list" aria-label="Free for everyone">
-        <li>Everything else is free: workout logging, the full workout library, GPS tracking, streaks, XP, badges, friends, history, and analytics.</li>
+        <li>Unlimited workout logging and the full workout library</li>
+        <li>Rest timer, plus your "last time" numbers on every set</li>
+        <li>Consistency calendar, weekly stats, strength trend, and personal records</li>
+        <li>GPS walks, runs, and rides with maps</li>
+        <li>Streaks, XP, badges, friends, and your activity feed</li>
+        <li>Up to 5 custom workouts</li>
       </ul>
       <p class="fine">Prices are in US dollars and may vary by country. Pro is an auto-renewing subscription. Payment is charged to your Apple ID at confirmation of purchase, and your subscription renews automatically unless you cancel at least 24 hours before the end of the current period. Manage or cancel anytime in your App Store account settings. See the <a href="terms.html">Terms of Use</a> and <a href="privacy.html">Privacy Policy</a>.</p>
     </div>

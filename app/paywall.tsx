@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -9,6 +9,7 @@ import { WorkoutHeader } from '../components/WorkoutHeader';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { usePurchases } from '../contexts/PurchasesContext';
+import { FREE_FEATURES, PRO_FEATURES, type PlanFeature } from '../constants/pro';
 
 // Static fallback shown until a RevenueCat offering is configured and
 // fetched — keeps the paywall's copy/pricing visible (if not yet purchasable)
@@ -16,14 +17,6 @@ import { usePurchases } from '../contexts/PurchasesContext';
 const FALLBACK_PLANS = [
   { id: 'monthly', label: 'Monthly', price: '$9.99', period: '/month' },
   { id: 'annual', label: 'Annual', price: '$79.99', period: '/year', badge: 'Best value' },
-];
-
-const LIVE_FEATURES = ['AI-generated workout details (overview, tips, equipment, calories)'];
-const COMING_SOON_FEATURES = [
-  'WHOOP & Apple Health sync',
-  'Advanced analytics (1RM trends, recovery-aware recommendations)',
-  'Unlimited custom workouts',
-  'Data export',
 ];
 
 export default function PaywallScreen() {
@@ -80,7 +73,7 @@ export default function PaywallScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Iron Pillar Pro</Text>
         <Text style={styles.subtitle}>
-          Unlock AI-powered workout details and everything coming next.
+          Train smarter with readiness scoring, wearable sync, and coaching-level analytics.
         </Text>
 
         {isPro ? (
@@ -135,13 +128,24 @@ export default function PaywallScreen() {
         )}
 
         <View style={styles.featureList}>
-          {LIVE_FEATURES.map((f) => (
-            <FeatureRow key={f} label={f} live />
-          ))}
-          {COMING_SOON_FEATURES.map((f) => (
-            <FeatureRow key={f} label={f} />
+          {PRO_FEATURES.map((f) => (
+            <FeatureRow key={f.title} feature={f} />
           ))}
         </View>
+
+        <Text style={styles.freeHeading}>Always free</Text>
+        {FREE_FEATURES.map((f) => (
+          <View key={f} style={styles.freeRow}>
+            <Ionicons name="checkmark" size={16} color={colors.textMuted} />
+            <Text style={styles.freeText}>{f}</Text>
+          </View>
+        ))}
+        {!isPro && (
+          <Text style={styles.legal}>
+            Subscriptions renew automatically unless cancelled at least 24 hours before the end of
+            the current period. Manage or cancel anytime in your App Store account settings.
+          </Text>
+        )}
       </ScrollView>
 
       {!isPro && (
@@ -155,6 +159,14 @@ export default function PaywallScreen() {
           <Text style={styles.restoreLink} onPress={handleRestore}>
             {restoring ? 'Restoring...' : 'Restore Purchases'}
           </Text>
+          <View style={styles.legalLinks}>
+            <Text style={styles.legalLink} onPress={() => Linking.openURL('https://www.ironpillar.app/terms')}>
+              Terms of Use
+            </Text>
+            <Text style={styles.legalLink} onPress={() => Linking.openURL('https://www.ironpillar.app/privacy')}>
+              Privacy Policy
+            </Text>
+          </View>
         </View>
       )}
     </SafeAreaView>
@@ -167,20 +179,18 @@ function packageTypeLabel(pkg: PurchasesPackage): string {
   return pkg.identifier;
 }
 
-function FeatureRow({ label, live }: { label: string; live?: boolean }) {
+function FeatureRow({ feature }: { feature: PlanFeature }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <View style={styles.featureRow}>
-      <Ionicons
-        name={live ? 'checkmark-circle' : 'time-outline'}
-        size={18}
-        color={live ? colors.success : colors.textMuted}
-      />
-      <Text style={[styles.featureText, !live && styles.featureTextMuted]}>
-        {label}
-        {!live && '  (coming soon)'}
-      </Text>
+      <View style={styles.featureIcon}>
+        <Ionicons name={feature.icon} size={18} color={colors.primary} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.featureTitle}>{feature.title}</Text>
+        <Text style={styles.featureDescription}>{feature.description}</Text>
+      </View>
     </View>
   );
 }
@@ -224,9 +234,28 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   planPeriod: { fontSize: typography.sizes.small, fontWeight: '600', color: colors.textMuted },
   notice: { color: colors.textMuted, fontSize: typography.sizes.small, marginBottom: spacing.lg },
   featureList: { gap: spacing.md, marginTop: spacing.lg },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  featureText: { color: colors.text, flex: 1 },
-  featureTextMuted: { color: colors.textMuted },
+  featureRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  featureIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureTitle: { color: colors.text, fontWeight: '700' },
+  featureDescription: { color: colors.textMuted, fontSize: typography.sizes.small, marginTop: 2 },
+  freeHeading: {
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: spacing.xl,
+    marginBottom: spacing.sm,
+  },
+  freeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
+  freeText: { color: colors.textMuted, fontSize: typography.sizes.small, flex: 1 },
+  legal: { color: colors.textMuted, fontSize: 11, marginTop: spacing.lg },
+  legalLinks: { flexDirection: 'row', gap: spacing.lg },
+  legalLink: { color: colors.textMuted, fontSize: 11, textDecorationLine: 'underline' },
   footer: { padding: spacing.lg, alignItems: 'center', gap: spacing.sm },
   restoreLink: { color: colors.primary, fontWeight: '600', fontSize: typography.sizes.small },
 });

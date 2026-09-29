@@ -4,6 +4,29 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-29 — Iron Pillar Pro expanded: readiness, Apple Health/Watch, strength analytics; more free features
+
+**Pro now has 7 live features** (paywall's "coming soon" list is gone; single source of truth in `constants/pro.ts`):
+- **Daily readiness score** (`lib/readiness.ts`, shown on new `app/insights.tsx`): 0–100 blend of recovery (WHOOP recovery, else Apple Health HRV + resting HR vs the user's own 30-day baseline), sleep (Apple Health hours, else WHOOP sleep performance), and training load (7-day vs 28-day acute:chronic minutes, counting Apple Watch/other-app workouts). Weights re-normalize to whatever's available, so no-wearable users still get a load-based score. Labels Primed/Ready/Moderate/Recover with a recommendation.
+- **Apple Health & Apple Watch** (`lib/healthkit.ts`, `hooks/useAppleHealth.ts`, `@kingstinct/react-native-healthkit` v16 + `react-native-nitro-modules`): reads HRV, resting HR, sleep (deduped per source), steps, active energy, weight, and external workouts (own bundle excluded to avoid double counting); writes completed workouts (strength / walk / run / cycle + distance) so they count toward Activity rings. Opt-in per device (AsyncStorage pref), Pro-only. **All HealthKit data stays on-device**, never written to Firestore (guideline 5.1.3 + privacy policy). "Apple Watch integration" = via HealthKit; no watchOS app.
+- **WHOOP sync** is now Pro-gated in the UI (Profile → Connected apps) and server-side (`requirePro` in `exchangeWhoopCode`/`syncWhoopData`; `disconnectWhoop` stays open).
+- **Advanced strength analytics** (`lib/insights.ts`): per-exercise est. 1RM chart with picker, 30-day 1RM change, double-progression next-session targets, plateau alerts (no new best in 3 sessions), 12-week training minutes, strength/conditioning/outdoor mix, time-of-day, outdoor miles/week.
+- **Data export**: CSV of every set via share sheet (`lib/export.ts`, `expo-file-system` + `expo-sharing`), from Insights and Settings.
+- **Unlimited custom workouts**: free tier capped at 5 (`FREE_CUSTOM_WORKOUT_LIMIT`) on create and duplicate; existing workouts are never removed.
+- **AI workout details**: unchanged; builder copy now says it's Pro.
+
+**New free features**: rest timer (60/90/120s, vibrates) and "last time" numbers + per-set placeholders while logging; 12-week consistency calendar + "days active in last 30" on Analytics; paywall lists what stays free.
+
+**Also**: paywall now has functional Terms/Privacy links + auto-renew disclosure (guideline 3.1.2); Settings gained Pro / Insights / Export rows; HealthKit usage strings set in `app.json` (no background-delivery entitlement).
+
+**Website**: Pro section rewritten (8-feature grid + free list), privacy policy has an Apple Health (HealthKit) section, support FAQ has an Apple Health/Watch/WHOOP section, Terms describe the broader Pro.
+
+**Verified**: app + functions typecheck clean; website Pro section checked in the browser. Not yet device-verified — needs the new preview build (HealthKit + nitro + sharing/file-system + the reminders session's expo-notifications are all new native modules).
+
+**Still blocked (owner-only)**: WHOOP and the server-side Pro checks need `firebase functions:secrets:set REVENUECAT_SECRET_KEY`, `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET` before `firebase deploy --only firestore:rules,functions` can run.
+
+---
+
 ## 2026-09-29 — Bug triage: Edit Profile now asks before discarding unsaved changes ([IP-44](https://studiogreatt.atlassian.net/browse/IP-44))
 
 - **Report** (`/edit-profile`, feature_idea): asked for a save button, or a "do you want to save your changes" prompt when backing out. The Save Changes button already existed. The real gap was that backing out (back chevron or iOS swipe) silently dropped edits to name, birthday, or avatar.

@@ -10,6 +10,8 @@ import { TopBar } from '../../components/TopBar';
 import { radii, spacing, typography } from '../../constants/theme';
 import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePurchases } from '../../contexts/PurchasesContext';
+import { FREE_CUSTOM_WORKOUT_LIMIT } from '../../constants/pro';
 import { useWorkoutTemplates } from '../../hooks/useWorkoutTemplates';
 import { useWorkoutLogs } from '../../hooks/useWorkoutLogs';
 import {
@@ -40,6 +42,8 @@ export default function HomeScreen() {
   const { user, profile } = useAuth();
   const { templates, loading } = useWorkoutTemplates();
   const { customWorkouts } = useCustomWorkouts(user?.uid);
+  const { isPro } = usePurchases();
+  const atCustomLimit = !isPro && customWorkouts.length >= FREE_CUSTOM_WORKOUT_LIMIT;
   const { logs } = useWorkoutLogs(user?.uid);
   const insets = useSafeAreaInsets();
 
@@ -249,7 +253,7 @@ export default function HomeScreen() {
               <OutdoorActivityCard key={activityType} activityType={activityType} />
             ))}
             {customWorkouts.map((w) => (
-              <QuickStartCard key={w.id} workout={w} editable />
+              <QuickStartCard key={w.id} workout={w} editable atCustomLimit={atCustomLimit} />
             ))}
             <Pressable style={styles.createCard} onPress={() => router.push('/workout/new')}>
               <Ionicons name="add-circle-outline" size={26} color={colors.primary} />
@@ -302,9 +306,11 @@ function OutdoorActivityCard({ activityType }: { activityType: OutdoorActivityTy
 function QuickStartCard({
   workout,
   editable = false,
+  atCustomLimit = false,
 }: {
   workout: WorkoutTemplate | CustomWorkout;
   editable?: boolean;
+  atCustomLimit?: boolean;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
@@ -331,6 +337,17 @@ function QuickStartCard({
 
   const handleDuplicate = async () => {
     if (!user) return;
+    if (atCustomLimit) {
+      Alert.alert(
+        'Custom workout limit reached',
+        `Free accounts can save up to ${FREE_CUSTOM_WORKOUT_LIMIT} custom workouts. Upgrade to Pro for unlimited.`,
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'See Pro', onPress: () => router.push('/paywall') },
+        ]
+      );
+      return;
+    }
     try {
       await duplicateCustomWorkout(user.uid, workout as CustomWorkout);
     } catch (e) {
