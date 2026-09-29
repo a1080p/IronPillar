@@ -7,7 +7,8 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
-    // Gamification fields (xp, streakCount, level, lastWorkoutDate) are only
+    // Gamification fields (xp, streakCount, level, lastWorkoutDate, and the
+    // timeZone/timeZoneUpdatedAt streak days are counted in) are only
     // ever written by the completeWorkout Cloud Function, which runs with
     // Admin SDK privileges and bypasses these rules entirely. The client can
     // create its own initial profile (with zeroed-out gamification fields)
@@ -22,6 +23,8 @@ service cloud.firestore {
         && request.resource.data.streakCount == 0
         && request.resource.data.level == 1
         && request.resource.data.lastWorkoutDate == null
+        && request.resource.data.get('timeZone', null) == null
+        && request.resource.data.get('timeZoneUpdatedAt', null) == null
         && request.resource.data.friendCount == 0;
 
       allow update: if isOwner(uid)
@@ -29,6 +32,8 @@ service cloud.firestore {
         && request.resource.data.streakCount == resource.data.streakCount
         && request.resource.data.level == resource.data.level
         && request.resource.data.lastWorkoutDate == resource.data.lastWorkoutDate
+        && request.resource.data.get('timeZone', null) == resource.data.get('timeZone', null)
+        && request.resource.data.get('timeZoneUpdatedAt', null) == resource.data.get('timeZoneUpdatedAt', null)
         && request.resource.data.friendCount == resource.data.friendCount;
 
       allow delete: if false;

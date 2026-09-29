@@ -50,6 +50,12 @@ const XP_PER_STREAK_DAY = 20;
 const STREAK_MILESTONE_INTERVAL = 5;
 const XP_PER_KM = 40;
 const MAX_ROUTE_POINTS = 20000; // ~5.5hrs at one point/sec — well beyond any real workout
+// How often the time zone streak days are computed in may change. Without a
+// limit, a client could claim a different zone on every call and log three
+// "consecutive days" in one minute (UTC-12, UTC, UTC+14 all span three
+// dates at once). Rate-limited, each change can pull at most one day
+// forward — the same slack an honest eastbound traveler gets.
+const MIN_TIME_ZONE_CHANGE_INTERVAL_MS = 20 * 60 * 60 * 1000;
 
 const BADGE_NAMES: Record<string, string> = {
   'the-journey-begins': 'The Journey Begins',
@@ -87,16 +93,44 @@ interface CompleteWorkoutRequest {
   activityType?: 'walk' | 'run' | 'bike';
   distanceMeters?: number;
   route?: RoutePoint[];
+  // The device's IANA time zone (e.g. "America/New_York"), so the streak day
+  // boundary is the user's local midnight rather than UTC midnight. Optional
+  // — older app builds don't send it.
+  timeZone?: string;
 }
 
-function todayDateString(date = new Date()) {
-  return date.toISOString().slice(0, 10);
+// IANA names only — Intl also accepts raw offsets like "+05:00", which
+// could be pushed past the real -12h..+14h range of actual zones.
+const IANA_TIME_ZONE_PATTERN = /^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+)*$/;
+
+// Returns the canonical IANA name for a valid zone, or null.
+function canonicalTimeZone(timeZone: unknown): string | null {
+  if (typeof timeZone !== 'string' || timeZone.length > 64) return null;
+  if (!IANA_TIME_ZONE_PATTERN.test(timeZone)) return null;
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone }).resolvedOptions().timeZone;
+  } catch {
+    return null;
+  }
 }
 
-function yesterdayDateString(date = new Date()) {
-  const d = new Date(date);
-  d.setDate(d.getDate() - 1);
-  return todayDateString(d);
+// yyyy-mm-dd of the calendar day `date` falls on in `timeZone`.
+function localDateString(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+// Pure calendar arithmetic on the yyyy-mm-dd string, so DST days (23h/25h)
+// can't make "24 hours ago" land on the same or a skipped date.
+function previousDateString(dateString: string) {
+  const [y, m, d] = dateString.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
 }
 
 function isValidRoutePoint(p: unknown): p is RoutePoint {
@@ -127,6 +161,7 @@ function isValidCompleteWorkoutRequest(data: unknown): data is CompleteWorkoutRe
     return false;
   }
   if (!Array.isArray(d.exercises)) return false;
+  if (d.timeZone !== undefined && typeof d.timeZone !== 'string') return false;
   return true;
 }
 
@@ -150,6 +185,11 @@ function newFeedItem(
 // directly (Firestore rules block that), so this function is the only path
 // that can move those numbers, using the server's own clock for the streak
 // day boundary rather than trusting anything the client says about "today."
+// The client does say which time zone it's in (so a 9 PM workout counts as
+// that evening, not the next UTC day), but that only picks which local
+// calendar the server's clock is read in: zone changes are rate-limited and
+// lastWorkoutDate never moves backwards, so zone-hopping can't manufacture
+// extra streak days.
 export const completeWorkout = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
@@ -160,6 +200,7 @@ export const completeWorkout = onCall(async (request) => {
   }
   const { workout, exercises, durationSeconds, activityType, distanceMeters, route } =
     request.data;
+  const requestedTimeZone = canonicalTimeZone(request.data.timeZone);
 
   const userRef = db.collection('users').doc(uid);
   const logRef = db.collection('workoutLogs').doc(uid).collection('logs').doc();
@@ -175,16 +216,54 @@ export const completeWorkout = onCall(async (request) => {
       xp: number;
       streakCount: number;
       lastWorkoutDate: string | null;
+      timeZone?: string;
+      timeZoneUpdatedAt?: string;
     };
 
-    const today = todayDateString();
-    const yesterday = yesterdayDateString();
-    const alreadyLoggedToday = profile.lastWorkoutDate === today;
+    const now = new Date();
+    const storedTimeZone = profile.timeZone ?? null;
+    let timeZone = storedTimeZone ?? 'UTC';
+    let timeZoneChanged = false;
+    if (requestedTimeZone && requestedTimeZone !== storedTimeZone) {
+      const lastChange = profile.timeZoneUpdatedAt ? Date.parse(profile.timeZoneUpdatedAt) : NaN;
+      // A zone's first-ever set isn't a change; otherwise keep using the
+      // stored zone until the interval has passed.
+      if (!storedTimeZone || !(now.getTime() - lastChange < MIN_TIME_ZONE_CHANGE_INTERVAL_MS)) {
+        timeZone = requestedTimeZone;
+        timeZoneChanged = true;
+      }
+    }
+
+    // Profiles from before streaks followed local time have lastWorkoutDate
+    // as a UTC date. On their first zone-aware workout, re-derive it from
+    // the last log's (server-written) completedAt in the user's zone, so the
+    // switch can't break a streak or double-count a day.
+    let lastWorkoutDate = profile.lastWorkoutDate;
+    if (!storedTimeZone && timeZoneChanged && lastWorkoutDate) {
+      const lastLogSnap = await tx.get(
+        db
+          .collection('workoutLogs')
+          .doc(uid)
+          .collection('logs')
+          .orderBy('completedAt', 'desc')
+          .limit(1)
+      );
+      const lastCompletedAt = lastLogSnap.docs[0]?.get('completedAt');
+      if (typeof lastCompletedAt === 'string' && !Number.isNaN(Date.parse(lastCompletedAt))) {
+        lastWorkoutDate = localDateString(new Date(lastCompletedAt), timeZone);
+      }
+    }
+
+    const today = localDateString(now, timeZone);
+    // `<=`, not `===`: after a westward zone change "today" can be earlier
+    // than the stored date. That counts as already logged, and the stored
+    // date is kept, so moving the zone back and forth can't re-earn a day.
+    const alreadyLoggedToday = lastWorkoutDate !== null && today <= lastWorkoutDate;
 
     let streakCountAfter: number;
     if (alreadyLoggedToday) {
       streakCountAfter = profile.streakCount;
-    } else if (profile.lastWorkoutDate === yesterday) {
+    } else if (lastWorkoutDate === previousDateString(today)) {
       streakCountAfter = profile.streakCount + 1;
     } else {
       streakCountAfter = 1;
@@ -206,7 +285,7 @@ export const completeWorkout = onCall(async (request) => {
       workoutId: workout.id,
       workoutName: workout.name,
       workoutSource: workout.category,
-      completedAt: new Date().toISOString(),
+      completedAt: now.toISOString(),
       durationSeconds,
       exercises,
       xpEarned,
@@ -218,7 +297,8 @@ export const completeWorkout = onCall(async (request) => {
     tx.update(userRef, {
       xp: FieldValue.increment(xpEarned),
       streakCount: streakCountAfter,
-      lastWorkoutDate: today,
+      lastWorkoutDate: alreadyLoggedToday ? lastWorkoutDate : today,
+      ...(timeZoneChanged ? { timeZone, timeZoneUpdatedAt: now.toISOString() } : {}),
     });
 
     if (badgeEarnedId) {

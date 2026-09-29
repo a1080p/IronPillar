@@ -1,5 +1,6 @@
 import { httpsCallable } from 'firebase/functions';
 import { functions } from './firebase/config';
+import { deviceTimeZone } from '../constants/gamification';
 import type { ExerciseLog, OutdoorActivityType, RoutePoint } from '../types/models';
 
 export interface CompletionResult {
@@ -23,18 +24,26 @@ const completeWorkoutFn = httpsCallable<
     activityType?: OutdoorActivityType;
     distanceMeters?: number;
     route?: RoutePoint[];
+    timeZone?: string;
   },
   CompletionResult
 >(functions, 'completeWorkout');
 
 // Streak/XP/badges are computed server-side (see functions/src/index.ts) —
 // the client only reports what was done, it can't set the resulting numbers.
+// The time zone only tells the server whose midnight to use; "now" is still
+// the server's clock.
 export async function completeWorkout(
   workout: CompletedWorkoutRef,
   exerciseLogs: ExerciseLog[],
   durationSeconds: number
 ): Promise<CompletionResult> {
-  const { data } = await completeWorkoutFn({ workout, exercises: exerciseLogs, durationSeconds });
+  const { data } = await completeWorkoutFn({
+    workout,
+    exercises: exerciseLogs,
+    durationSeconds,
+    timeZone: deviceTimeZone(),
+  });
   return data;
 }
 
@@ -59,6 +68,7 @@ export async function completeOutdoorActivity(
     activityType,
     distanceMeters,
     route,
+    timeZone: deviceTimeZone(),
   });
   return data;
 }

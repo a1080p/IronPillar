@@ -4,6 +4,7 @@
 // the memory. Because useWorkoutLogs/useWorkoutTemplates are live Firestore
 // listeners, recomputing this from `logs` on every render means picks update
 // the instant a workout is completed, with no extra plumbing.
+import { todayDateString } from '../constants/gamification';
 import { BROWSE_CATEGORIES } from '../data/browseWorkoutTemplates';
 import type { ExperienceLevel, FitnessGoal, UserProfile, WorkoutLog, WorkoutTemplate } from '../types/models';
 
@@ -112,7 +113,7 @@ function hashSeed(input: string): number {
 }
 
 function dailyRand(uid: string | undefined, salt: string): () => number {
-  const seed = hashSeed(`${uid ?? 'anon'}-${salt}-${new Date().toISOString().slice(0, 10)}`);
+  const seed = hashSeed(`${uid ?? 'anon'}-${salt}-${todayDateString()}`);
   let state = seed | 0;
   return () => {
     state = (state + 0x6d2b79f5) | 0;

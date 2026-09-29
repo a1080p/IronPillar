@@ -17,7 +17,12 @@ export interface UserProfile {
   level: number;
   xp: number;
   streakCount: number;
-  lastWorkoutDate: string | null; // ISO date (yyyy-mm-dd)
+  lastWorkoutDate: string | null; // ISO date (yyyy-mm-dd), local to timeZone
+  // Written only by the completeWorkout Cloud Function: the IANA zone streak
+  // days are counted in, and when it last changed (changes are rate-limited).
+  // Absent on older profiles, whose lastWorkoutDate is a UTC date.
+  timeZone?: string;
+  timeZoneUpdatedAt?: string;
   friendCount: number;
   createdAt: string;
 }
