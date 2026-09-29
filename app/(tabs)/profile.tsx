@@ -9,7 +9,7 @@ import { Avatar } from '../../components/Avatar';
 import { FlameIcon, GroupIcon, GymIcon } from '../../components/icons/BrandIcons';
 import { radii, spacing, typography } from '../../constants/theme';
 import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
-import { levelForXp, xpIntoLevel, XP_PER_LEVEL } from '../../constants/gamification';
+import { levelProgress } from '../../constants/gamification';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWorkoutLogs } from '../../hooks/useWorkoutLogs';
 import { useEarnedBadges } from '../../hooks/useEarnedBadges';
@@ -34,8 +34,7 @@ export default function ProfileScreen() {
     );
   }
 
-  const level = levelForXp(profile.xp);
-  const xpInto = xpIntoLevel(profile.xp);
+  const { level, xpInto, xpNeeded } = levelProgress(profile.xp);
   const handle = profile.username ? `@${profile.username}` : '';
 
   return (
@@ -63,12 +62,12 @@ export default function ProfileScreen() {
         <View style={styles.levelRow}>
           <Text style={styles.levelLabel}>Lvl. {level}</Text>
           <View style={{ flex: 1, marginHorizontal: spacing.sm }}>
-            <ProgressBar progress={xpInto / XP_PER_LEVEL} />
+            <ProgressBar progress={xpInto / xpNeeded} />
           </View>
           <Text style={styles.levelLabel}>Lvl. {level + 1}</Text>
         </View>
         <Text style={styles.xpIntoLabel}>
-          {xpInto}/{XP_PER_LEVEL} xp
+          {xpInto}/{xpNeeded} xp
         </Text>
 
         <View style={styles.statsRow}>
