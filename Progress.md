@@ -4,6 +4,15 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-29 (night): Functions were never actually deploying; screenshots uploaded
+
+- **Root cause found:** `firebase.json` had no predeploy build, so every deploy since 2026-09-21 shipped a stale `functions/lib`. The local-day streak fix, 2x XP, the XP breakdown, 30-minute streak days, deleteWorkoutLog, and reactToActivity were never live. Fixed with a predeploy `npm run build` (13d6ce3). WHOOP secrets are no longer declared, so deploys don't prompt for them (6b61252). Redeployed by the owner, and all 9 functions are ACTIVE.
+- **Verified live in the simulator:** deleting a workout works (removed the bugged Sep 26 walk, -75 XP); a Pro strength workout showed the full XP breakdown (200 + 70 + Pro 2x bonus 270 = 540); Insights shows the 1RM and target; Analytics shows distance traveled and highest streak.
+- **App Store:** 7 iPhone 6.5" screenshots uploaded and saved (Home, XP breakdown, Insights, Analytics, logging with rest timer, Browse, workout detail). App Store Server Notification URLs (prod + sandbox) point to RevenueCat. iPad support turned off (a57749a), so no iPad screenshots are needed. Submission requires build #6.
+- **Build #5:** finished; TestFlight submission queued.
+
+---
+
 ## 2026-09-29 (evening): RevenueCat live on the App Store side; listing + TestFlight + Jira
 
 - **RevenueCat ↔ App Store:** added the "Iron Pillar (App Store)" app (`com.aidand510.ironpillar`); the owner uploaded the In-App Purchase key (valid). Created products `ironpillar_pro_monthly` / `ironpillar_pro_Yearly`, attached both to `iron_pillar_pro`, and added them to the `default` offering's `$rc_monthly` / `$rc_annual` next to the Test Store products.
