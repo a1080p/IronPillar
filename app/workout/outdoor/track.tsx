@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Button } from '../../../components/Button';
@@ -28,6 +28,7 @@ import { completeOutdoorActivity, type CompletionResult } from '../../../lib/wor
 import { noteWorkoutStarted } from '../../../lib/gymReminders';
 import type { OutdoorActivityType, RoutePoint } from '../../../types/models';
 import { useAuth } from '../../../contexts/AuthContext';
+import { XpBreakdown } from '../../../components/XpBreakdown';
 import { usePurchases } from '../../../contexts/PurchasesContext';
 import { syncCompletedWorkoutToHealth } from '../../../hooks/useAppleHealth';
 
@@ -206,27 +207,21 @@ export default function OutdoorTrackScreen() {
         <View style={styles.summaryMapWrap}>
           <MapRoute route={route} style={StyleSheet.absoluteFill} />
         </View>
-        <View style={styles.summaryBody}>
+        <ScrollView contentContainerStyle={styles.summaryBody}>
           <Text style={styles.heading}>{ACTIVITY_LABELS[activityType]} Complete!</Text>
           <View style={styles.statsRow}>
             <Stat label="Distance" value={formatDistanceMiles(distanceMeters)} />
             <Stat label="Time" value={formatElapsed(elapsedSeconds)} />
             <Stat label="Avg Pace" value={formatPacePerMile(distanceMeters, elapsedSeconds)} />
           </View>
-          <Text style={styles.xpLine}>
-            +{result.xpEarned}
-            <Text style={styles.xpUnit}> xp</Text>
-          </Text>
-          {(result.xpMultiplier ?? 1) > 1 && (
-            <Text style={styles.proXp}>{result.xpMultiplier}× Pro XP applied</Text>
-          )}
+          <XpBreakdown result={result} />
           {badge && (
             <View style={styles.badgeRow}>
               <Ionicons name="ribbon" size={22} color={colors.primary} />
               <Text style={styles.badgeText}>Earned: {badge.name}</Text>
             </View>
           )}
-        </View>
+        </ScrollView>
         <View style={styles.footer}>
           <Button label="Done" onPress={() => router.replace('/')} />
         </View>

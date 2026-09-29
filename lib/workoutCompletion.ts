@@ -3,12 +3,26 @@ import { functions } from './firebase/config';
 import { deviceTimeZone } from '../constants/gamification';
 import type { ExerciseLog, OutdoorActivityType, RoutePoint } from '../types/models';
 
+export interface XpBreakdown {
+  exercises: number;
+  exerciseXp: number;
+  sets: number;
+  setXp: number;
+  distanceXp: number;
+  baseStreakBonus: number; // before the Pro multiplier
+}
+
 export interface CompletionResult {
   xpEarned: number;
-  streakBonus: number;
+  streakBonus: number; // after the Pro multiplier
   streakCountAfter: number;
   badgeEarnedId: string | null;
   xpMultiplier?: number; // 2 for Pro subscribers; absent from older functions
+  breakdown?: XpBreakdown; // absent from older functions
+  dayMinutes?: number; // today's combined workout minutes, this one included
+  minStreakDayMinutes?: number; // minutes a day needs to count toward the streak
+  dayCountedNow?: boolean; // this workout pushed today over the threshold
+  dayAlreadyCounted?: boolean; // today had already counted before this workout
 }
 
 export interface CompletedWorkoutRef {
@@ -71,5 +85,17 @@ export async function completeOutdoorActivity(
     route,
     timeZone: deviceTimeZone(),
   });
+  return data;
+}
+
+const deleteWorkoutLogFn = httpsCallable<{ logId: string }, { deleted: boolean; xpRemoved: number }>(
+  functions,
+  'deleteWorkoutLog'
+);
+
+// Deletes one of your own logged workouts. The server also takes back the XP
+// it earned; past streak days are kept.
+export async function deleteWorkoutLog(logId: string) {
+  const { data } = await deleteWorkoutLogFn({ logId });
   return data;
 }

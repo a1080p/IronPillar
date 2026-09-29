@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -9,6 +9,8 @@ import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { badges } from '../../../data/badges';
 import { formatVolume } from '../../../lib/workoutStats';
 import { useAuth } from '../../../contexts/AuthContext';
+import { XpBreakdown } from '../../../components/XpBreakdown';
+import type { CompletionResult } from '../../../lib/workoutCompletion';
 
 export default function WorkoutCompleteScreen() {
   const { colors } = useTheme();
@@ -23,8 +25,10 @@ export default function WorkoutCompleteScreen() {
     reps,
     sets,
     durationSeconds,
+    result: resultJson,
   } =
     useLocalSearchParams<{
+      result?: string;
       xpEarned: string;
       xpMultiplier?: string;
       streakBonus: string;
@@ -39,6 +43,25 @@ export default function WorkoutCompleteScreen() {
   const [showBadge, setShowBadge] = useState(false);
 
   const badge = badgeEarnedId ? badges[badgeEarnedId] : null;
+
+  // Full server result (with the per-source XP breakdown). Older call sites
+  // only pass the flat params, so rebuild a minimal result from those.
+  const result = useMemo<CompletionResult>(() => {
+    if (resultJson) {
+      try {
+        return JSON.parse(resultJson) as CompletionResult;
+      } catch {
+        // fall through
+      }
+    }
+    return {
+      xpEarned: Number(xpEarned) || 0,
+      streakBonus: Number(streakBonus) || 0,
+      streakCountAfter: Number(streakCountAfter) || 0,
+      badgeEarnedId: badgeEarnedId || null,
+      xpMultiplier: Number(xpMultiplier) || 1,
+    };
+  }, [resultJson, xpEarned, streakBonus, streakCountAfter, badgeEarnedId, xpMultiplier]);
 
   const volumeNum = Number(volume) || 0;
   const repsNum = Number(reps) || 0;
@@ -79,26 +102,9 @@ export default function WorkoutCompleteScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.centered}>
+      <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.heading}>Workout Completed!</Text>
-        <Text style={styles.subheading}>Awesome Job{profile?.name ? `, ${profile.name}` : ''}!</Text>
-
-        <Text style={styles.streakLabel}>
-          Streak: <Text style={styles.streakValue}>{streakCountAfter}</Text>
-        </Text>
-        <Text style={styles.xpLine}>
-          {xpEarned}
-          <Text style={styles.xpUnit}>xp</Text>
-        </Text>
-        {Number(xpMultiplier) > 1 && (
-          <Text style={styles.proXp}>{xpMultiplier}× Pro XP applied</Text>
-        )}
-        {Number(streakBonus) > 0 && (
-          <Text style={styles.streakBonus}>
-            Streak Bonus: {streakBonus}
-            <Text style={styles.xpUnit}>xp</Text>
-          </Text>
-        )}
+        <Text style={styles.subheading}>Awesome job{profile?.name ? `, ${profile.name}` : ''}!</Text>
 
         {summaryChips.length > 0 && (
           <View style={styles.summaryRow}>
@@ -109,9 +115,15 @@ export default function WorkoutCompleteScreen() {
             ))}
           </View>
         )}
-      </View>
+
+        <XpBreakdown result={result} />
+
+        <Text style={styles.streakLabel}>
+          Streak: <Text style={styles.streakValue}>{result.streakCountAfter}</Text>
+        </Text>
+      </ScrollView>
       <View style={styles.footer}>
-        <Button label="Next" onPress={handleNext} />
+        <Button label={badge ? 'Next' : 'Done'} onPress={handleNext} />
       </View>
     </SafeAreaView>
   );
@@ -120,9 +132,10 @@ export default function WorkoutCompleteScreen() {
 const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  scroll: { flexGrow: 1, alignItems: 'center', padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md },
   heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, textAlign: 'center' },
-  subheading: { fontSize: typography.sizes.md, color: colors.primary, marginTop: spacing.xs, marginBottom: spacing.lg },
-  streakLabel: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary },
+  subheading: { fontSize: typography.sizes.md, color: colors.primary, marginTop: spacing.xs },
+  streakLabel: { fontSize: typography.sizes.md, fontWeight: '700', color: colors.primary, marginTop: spacing.sm },
   streakValue: { color: colors.accentFlame },
   xpLine: { fontSize: typography.sizes.md, color: colors.primary, marginTop: spacing.sm },
   streakBonus: { fontSize: typography.sizes.body, color: colors.text, marginTop: spacing.xs },
@@ -133,7 +146,6 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     gap: spacing.sm,
-    marginTop: spacing.lg,
   },
   summaryChip: {
     backgroundColor: colors.surfaceMuted,

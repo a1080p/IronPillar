@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { ProBadge } from '../../components/ProLock';
+import { ProBadge, ProLockCard } from '../../components/ProLock';
+import { useAppleHealth } from '../../hooks/useAppleHealth';
+import { exportWorkoutsCsv } from '../../lib/export';
 import { usePurchases } from '../../contexts/PurchasesContext';
 import { activeDays, activityCalendar } from '../../lib/insights';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -63,6 +65,43 @@ export default function AnalyticsScreen() {
   const calendar = useMemo(() => activityCalendar(logs, 12), [logs]);
   const daysActive = useMemo(() => activeDays(logs, 30), [logs]);
   const { isPro } = usePurchases();
+  const health = useAppleHealth(user?.uid, isPro);
+  const [exporting, setExporting] = useState(false);
+
+  // Best streak ever: the server tracks it now (longestStreak), but older
+  // accounts predate that, so also take the best from their logs.
+  const highestStreak = useMemo(
+    () =>
+      Math.max(
+        profile?.longestStreak ?? 0,
+        profile?.streakCount ?? 0,
+        ...logs.map((l) => l.streakCountAfter ?? 0)
+      ),
+    [profile?.longestStreak, profile?.streakCount, logs]
+  );
+  const totalMiles = useMemo(
+    () => logs.reduce((sum, l) => sum + (l.distanceMeters ?? 0), 0) / 1609.344,
+    [logs]
+  );
+
+  const handleExport = async () => {
+    if (!isPro) {
+      router.push('/paywall');
+      return;
+    }
+    if (logs.length === 0) {
+      Alert.alert('Nothing to export yet', 'Finish a workout first.');
+      return;
+    }
+    setExporting(true);
+    try {
+      await exportWorkoutsCsv(logs);
+    } catch (e) {
+      Alert.alert('Export failed', e instanceof Error ? e.message : 'Try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Weight line = the starting weight from onboarding, then every logged entry.
   const weightPoints = useMemo(() => {
@@ -114,27 +153,6 @@ export default function AnalyticsScreen() {
           {profile?.name ? `${profile.name}, ` : ''}here's how your training is trending
         </Text>
 
-        <Pressable
-          style={({ pressed }) => [styles.insightsCard, pressed && { opacity: 0.8 }]}
-          onPress={() => router.push('/insights')}
-          accessibilityRole="button"
-          accessibilityLabel="Open Insights"
-        >
-          <Ionicons name="pulse" size={22} color={colors.primary} />
-          <View style={{ flex: 1 }}>
-            <View style={styles.insightsTitleRow}>
-              <Text style={styles.insightsTitle}>Insights</Text>
-              <ProBadge />
-            </View>
-            <Text style={styles.insightsText}>
-              {isPro
-                ? 'Readiness score, next-session targets, and 1RM trends'
-                : 'Readiness score, lift targets, and Apple Watch sync. Tap to preview'}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-        </Pressable>
-
         {logs.length === 0 ? (
           <Text style={styles.note}>
             Finish your first workout and your training stats will show up here.
@@ -144,8 +162,12 @@ export default function AnalyticsScreen() {
             <View style={styles.tileGrid}>
               <StatTile value={stats.workouts} label="Workouts" />
               <StatTile value={`${formatVolume(stats.volume)} lb`} label="Volume lifted" />
+              <StatTile
+                value={`${totalMiles >= 100 ? Math.round(totalMiles) : totalMiles.toFixed(1)} mi`}
+                label="Distance traveled"
+              />
               <StatTile value={formatDuration(stats.minutes)} label="Training time" />
-              <StatTile value={profile?.streakCount ?? 0} label="Day streak" />
+              <StatTile value={highestStreak} label="Highest streak" />
             </View>
 
             <Text style={styles.sectionLabel}>This week</Text>
@@ -281,6 +303,67 @@ export default function AnalyticsScreen() {
           </View>
           <Button label="Save Entry" onPress={handleAdd} loading={saving} />
         </View>
+
+        <View style={styles.sectionTitleRow}>
+          <Text style={[styles.sectionLabel, { marginBottom: 0, marginTop: 0 }]}>Apple Health</Text>
+          <ProBadge />
+        </View>
+        {!isPro ? (
+          <ProLockCard
+            title="Steps, sleep & heart data"
+            description="Connect Apple Health and Apple Watch to see steps, active calories, sleep, and resting heart rate here."
+          />
+        ) : !health.supported ? (
+          <Text style={styles.note}>Apple Health is available on iPhone.</Text>
+        ) : !health.enabled ? (
+          <Pressable
+            style={styles.healthConnect}
+            onPress={() =>
+              health.connect().catch((e) =>
+                Alert.alert('Could not connect', e instanceof Error ? e.message : 'Try again.')
+              )
+            }
+            accessibilityRole="button"
+          >
+            <Ionicons name="heart" size={18} color={colors.danger} />
+            <Text style={styles.healthConnectText}>Connect Apple Health & Apple Watch</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.tileGrid}>
+            <StatTile
+              value={health.snapshot?.stepsToday?.toLocaleString() ?? '—'}
+              label="Steps today"
+            />
+            <StatTile
+              value={health.snapshot?.activeEnergyTodayKcal ?? '—'}
+              label="Active kcal"
+            />
+            <StatTile
+              value={health.snapshot?.sleepHours != null ? `${health.snapshot.sleepHours}h` : '—'}
+              label="Sleep"
+            />
+            <StatTile
+              value={
+                health.snapshot?.restingHeartRateBpm != null
+                  ? `${Math.round(health.snapshot.restingHeartRateBpm)}`
+                  : '—'
+              }
+              label="Resting HR"
+            />
+          </View>
+        )}
+
+        <Pressable
+          style={({ pressed }) => [styles.exportButton, pressed && { opacity: 0.7 }]}
+          onPress={exporting ? undefined : handleExport}
+          accessibilityRole="button"
+        >
+          <Ionicons name="download-outline" size={18} color={colors.primary} />
+          <Text style={styles.exportText}>
+            {exporting ? 'Preparing…' : 'Export workout data (CSV)'}
+          </Text>
+          {!isPro && <ProBadge />}
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -327,6 +410,37 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.lg,
   },
   panelTitle: { fontWeight: '700', color: colors.text, marginBottom: spacing.md },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+  },
+  healthConnect: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  healthConnectText: { color: colors.primary, fontWeight: '700' },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  exportText: { color: colors.primary, fontWeight: '700' },
   insightsCard: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,23 +1,22 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { WorkoutHeader } from '../components/WorkoutHeader';
-import { BarChart } from '../components/BarChart';
-import { LineChart } from '../components/LineChart';
-import { StatTile } from '../components/StatTile';
-import { ProBadge, ProLockCard } from '../components/ProLock';
-import { radii, spacing, typography } from '../constants/theme';
-import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-import { usePurchases } from '../contexts/PurchasesContext';
-import { useWorkoutLogs } from '../hooks/useWorkoutLogs';
-import { useWearableSnapshot } from '../hooks/useWearableSnapshot';
-import { useAppleHealth } from '../hooks/useAppleHealth';
-import { activityTypeLabel } from '../lib/healthkit';
-import { exportWorkoutsCsv } from '../lib/export';
-import { computeReadiness, type ReadinessTone } from '../lib/readiness';
+import { TopBar } from '../../components/TopBar';
+import { BarChart } from '../../components/BarChart';
+import { LineChart } from '../../components/LineChart';
+import { StatTile } from '../../components/StatTile';
+import { ProBadge, ProLockCard } from '../../components/ProLock';
+import { radii, spacing, typography } from '../../constants/theme';
+import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { usePurchases } from '../../contexts/PurchasesContext';
+import { useWorkoutLogs } from '../../hooks/useWorkoutLogs';
+import { useWearableSnapshot } from '../../hooks/useWearableSnapshot';
+import { useAppleHealth } from '../../hooks/useAppleHealth';
+import { activityTypeLabel } from '../../lib/healthkit';
+import { computeReadiness, type ReadinessTone } from '../../lib/readiness';
 import {
   e1rmChangePct,
   e1rmSeries,
@@ -28,7 +27,7 @@ import {
   timeOfDayBreakdown,
   trainingMix,
   weeklyMinutes,
-} from '../lib/insights';
+} from '../../lib/insights';
 
 export default function InsightsScreen() {
   const { colors } = useTheme();
@@ -52,12 +51,11 @@ export default function InsightsScreen() {
   const timeOfDay = useMemo(() => timeOfDayBreakdown(logs), [logs]);
   const miles = useMemo(() => outdoorMilesByWeek(logs, 8), [logs]);
   const plateaued = useMemo(() => histories.filter(isPlateaued), [histories]);
-  const [exporting, setExporting] = useState(false);
 
   if (!isPro) {
     return (
-      <SafeAreaView style={styles.container}>
-        <WorkoutHeader />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <TopBar />
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.heading}>Insights</Text>
           <Text style={styles.subtitle}>Coaching-level analytics built from your own training.</Text>
@@ -82,17 +80,6 @@ export default function InsightsScreen() {
     );
   }
 
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      await exportWorkoutsCsv(logs);
-    } catch (e) {
-      Alert.alert('Export failed', e instanceof Error ? e.message : 'Try again.');
-    } finally {
-      setExporting(false);
-    }
-  };
-
   const target = selected ? nextTarget(selected) : null;
   const change = selected ? e1rmChangePct(selected, 30) : null;
   const toneColor = (tone: ReadinessTone) =>
@@ -100,8 +87,8 @@ export default function InsightsScreen() {
   const recentExternal = health.snapshot?.externalWorkouts.slice(0, 5) ?? [];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <WorkoutHeader />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <TopBar />
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.titleRow}>
           <Text style={styles.heading}>Insights</Text>
@@ -254,16 +241,6 @@ export default function InsightsScreen() {
           </View>
         )}
 
-        <Pressable
-          style={({ pressed }) => [styles.exportButton, pressed && { opacity: 0.7 }]}
-          onPress={exporting ? undefined : handleExport}
-          accessibilityRole="button"
-        >
-          <Ionicons name="download-outline" size={18} color={colors.primary} />
-          <Text style={styles.exportText}>
-            {exporting ? 'Preparing…' : 'Export all workouts (CSV)'}
-          </Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -272,7 +249,7 @@ export default function InsightsScreen() {
 const getStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    scroll: { padding: spacing.lg, paddingBottom: 60 },
+    scroll: { padding: spacing.lg, paddingBottom: 120 },
     titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
     heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary },
     subtitle: { color: colors.textMuted, marginBottom: spacing.lg, marginTop: spacing.xs },

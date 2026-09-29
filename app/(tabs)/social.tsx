@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TopBar } from '../../components/TopBar';
@@ -10,13 +10,14 @@ import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFriends } from '../../hooks/useFriends';
 import { useActivityFeed } from '../../hooks/useActivityFeed';
-import { addFriend } from '../../lib/friends';
+import { addFriend, reactToActivity, type Reaction } from '../../lib/friends';
 import type { ActivityFeedItem } from '../../types/models';
 
 const getIconForType = (colors: ThemeColors): Record<ActivityFeedItem['type'], ReactNode> => ({
   badge_earned: <Ionicons name="ribbon" size={22} color={colors.primary} />,
   streak_milestone: <FlameIcon size={22} color={colors.accentFlame} />,
   friend_workout: <GymIcon size={22} color={colors.primary} />,
+  reaction: <Ionicons name="heart" size={22} color={colors.danger} />,
 });
 
 function timeAgo(iso: string) {
@@ -92,16 +93,68 @@ export default function SocialScreen() {
         ) : (
           items.map((item) => (
             <View key={item.id} style={styles.feedItem}>
-              {iconForType[item.type]}
+              {iconForType[item.type] ?? iconForType.friend_workout}
               <View style={{ flex: 1 }}>
                 <Text style={styles.feedMessage}>{item.message}</Text>
                 <Text style={styles.feedTime}>{timeAgo(item.createdAt)}</Text>
+                {item.type !== 'reaction' && item.actorUid !== user?.uid && (
+                  <ReactionButtons item={item} />
+                )}
               </View>
             </View>
           ))
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+// ❤️ / 🎉 on a friend's workout, badge, or streak. Optimistic: the button
+// flips immediately and reverts if the server call fails.
+function ReactionButtons({ item }: { item: ActivityFeedItem }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  const [sent, setSent] = useState(item.myReactions ?? {});
+
+  const send = async (reaction: Reaction) => {
+    if (sent[reaction]) return;
+    setSent((prev) => ({ ...prev, [reaction]: true }));
+    try {
+      await reactToActivity(item.id, reaction);
+    } catch (e) {
+      setSent((prev) => ({ ...prev, [reaction]: false }));
+      Alert.alert('Could not send', e instanceof Error ? e.message : 'Try again.');
+    }
+  };
+
+  const congratsLabel =
+    item.type === 'friend_workout' ? 'Nice work' : 'Congrats';
+
+  return (
+    <View style={styles.reactionRow}>
+      <Pressable
+        onPress={() => send('heart')}
+        style={[styles.reactionButton, sent.heart && styles.reactionButtonSent]}
+        accessibilityRole="button"
+        accessibilityLabel={sent.heart ? 'Heart sent' : `Send ${item.actorName} a heart`}
+      >
+        <Ionicons
+          name={sent.heart ? 'heart' : 'heart-outline'}
+          size={16}
+          color={sent.heart ? colors.danger : colors.textMuted}
+        />
+      </Pressable>
+      <Pressable
+        onPress={() => send('congrats')}
+        style={[styles.reactionButton, sent.congrats && styles.reactionButtonSent]}
+        accessibilityRole="button"
+        accessibilityLabel={sent.congrats ? 'Congrats sent' : `Congratulate ${item.actorName}`}
+      >
+        <Text style={[styles.reactionText, sent.congrats && styles.reactionTextSent]}>
+          🎉 {sent.congrats ? 'Sent' : congratsLabel}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -143,4 +196,18 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   feedMessage: { color: colors.text, fontWeight: '600' },
   feedTime: { color: colors.textMuted, fontSize: typography.sizes.small, marginTop: 2 },
+  reactionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  reactionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.divider,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    backgroundColor: colors.background,
+  },
+  reactionButtonSent: { borderColor: colors.primary },
+  reactionText: { fontSize: typography.sizes.small, color: colors.textMuted, fontWeight: '600' },
+  reactionTextSent: { color: colors.primary },
 });

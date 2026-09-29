@@ -21,8 +21,9 @@ import {
 } from '../../hooks/useCustomWorkouts';
 import { formatShortDate } from '../../lib/dates';
 import { pickQuickStartWorkouts, pickRecommendedWorkout } from '../../lib/recommendations';
-import { dedupeRecentWorkouts } from '../../lib/recentWorkouts';
-import type { CustomWorkout, OutdoorActivityType, WorkoutTemplate } from '../../types/models';
+import { dedupeRecentWorkouts, hideRecent, loadHiddenRecents } from '../../lib/recentWorkouts';
+import { deleteWorkoutLog } from '../../lib/workoutCompletion';
+import type { CustomWorkout, OutdoorActivityType, WorkoutLog, WorkoutTemplate } from '../../types/models';
 
 const OUTDOOR_ACTIVITY_TYPES: OutdoorActivityType[] = ['walk', 'run', 'bike'];
 const OUTDOOR_ACTIVITY_LABELS: Record<OutdoorActivityType, string> = {
@@ -127,7 +128,36 @@ export default function HomeScreen() {
       ),
     [templates, logs, profile, user?.uid, recommended]
   );
-  const recentWorkouts = useMemo(() => dedupeRecentWorkouts(logs), [logs]);
+  const [hiddenRecents, setHiddenRecents] = useState<Record<string, string>>({});
+  const [recentMenuLog, setRecentMenuLog] = useState<WorkoutLog | null>(null);
+  useEffect(() => {
+    if (user?.uid) loadHiddenRecents(user.uid).then(setHiddenRecents);
+  }, [user?.uid]);
+  const recentWorkouts = useMemo(
+    () => dedupeRecentWorkouts(logs, 5, hiddenRecents),
+    [logs, hiddenRecents]
+  );
+
+  const confirmDeleteLog = (log: WorkoutLog) => {
+    Alert.alert(
+      'Delete workout?',
+      `This removes "${log.workoutName}" from ${formatShortDate(log.completedAt)} and takes back the ${log.xpEarned} XP it earned. Past streak days are kept.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteWorkoutLog(log.id);
+            } catch (e) {
+              Alert.alert('Could not delete', e instanceof Error ? e.message : 'Try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const tourSteps = useMemo(() => {
     const steps: TourStep[] = [];
@@ -213,20 +243,32 @@ export default function HomeScreen() {
             >
               {recentWorkouts.map((log) => (
                 <Pressable
-                  key={log.workoutId}
+                  key={log.id}
                   style={styles.recentCard}
                   onPress={() =>
                     log.workoutSource === 'outdoor' && log.activityType
                       ? router.push({
-                          pathname: '/workout/outdoor/track',
+                          pathname: '/workout/outdoor/intro',
                           params: { activityType: log.activityType },
                         })
                       : router.push(`/workout/${log.workoutId}`)
                   }
+                  onLongPress={() => setRecentMenuLog(log)}
+                  accessibilityHint="Long press for options"
                 >
-                  <Text style={styles.quickCardTitle} numberOfLines={2}>
-                    {log.workoutName}
-                  </Text>
+                  <View style={styles.recentCardHeader}>
+                    <Text style={[styles.quickCardTitle, { flex: 1 }]} numberOfLines={2}>
+                      {log.workoutName}
+                    </Text>
+                    <Pressable
+                      hitSlop={10}
+                      onPress={() => setRecentMenuLog(log)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Options for ${log.workoutName}`}
+                    >
+                      <Ionicons name="ellipsis-horizontal" size={16} color={colors.textOnDark} />
+                    </Pressable>
+                  </View>
                   <Text style={styles.quickCardMeta}>{formatShortDate(log.completedAt)}</Text>
                 </Pressable>
               ))}
@@ -263,6 +305,31 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
+      <ActionSheet
+        visible={!!recentMenuLog}
+        title={recentMenuLog?.workoutName}
+        onClose={() => setRecentMenuLog(null)}
+        actions={
+          recentMenuLog
+            ? [
+                {
+                  label: 'Hide from Recent',
+                  icon: 'eye-off-outline',
+                  onPress: async () => {
+                    if (user) setHiddenRecents(await hideRecent(user.uid, recentMenuLog));
+                  },
+                },
+                {
+                  label: 'Delete workout',
+                  icon: 'trash-outline',
+                  destructive: true,
+                  onPress: () => confirmDeleteLog(recentMenuLog),
+                },
+              ]
+            : []
+        }
+      />
+
       <AppTour visible={tourVisible} steps={tourSteps} onFinish={finishTour} />
     </SafeAreaView>
   );
@@ -271,21 +338,11 @@ export default function HomeScreen() {
 function OutdoorActivityCard({ activityType }: { activityType: OutdoorActivityType }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const label = OUTDOOR_ACTIVITY_LABELS[activityType];
 
-  const handlePress = () => {
-    // Tapping straight into GPS tracking + a location-permission prompt from
-    // a single tap on a small card was too easy to trigger by accident — a
-    // quick confirm gives a misclick an easy way out before anything starts.
-    Alert.alert(`Start a ${label}?`, 'This begins GPS tracking right away.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Start',
-        onPress: () =>
-          router.push({ pathname: '/workout/outdoor/track', params: { activityType } }),
-      },
-    ]);
-  };
+  // Goes to a pre-activity screen first (like every other workout's detail
+  // screen) — GPS tracking and the location prompt only start from there.
+  const handlePress = () =>
+    router.push({ pathname: '/workout/outdoor/intro', params: { activityType } });
 
   return (
     <Pressable style={styles.quickCard} onPress={handlePress}>
@@ -414,6 +471,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.lg,
   },
   recentRow: { gap: spacing.md, paddingRight: spacing.lg },
+  recentCardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
   recentCard: {
     backgroundColor: colors.primary,
     borderRadius: radii.md,

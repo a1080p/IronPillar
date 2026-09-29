@@ -1,4 +1,5 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WorkoutHeader } from '../components/WorkoutHeader';
@@ -8,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useWorkoutLogs } from '../hooks/useWorkoutLogs';
 import { formatShortDate } from '../lib/dates';
 import { formatDistanceMiles } from '../lib/geo';
+import { deleteWorkoutLog } from '../lib/workoutCompletion';
 import type { WorkoutLog } from '../types/models';
 
 function activityMeta(log: WorkoutLog): string {
@@ -29,6 +31,24 @@ export default function HistoryScreen() {
   const { user } = useAuth();
   const { logs, loading } = useWorkoutLogs(user?.uid);
 
+  const confirmDelete = (log: WorkoutLog) => {
+    Alert.alert(
+      'Delete workout?',
+      `This removes "${log.workoutName}" and takes back the ${log.xpEarned} XP it earned. Past streak days are kept.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () =>
+            deleteWorkoutLog(log.id).catch((e) =>
+              Alert.alert('Could not delete', e instanceof Error ? e.message : 'Try again.')
+            ),
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <WorkoutHeader />
@@ -43,8 +63,21 @@ export default function HistoryScreen() {
         {logs.map((log) => (
           <View key={log.id} style={styles.card}>
             <View style={styles.cardHeader}>
-              <Text style={styles.workoutName}>{log.workoutName}</Text>
-              <Text style={styles.xp}>+{log.xpEarned}xp</Text>
+              <Text style={[styles.workoutName, { flex: 1 }]} numberOfLines={1}>
+                {log.workoutName}
+              </Text>
+              <Text style={styles.xp}>
+                +{log.xpEarned}xp{(log.xpMultiplier ?? 1) > 1 ? ` · ${log.xpMultiplier}× Pro` : ''}
+              </Text>
+              <Pressable
+                onPress={() => confirmDelete(log)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={`Delete ${log.workoutName}`}
+                style={styles.deleteButton}
+              >
+                <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+              </Pressable>
             </View>
             <Text style={styles.meta}>
               {formatShortDate(log.completedAt)} · {formatDuration(log.durationSeconds)} ·{' '}
@@ -74,6 +107,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   workoutName: { fontWeight: '700', color: colors.primary, fontSize: typography.sizes.body },
   xp: { fontWeight: '700', color: colors.accentFlame },
+  deleteButton: { marginLeft: spacing.sm },
   meta: { color: colors.textMuted, fontSize: typography.sizes.small, marginTop: 4 },
   streakBonus: { color: colors.text, fontSize: typography.sizes.small, marginTop: 2 },
 });

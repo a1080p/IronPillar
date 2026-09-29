@@ -55,6 +55,9 @@ const XP_PER_EXERCISE = 50;
 const XP_PER_SET = 5;
 const XP_PER_STREAK_DAY = 20;
 const STREAK_MILESTONE_INTERVAL = 5;
+// A day only counts toward the streak once that day's workouts add up to at
+// least this many minutes (summed across every workout logged that day).
+const MIN_STREAK_DAY_MINUTES = 30;
 const XP_PER_KM = 40;
 // Pro subscribers earn double XP on every workout (see constants/pro.ts).
 const PRO_XP_MULTIPLIER = 2;
@@ -175,16 +178,18 @@ function isValidCompleteWorkoutRequest(data: unknown): data is CompleteWorkoutRe
 }
 
 function newFeedItem(
-  type: 'badge_earned' | 'streak_milestone' | 'friend_workout',
+  type: 'badge_earned' | 'streak_milestone' | 'friend_workout' | 'reaction',
   actorUid: string,
   actorName: string,
-  message: string
+  message: string,
+  subject?: string // what the item is about (workout/badge name), for reactions
 ) {
   return {
     type,
     actorUid,
     actorName,
     message,
+    ...(subject ? { subject } : {}),
     createdAt: new Date().toISOString(),
   };
 }
@@ -229,7 +234,16 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
   const friendsRef = db.collection('friendships').doc(uid).collection('friends');
 
   const result = await db.runTransaction(async (tx) => {
-    const [userSnap, friendsSnap] = await Promise.all([tx.get(userRef), tx.get(friendsRef)]);
+    const firstBadgeRef = db
+      .collection('users')
+      .doc(uid)
+      .collection('badges')
+      .doc('the-journey-begins');
+    const [userSnap, friendsSnap, firstBadgeSnap] = await Promise.all([
+      tx.get(userRef),
+      tx.get(friendsRef),
+      tx.get(firstBadgeRef),
+    ]);
     if (!userSnap.exists) {
       throw new HttpsError('failed-precondition', 'User profile does not exist yet.');
     }
@@ -240,6 +254,9 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
       lastWorkoutDate: string | null;
       timeZone?: string;
       timeZoneUpdatedAt?: string;
+      longestStreak?: number;
+      activeDate?: string; // local date the minutes below were logged on
+      activeDayMinutes?: number;
     };
 
     const now = new Date();
@@ -277,31 +294,41 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     }
 
     const today = localDateString(now, timeZone);
-    // `<=`, not `===`: after a westward zone change "today" can be earlier
-    // than the stored date. That counts as already logged, and the stored
-    // date is kept, so moving the zone back and forth can't re-earn a day.
-    const alreadyLoggedToday = lastWorkoutDate !== null && today <= lastWorkoutDate;
+    // `lastWorkoutDate` is the last day that *counted* toward the streak (30+
+    // combined minutes). `<=`, not `===`: after a westward zone change "today"
+    // can be earlier than the stored date. That counts as already counted, and
+    // the stored date is kept, so moving the zone back and forth can't re-earn
+    // a day.
+    const dayAlreadyCounted = lastWorkoutDate !== null && today <= lastWorkoutDate;
+
+    const workoutMinutes = Math.max(0, Math.round(durationSeconds / 60));
+    const dayMinutes =
+      (profile.activeDate === today ? (profile.activeDayMinutes ?? 0) : 0) + workoutMinutes;
+    // This workout is the one that pushes today over the threshold.
+    const dayQualifiesNow = !dayAlreadyCounted && dayMinutes >= MIN_STREAK_DAY_MINUTES;
 
     let streakCountAfter: number;
-    if (alreadyLoggedToday) {
+    if (!dayQualifiesNow) {
       streakCountAfter = profile.streakCount;
     } else if (lastWorkoutDate === previousDateString(today)) {
       streakCountAfter = profile.streakCount + 1;
     } else {
       streakCountAfter = 1;
     }
+    const longestStreak = Math.max(profile.longestStreak ?? 0, streakCountAfter, profile.streakCount);
 
-    const streakBonus =
-      (alreadyLoggedToday ? 0 : streakCountAfter * XP_PER_STREAK_DAY) * xpMultiplier;
     const setCount = exercises.reduce((sum, e) => sum + (e.sets?.length ?? 0), 0);
+    const exerciseXp = exercises.length * XP_PER_EXERCISE;
+    const setXp = setCount * XP_PER_SET;
     const distanceXp = distanceMeters ? Math.round((distanceMeters / 1000) * XP_PER_KM) : 0;
-    const baseXp = exercises.length * XP_PER_EXERCISE + setCount * XP_PER_SET + distanceXp;
-    const xpEarned = baseXp * xpMultiplier + streakBonus;
+    const baseStreakBonus = dayQualifiesNow ? streakCountAfter * XP_PER_STREAK_DAY : 0;
+    const baseXp = exerciseXp + setXp + distanceXp;
+    const xpEarned = (baseXp + baseStreakBonus) * xpMultiplier;
+    const streakBonus = baseStreakBonus * xpMultiplier;
 
-    const isFirstWorkout = profile.lastWorkoutDate === null;
-    const badgeEarnedId = isFirstWorkout ? 'the-journey-begins' : null;
+    const badgeEarnedId = firstBadgeSnap.exists ? null : 'the-journey-begins';
     const hitStreakMilestone =
-      !alreadyLoggedToday && streakCountAfter > 0 && streakCountAfter % STREAK_MILESTONE_INTERVAL === 0;
+      dayQualifiesNow && streakCountAfter > 0 && streakCountAfter % STREAK_MILESTONE_INTERVAL === 0;
 
     tx.set(logRef, {
       id: logRef.id,
@@ -321,7 +348,10 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     tx.update(userRef, {
       xp: FieldValue.increment(xpEarned),
       streakCount: streakCountAfter,
-      lastWorkoutDate: alreadyLoggedToday ? lastWorkoutDate : today,
+      longestStreak,
+      activeDate: today,
+      activeDayMinutes: dayMinutes,
+      lastWorkoutDate: dayQualifiesNow ? today : lastWorkoutDate,
       ...(timeZoneChanged ? { timeZone, timeZoneUpdatedAt: now.toISOString() } : {}),
     });
 
@@ -341,13 +371,25 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
 
       tx.set(
         feedCol.doc(),
-        newFeedItem('friend_workout', uid, profile.name, `${profile.name} completed ${workout.name}!`)
+        newFeedItem(
+          'friend_workout',
+          uid,
+          profile.name,
+          `${profile.name} completed ${workout.name}!`,
+          workout.name
+        )
       );
       if (badgeEarnedId) {
         const badgeName = BADGE_NAMES[badgeEarnedId] ?? badgeEarnedId;
         tx.set(
           feedCol.doc(),
-          newFeedItem('badge_earned', uid, profile.name, `${profile.name} earned the ${badgeName} badge!`)
+          newFeedItem(
+            'badge_earned',
+            uid,
+            profile.name,
+            `${profile.name} earned the ${badgeName} badge!`,
+            `the ${badgeName} badge`
+          )
         );
       }
       if (hitStreakMilestone) {
@@ -357,16 +399,149 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
             'streak_milestone',
             uid,
             profile.name,
-            `${profile.name} hit a ${streakCountAfter}-day streak!`
+            `${profile.name} hit a ${streakCountAfter}-day streak!`,
+            `a ${streakCountAfter}-day streak`
           )
         );
       }
     }
 
-    return { xpEarned, streakBonus, streakCountAfter, badgeEarnedId, xpMultiplier };
+    return {
+      xpEarned,
+      streakBonus,
+      streakCountAfter,
+      badgeEarnedId,
+      xpMultiplier,
+      breakdown: {
+        exercises: exercises.length,
+        exerciseXp,
+        sets: setCount,
+        setXp,
+        distanceXp,
+        baseStreakBonus,
+      },
+      dayMinutes,
+      minStreakDayMinutes: MIN_STREAK_DAY_MINUTES,
+      dayCountedNow: dayQualifiesNow,
+      dayAlreadyCounted,
+    };
   });
 
   return result;
+});
+
+// Deletes one of the caller's own workout logs (e.g. a bugged or accidental
+// one from Recent Workouts) and takes back the XP it awarded, so deleting
+// can't be used to farm XP. Streak history is left alone: a past streak day
+// isn't un-earned retroactively. If the log is from today, its minutes are
+// also removed from today's running total toward the 30-minute streak day.
+export const deleteWorkoutLog = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError('unauthenticated', 'Must be signed in to delete a workout.');
+  }
+  const logId = (request.data as { logId?: unknown } | undefined)?.logId;
+  if (typeof logId !== 'string' || !/^[A-Za-z0-9]{1,64}$/.test(logId)) {
+    throw new HttpsError('invalid-argument', 'Missing or malformed logId.');
+  }
+
+  const userRef = db.collection('users').doc(uid);
+  const logRef = db.collection('workoutLogs').doc(uid).collection('logs').doc(logId);
+
+  return db.runTransaction(async (tx) => {
+    const [userSnap, logSnap] = await Promise.all([tx.get(userRef), tx.get(logRef)]);
+    if (!logSnap.exists) {
+      throw new HttpsError('not-found', 'That workout was already deleted.');
+    }
+    const log = logSnap.data() as { xpEarned?: number; completedAt?: string; durationSeconds?: number };
+    const profile = (userSnap.data() ?? {}) as {
+      xp?: number;
+      timeZone?: string;
+      activeDate?: string;
+      activeDayMinutes?: number;
+    };
+
+    const xpToRemove = Math.min(Math.max(0, log.xpEarned ?? 0), Math.max(0, profile.xp ?? 0));
+    const updates: Record<string, unknown> = { xp: FieldValue.increment(-xpToRemove) };
+
+    if (log.completedAt && profile.activeDate) {
+      const logDay = localDateString(new Date(log.completedAt), profile.timeZone ?? 'UTC');
+      if (logDay === profile.activeDate) {
+        const minutes = Math.round((log.durationSeconds ?? 0) / 60);
+        updates.activeDayMinutes = Math.max(0, (profile.activeDayMinutes ?? 0) - minutes);
+      }
+    }
+
+    tx.delete(logRef);
+    if (userSnap.exists) tx.update(userRef, updates);
+    return { deleted: true, xpRemoved: xpToRemove };
+  });
+});
+
+type Reaction = 'heart' | 'congrats';
+
+// Lets a user react to a friend's workout, badge, or streak milestone in
+// their activity feed. Feed items are fan-out copies (one per recipient), so
+// the reaction is recorded on the reactor's own copy (so the button shows as
+// sent) and the friend gets a new "reaction" item in their feed. Each reaction
+// type can be sent once per item.
+export const reactToActivity = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError('unauthenticated', 'Must be signed in to react.');
+  }
+  const { itemId, reaction } = (request.data ?? {}) as { itemId?: unknown; reaction?: unknown };
+  if (typeof itemId !== 'string' || !/^[A-Za-z0-9]{1,64}$/.test(itemId)) {
+    throw new HttpsError('invalid-argument', 'Missing or malformed itemId.');
+  }
+  if (reaction !== 'heart' && reaction !== 'congrats') {
+    throw new HttpsError('invalid-argument', 'Unknown reaction.');
+  }
+
+  const itemRef = db.collection('activityFeed').doc(uid).collection('items').doc(itemId);
+  const userRef = db.collection('users').doc(uid);
+
+  return db.runTransaction(async (tx) => {
+    const [itemSnap, userSnap] = await Promise.all([tx.get(itemRef), tx.get(userRef)]);
+    if (!itemSnap.exists) {
+      throw new HttpsError('not-found', 'That activity is no longer available.');
+    }
+    const item = itemSnap.data() as {
+      type: string;
+      actorUid: string;
+      subject?: string;
+      message: string;
+      myReactions?: Partial<Record<Reaction, boolean>>;
+    };
+    if (item.type === 'reaction' || item.actorUid === uid) {
+      throw new HttpsError('failed-precondition', 'You can’t react to this item.');
+    }
+    if (item.myReactions?.[reaction as Reaction]) {
+      return { reacted: true, alreadySent: true };
+    }
+    // Only friends can react (the item landing in your feed implies it, but
+    // the friendship may have ended since).
+    const friendSnap = await tx.get(
+      db.collection('friendships').doc(item.actorUid).collection('friends').doc(uid)
+    );
+    if (!friendSnap.exists) {
+      throw new HttpsError('permission-denied', 'You can only react to friends’ activity.');
+    }
+
+    const name = (userSnap.data() as { name?: string } | undefined)?.name ?? 'A friend';
+    const subject = item.subject ?? 'your workout';
+    const message =
+      reaction === 'heart'
+        ? `${name} sent a ❤️ on ${subject}`
+        : `🎉 ${name} congratulated you on ${subject}!`;
+
+    tx.update(itemRef, { [`myReactions.${reaction}`]: true });
+    tx.set(
+      db.collection('activityFeed').doc(item.actorUid).collection('items').doc(),
+      newFeedItem('reaction', uid, name, message)
+    );
+    return { reacted: true, alreadySent: false };
+  });
 });
 
 // Friend relationships are mutual (both sides need to be written at once),

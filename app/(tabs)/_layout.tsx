@@ -1,7 +1,9 @@
-import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { router, Tabs } from 'expo-router';
 import { FloatingTabBar } from '../../components/FloatingTabBar';
 import { CompassIcon, GroupIcon, HomeIcon, StatsIcon, UserIcon } from '../../components/icons/BrandIcons';
 import { useTheme } from '../../contexts/ThemeContext';
+import { usePurchases } from '../../contexts/PurchasesContext';
 
 // FloatingTabBar always passes plain string colors at runtime; React
 // Navigation's tabBarIcon type just declares the wider ColorValue.
@@ -9,6 +11,7 @@ const asString = (c: unknown) => c as string;
 
 export default function TabsLayout() {
   const { colors } = useTheme();
+  const { isPro } = usePurchases();
   return (
     <Tabs
       tabBar={(props) => <FloatingTabBar {...props} />}
@@ -38,6 +41,26 @@ export default function TabsLayout() {
         options={{
           title: 'Analytics',
           tabBarIcon: ({ color, size }) => <StatsIcon color={asString(color)} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="insights"
+        options={{
+          title: 'Insights',
+          tabBarAccessibilityLabel: 'Insights (Pro)',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="pulse" color={asString(color)} size={size} />
+          ),
+        }}
+        listeners={{
+          // Insights is Pro-only: non-subscribers get the paywall instead of
+          // the tab.
+          tabPress: (e) => {
+            if (!isPro) {
+              e.preventDefault();
+              router.push('/paywall');
+            }
+          },
         }}
       />
       <Tabs.Screen

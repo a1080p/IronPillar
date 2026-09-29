@@ -63,9 +63,6 @@ export default function SettingsScreen() {
               <Text style={styles.rowLabel}>Manage Subscription</Text>
             </Pressable>
           )}
-          <Pressable style={styles.row} onPress={() => router.push('/insights')}>
-            <Text style={styles.rowLabel}>Insights</Text>
-          </Pressable>
           <Pressable style={styles.row} onPress={exporting ? undefined : handleExport}>
             <View style={styles.rowInline}>
               <Text style={styles.rowLabel}>

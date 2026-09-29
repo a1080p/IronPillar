@@ -40,7 +40,10 @@ function RootNavigation() {
 
   return (
     <>
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* Slides up as a sheet over whatever screen opened it. */}
+        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
+      </Stack>
       {/* Only once fully onboarded — a pre-account user has no uid to attach
           a report to, and won't hit real app screens yet anyway. */}
       {user && hasOnboarded ? <BugReportButton uid={user.uid} /> : null}

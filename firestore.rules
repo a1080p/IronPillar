@@ -7,8 +7,10 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
-    // Gamification fields (xp, streakCount, level, lastWorkoutDate, and the
-    // timeZone/timeZoneUpdatedAt streak days are counted in) are only
+    // Gamification fields (xp, streakCount, longestStreak, level,
+    // lastWorkoutDate, activeDate/activeDayMinutes (today's running total
+    // toward the 30-minute streak day), and the timeZone/timeZoneUpdatedAt
+    // streak days are counted in) are only
     // ever written by the completeWorkout Cloud Function, which runs with
     // Admin SDK privileges and bypasses these rules entirely. The client can
     // create its own initial profile (with zeroed-out gamification fields)
@@ -25,6 +27,9 @@ service cloud.firestore {
         && request.resource.data.lastWorkoutDate == null
         && request.resource.data.get('timeZone', null) == null
         && request.resource.data.get('timeZoneUpdatedAt', null) == null
+        && request.resource.data.get('longestStreak', null) == null
+        && request.resource.data.get('activeDate', null) == null
+        && request.resource.data.get('activeDayMinutes', null) == null
         && request.resource.data.friendCount == 0;
 
       allow update: if isOwner(uid)
@@ -34,6 +39,9 @@ service cloud.firestore {
         && request.resource.data.lastWorkoutDate == resource.data.lastWorkoutDate
         && request.resource.data.get('timeZone', null) == resource.data.get('timeZone', null)
         && request.resource.data.get('timeZoneUpdatedAt', null) == resource.data.get('timeZoneUpdatedAt', null)
+        && request.resource.data.get('longestStreak', null) == resource.data.get('longestStreak', null)
+        && request.resource.data.get('activeDate', null) == resource.data.get('activeDate', null)
+        && request.resource.data.get('activeDayMinutes', null) == resource.data.get('activeDayMinutes', null)
         && request.resource.data.friendCount == resource.data.friendCount;
 
       allow delete: if false;
