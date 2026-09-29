@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { WorkoutHeader } from '../components/WorkoutHeader';
 import { spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
@@ -27,6 +27,9 @@ export default function SettingsScreen() {
           </Pressable>
           <Pressable style={styles.row} onPress={() => router.push('/history')}>
             <Text style={styles.rowLabel}>History</Text>
+          </Pressable>
+          <Pressable style={styles.row} onPress={() => router.push('/reminders' as Href)}>
+            <Text style={styles.rowLabel}>Reminders</Text>
           </Pressable>
           <Pressable style={styles.row} onPress={signOut}>
             <Text style={styles.rowLabel}>Sign Out</Text>

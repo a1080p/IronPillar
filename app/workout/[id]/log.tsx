@@ -11,6 +11,7 @@ import { motivationalMessages } from '../../../constants/motivation';
 import { useWorkout } from '../../../hooks/useWorkout';
 import { useAuth } from '../../../contexts/AuthContext';
 import { completeWorkout } from '../../../lib/workoutCompletion';
+import { noteWorkoutStarted } from '../../../lib/gymReminders';
 import { summarizeExerciseLogs } from '../../../lib/workoutStats';
 import type { ExerciseLog, LoggedSet } from '../../../types/models';
 
@@ -31,6 +32,11 @@ export default function WorkoutLogScreen() {
   // Set right before navigating away because the workout finished, so the
   // beforeRemove guard below doesn't prompt on the way to the complete screen.
   const isCompletingRef = useRef(false);
+
+  // Cancels any pending "you're at the gym" reminder now that they've started.
+  useEffect(() => {
+    noteWorkoutStarted();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {

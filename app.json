@@ -57,7 +57,13 @@
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true,
-          "locationAlwaysAndWhenInUsePermission": "Iron Pillar tracks your route during outdoor workouts, including while your screen is locked."
+          "locationAlwaysAndWhenInUsePermission": "Iron Pillar tracks your route during outdoor workouts, including while your screen is locked, and can remind you to start a workout when you arrive at a gym you've saved."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "workout-reminders"
         }
       ],
       [

@@ -25,6 +25,7 @@ import {
   subscribe,
 } from '../../../lib/outdoorTracking';
 import { completeOutdoorActivity, type CompletionResult } from '../../../lib/workoutCompletion';
+import { noteWorkoutStarted } from '../../../lib/gymReminders';
 import type { OutdoorActivityType, RoutePoint } from '../../../types/models';
 
 const ACTIVITY_LABELS: Record<OutdoorActivityType, string> = {
@@ -105,6 +106,7 @@ export default function OutdoorTrackScreen() {
         return;
       }
       startedAtRef.current = await startTracking();
+      noteWorkoutStarted();
       const pauseState = await getPauseState();
       totalPausedMsRef.current = pauseState.totalPausedMs;
       if (pauseState.pausedAt) {
