@@ -4,6 +4,15 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-29 — Bug triage: Edit Profile now asks before discarding unsaved changes ([IP-44](https://studiogreatt.atlassian.net/browse/IP-44))
+
+- **Report** (`/edit-profile`, feature_idea): asked for a save button, or a "do you want to save your changes" prompt when backing out. The Save Changes button already existed. The real gap was that backing out (back chevron or iOS swipe) silently dropped edits to name, birthday, or avatar.
+- **Fix** (`app/edit-profile.tsx`): the form is compared against the saved profile. While there are unsaved changes, a `beforeRemove` guard shows "Save changes?" with Keep Editing / Discard / Save, the same pattern as the "Quit workout?" guard in `app/workout/[id]/log.tsx`. Save uses the normal validated save path. A failed save keeps the user on the screen, and a successful save leaves without a second prompt. With no changes, backing out works as before.
+- **Verified**: typechecked clean on a temp worktree of HEAD plus only this change. The main working tree currently fails typecheck because of uncommitted in-progress work (`analytics.tsx` → `/insights` route), and that work was not included. Committed + pushed (bf6e17c). Not yet tested on a device.
+- **EAS Update not published**: publishing from the working tree would ship the uncommitted HealthKit/insights work. Publishing from a clean checkout would ship without `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, the RevenueCat keys, and the WHOOP client ID, which are missing from the EAS `preview` environment and exist only in `.env`. Run the update once the in-progress work is committed or stashed. Details are in the IP-44 comment.
+
+---
+
 ## 2026-09-28 (later still) — Streaks now follow the user's local day, not UTC
 
 - **Bug**: `completeWorkout` computed streak days with `toISOString().slice(0, 10)` (UTC). For a US user, a 9 PM Eastern workout counted as the next day, so 7 PM + 9 PM on one evening could be two streak days, and morning + late-night patterns could break streaks.
