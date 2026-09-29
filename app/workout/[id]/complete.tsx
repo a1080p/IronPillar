@@ -13,9 +13,20 @@ import { useAuth } from '../../../contexts/AuthContext';
 export default function WorkoutCompleteScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const { xpEarned, streakBonus, streakCountAfter, badgeEarnedId, volume, reps, sets, durationSeconds } =
+  const {
+    xpEarned,
+    xpMultiplier,
+    streakBonus,
+    streakCountAfter,
+    badgeEarnedId,
+    volume,
+    reps,
+    sets,
+    durationSeconds,
+  } =
     useLocalSearchParams<{
       xpEarned: string;
+      xpMultiplier?: string;
       streakBonus: string;
       streakCountAfter: string;
       badgeEarnedId: string;
@@ -79,6 +90,9 @@ export default function WorkoutCompleteScreen() {
           {xpEarned}
           <Text style={styles.xpUnit}>xp</Text>
         </Text>
+        {Number(xpMultiplier) > 1 && (
+          <Text style={styles.proXp}>{xpMultiplier}× Pro XP applied</Text>
+        )}
         {Number(streakBonus) > 0 && (
           <Text style={styles.streakBonus}>
             Streak Bonus: {streakBonus}
@@ -113,6 +127,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   xpLine: { fontSize: typography.sizes.md, color: colors.primary, marginTop: spacing.sm },
   streakBonus: { fontSize: typography.sizes.body, color: colors.text, marginTop: spacing.xs },
   xpUnit: { color: colors.primary, fontSize: typography.sizes.small },
+  proXp: { color: colors.accentFlame, fontWeight: '800', fontSize: typography.sizes.small, marginTop: spacing.xs },
   summaryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -150,6 +150,7 @@ export default function WorkoutLogScreen() {
           streakBonus: String(result.streakBonus),
           streakCountAfter: String(result.streakCountAfter),
           badgeEarnedId: result.badgeEarnedId ?? '',
+          xpMultiplier: String(result.xpMultiplier ?? 1),
           volume: String(totals.volume),
           reps: String(totals.reps),
           sets: String(totals.sets),

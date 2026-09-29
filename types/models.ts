@@ -113,6 +113,7 @@ export interface WorkoutLog {
   durationSeconds: number;
   exercises: ExerciseLog[]; // empty for outdoor activities — see activityType below
   xpEarned: number;
+  xpMultiplier?: number; // 2 when earned as a Pro subscriber
   streakBonusEarned: number;
   streakCountAfter: number;
   // Present only when workoutSource is 'outdoor' (GPS-tracked walk/run/bike).

@@ -8,6 +8,7 @@ export interface CompletionResult {
   streakBonus: number;
   streakCountAfter: number;
   badgeEarnedId: string | null;
+  xpMultiplier?: number; // 2 for Pro subscribers; absent from older functions
 }
 
 export interface CompletedWorkoutRef {

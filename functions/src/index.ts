@@ -54,6 +54,8 @@ const XP_PER_SET = 5;
 const XP_PER_STREAK_DAY = 20;
 const STREAK_MILESTONE_INTERVAL = 5;
 const XP_PER_KM = 40;
+// Pro subscribers earn double XP on every workout (see constants/pro.ts).
+const PRO_XP_MULTIPLIER = 2;
 const MAX_ROUTE_POINTS = 20000; // ~5.5hrs at one point/sec — well beyond any real workout
 // How often the time zone streak days are computed in may change. Without a
 // limit, a client could claim a different zone on every call and log three
@@ -195,7 +197,7 @@ function newFeedItem(
 // calendar the server's clock is read in: zone changes are rate-limited and
 // lastWorkoutDate never moves backwards, so zone-hopping can't manufacture
 // extra streak days.
-export const completeWorkout = onCall(async (request) => {
+export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
     throw new HttpsError('unauthenticated', 'Must be signed in to complete a workout.');
@@ -206,6 +208,19 @@ export const completeWorkout = onCall(async (request) => {
   const { workout, exercises, durationSeconds, activityType, distanceMeters, route } =
     request.data;
   const requestedTimeZone = canonicalTimeZone(request.data.timeZone);
+
+  // Checked against RevenueCat on the server, before (not inside) the
+  // transaction since it's a network call. Any failure — no secret, outage,
+  // lapsed subscription — just means normal XP; it never blocks finishing.
+  let xpMultiplier = 1;
+  const revenueCatSecret = REVENUECAT_SECRET_KEY.value();
+  if (revenueCatSecret) {
+    try {
+      if (await isProSubscriber(uid, revenueCatSecret)) xpMultiplier = PRO_XP_MULTIPLIER;
+    } catch (e) {
+      console.warn('Pro check failed during completeWorkout; awarding base XP', e);
+    }
+  }
 
   const userRef = db.collection('users').doc(uid);
   const logRef = db.collection('workoutLogs').doc(uid).collection('logs').doc();
@@ -274,11 +289,12 @@ export const completeWorkout = onCall(async (request) => {
       streakCountAfter = 1;
     }
 
-    const streakBonus = alreadyLoggedToday ? 0 : streakCountAfter * XP_PER_STREAK_DAY;
+    const streakBonus =
+      (alreadyLoggedToday ? 0 : streakCountAfter * XP_PER_STREAK_DAY) * xpMultiplier;
     const setCount = exercises.reduce((sum, e) => sum + (e.sets?.length ?? 0), 0);
     const distanceXp = distanceMeters ? Math.round((distanceMeters / 1000) * XP_PER_KM) : 0;
-    const xpEarned =
-      exercises.length * XP_PER_EXERCISE + setCount * XP_PER_SET + distanceXp + streakBonus;
+    const baseXp = exercises.length * XP_PER_EXERCISE + setCount * XP_PER_SET + distanceXp;
+    const xpEarned = baseXp * xpMultiplier + streakBonus;
 
     const isFirstWorkout = profile.lastWorkoutDate === null;
     const badgeEarnedId = isFirstWorkout ? 'the-journey-begins' : null;
@@ -294,6 +310,7 @@ export const completeWorkout = onCall(async (request) => {
       durationSeconds,
       exercises,
       xpEarned,
+      xpMultiplier,
       streakBonusEarned: streakBonus,
       streakCountAfter,
       ...(activityType ? { activityType, distanceMeters, route: route ?? [] } : {}),
@@ -344,7 +361,7 @@ export const completeWorkout = onCall(async (request) => {
       }
     }
 
-    return { xpEarned, streakBonus, streakCountAfter, badgeEarnedId };
+    return { xpEarned, streakBonus, streakCountAfter, badgeEarnedId, xpMultiplier };
   });
 
   return result;

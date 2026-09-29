@@ -217,6 +217,9 @@ export default function OutdoorTrackScreen() {
             +{result.xpEarned}
             <Text style={styles.xpUnit}> xp</Text>
           </Text>
+          {(result.xpMultiplier ?? 1) > 1 && (
+            <Text style={styles.proXp}>{result.xpMultiplier}× Pro XP applied</Text>
+          )}
           {badge && (
             <View style={styles.badgeRow}>
               <Ionicons name="ribbon" size={22} color={colors.primary} />
@@ -355,6 +358,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   statLabel: { fontSize: typography.sizes.small, color: colors.textMuted },
   xpLine: { fontSize: typography.sizes.xl, fontWeight: '800', color: colors.accentFlame },
   xpUnit: { fontSize: typography.sizes.body, fontWeight: '600' },
+  proXp: { color: colors.accentFlame, fontWeight: '700', fontSize: typography.sizes.small },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   badgeText: { color: colors.primary, fontWeight: '700' },
   footer: {

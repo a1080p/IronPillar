@@ -15,6 +15,11 @@ export const FREE_CUSTOM_WORKOUT_LIMIT = 5;
 // the website copy (website/index.html) — keep the two in sync.
 export const PRO_FEATURES: PlanFeature[] = [
   {
+    icon: 'flash',
+    title: '2× XP on every workout',
+    description: 'Level up twice as fast while you’re subscribed, streak bonuses included.',
+  },
+  {
     icon: 'pulse',
     title: 'Daily readiness score',
     description:
