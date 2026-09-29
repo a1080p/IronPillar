@@ -111,8 +111,8 @@ function WearablesSection({ uid }: { uid: string }) {
       <>
         <Text style={[styles.sectionHeading, { marginTop: spacing.xl }]}>Connected apps</Text>
         <ProLockCard
-          title="Apple Health, Apple Watch & WHOOP"
-          description="Save workouts to Apple Health, and use Apple Watch or WHOOP recovery, HRV, and sleep for a daily readiness score."
+          title="Apple Health & Apple Watch"
+          description="Save workouts to Apple Health, and use Apple Watch HRV, resting heart rate, and sleep for a daily readiness score."
         />
       </>
     );
@@ -125,7 +125,8 @@ function WearablesSection({ uid }: { uid: string }) {
         <ProBadge />
       </View>
       <AppleHealthCard uid={uid} />
-      <WhoopCard uid={uid} />
+      {/* WHOOP is on hold: hidden until EXPO_PUBLIC_WHOOP_CLIENT_ID is set. */}
+      {isWhoopConfigured && <WhoopCard uid={uid} />}
     </>
   );
 }

@@ -130,7 +130,7 @@ export default function InsightsScreen() {
           {!readiness.hasWearableData && (
             <Pressable onPress={() => router.push('/(tabs)/profile')}>
               <Text style={styles.linkText}>
-                Connect Apple Health or WHOOP in Profile for a recovery-aware score →
+                Connect Apple Health in Profile for a recovery-aware score →
               </Text>
             </Pressable>
           )}

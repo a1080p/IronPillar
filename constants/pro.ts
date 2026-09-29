@@ -32,11 +32,6 @@ export const PRO_FEATURES: PlanFeature[] = [
       'Workouts save to Apple Health and count toward your rings. Watch HRV, sleep, and workouts feed your readiness score.',
   },
   {
-    icon: 'fitness',
-    title: 'WHOOP sync',
-    description: 'Pull in recovery, HRV, sleep performance, and strain from your WHOOP.',
-  },
-  {
     icon: 'trending-up',
     title: 'Advanced strength analytics',
     description: 'Per-exercise 1RM trends, next-session weight and rep targets, and plateau alerts.',

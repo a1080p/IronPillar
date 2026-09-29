@@ -985,7 +985,13 @@ async function requirePro(uid: string, message: string) {
   }
 }
 
-export const exchangeWhoopCode = onCall(
+// WHOOP is ON HOLD (no WHOOP developer app registered yet). exchangeWhoopCode
+// and syncWhoopData are deliberately not exported, so `firebase deploy` neither
+// deploys them nor requires the WHOOP_CLIENT_ID / WHOOP_CLIENT_SECRET secrets.
+// To enable: register the app, set both secrets, set EXPO_PUBLIC_WHOOP_CLIENT_ID,
+// and add `export` back to both. The app hides WHOOP while that env var is empty.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const exchangeWhoopCode = onCall(
   { secrets: [WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, REVENUECAT_SECRET_KEY] },
   async (request) => {
     const uid = request.auth?.uid;
@@ -1028,7 +1034,8 @@ export const exchangeWhoopCode = onCall(
 );
 
 // Callable so the client can trigger a manual "Sync now".
-export const syncWhoopData = onCall(
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const syncWhoopData = onCall(
   { secrets: [WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, REVENUECAT_SECRET_KEY] },
   async (request) => {
     const uid = request.auth?.uid;

@@ -129,7 +129,7 @@ export default function AnalyticsScreen() {
             <Text style={styles.insightsText}>
               {isPro
                 ? 'Readiness score, next-session targets, and 1RM trends'
-                : 'Readiness score, lift targets, Apple Watch & WHOOP. Tap to preview'}
+                : 'Readiness score, lift targets, and Apple Watch sync. Tap to preview'}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
