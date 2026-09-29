@@ -141,10 +141,19 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // Customer Center is a paid-RevenueCat-plan feature (Pro/Enterprise). If
+  // it's unavailable or fails to open, fall back to Apple's own subscription
+  // management sheet so "Manage Subscription" always does something useful.
   const presentCustomerCenter = useCallback(async () => {
     if (!purchasesReady) return;
-    const RevenueCatUI = (await import('react-native-purchases-ui')).default;
-    await RevenueCatUI.presentCustomerCenter();
+    try {
+      const RevenueCatUI = (await import('react-native-purchases-ui')).default;
+      await RevenueCatUI.presentCustomerCenter();
+    } catch (e) {
+      console.warn('Customer Center unavailable, opening store subscription management', e);
+      const Purchases = (await import('react-native-purchases')).default;
+      await Purchases.showManageSubscriptions();
+    }
   }, []);
 
   const value = useMemo<PurchasesContextValue>(
