@@ -2,12 +2,13 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import type { CustomerInfo, PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
+import type { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import { useAuth } from './AuthContext';
 
 // The Pro entitlement identifier as configured in the RevenueCat dashboard
 // (Project > Entitlements). Must match exactly, or isPro will never flip true
 // even after a successful purchase.
-export const PRO_ENTITLEMENT_ID = 'pro';
+export const PRO_ENTITLEMENT_ID = 'iron_pillar_pro';
 
 // RevenueCat's SDK, like Google Sign-In, calls into native code at import
 // time on some platforms — importing it in Expo Go (no native module present)
@@ -26,13 +27,21 @@ const apiKey =
 // that gates a feature on isPro treats "not ready" the same as "not pro" —
 // nothing paywalled silently unlocks just because RevenueCat isn't configured
 // yet.
-const purchasesReady = !isExpoGo && !!apiKey;
+// RevenueCat Test Store keys (`test_…`) make the SDK crash on purpose in any
+// release build — including ad hoc "preview" and TestFlight builds — so a
+// shipped build can never sell fake products. They're only for development
+// builds; release builds need the platform key (`appl_…` on iOS). If a test
+// key ever leaks into a release build, treat purchases as unavailable instead
+// of crashing on launch.
+const isTestStoreKey = !!apiKey?.startsWith('test_');
+const purchasesReady = !isExpoGo && !!apiKey && !(isTestStoreKey && !__DEV__);
 let configured = false;
 
 async function ensurePurchasesConfigured(uid: string | null) {
   if (!purchasesReady) return null;
   const Purchases = (await import('react-native-purchases')).default;
   if (!configured) {
+    if (__DEV__) Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
     Purchases.configure({ apiKey: apiKey!, appUserID: uid ?? undefined });
     configured = true;
   } else if (uid) {
@@ -47,9 +56,16 @@ interface PurchasesContextValue {
   isAvailable: boolean;
   loading: boolean;
   isPro: boolean;
+  customerInfo: CustomerInfo | null;
   offering: PurchasesOffering | null;
   purchasePackage: (pkg: PurchasesPackage) => Promise<void>;
   restorePurchases: () => Promise<void>;
+  // RevenueCat's own paywall (designed in the RevenueCat dashboard), shown
+  // only if the user doesn't already have Pro. Resolves to the result, or
+  // null when purchases aren't available on this build.
+  presentPaywallIfNeeded: () => Promise<PAYWALL_RESULT | null>;
+  // RevenueCat Customer Center: manage/cancel, restore, refund requests.
+  presentCustomerCenter: () => Promise<void>;
 }
 
 const PurchasesContext = createContext<PurchasesContextValue | undefined>(undefined);
@@ -114,16 +130,45 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     setCustomerInfo(updated);
   }, []);
 
+  // Both UI helpers rely on the customerInfo listener above to pick up any
+  // purchase/restore, so isPro updates everywhere without extra plumbing.
+  const presentPaywallIfNeeded = useCallback(async () => {
+    if (!purchasesReady) return null;
+    const RevenueCatUI = (await import('react-native-purchases-ui')).default;
+    return RevenueCatUI.presentPaywallIfNeeded({
+      requiredEntitlementIdentifier: PRO_ENTITLEMENT_ID,
+      displayCloseButton: true,
+    });
+  }, []);
+
+  const presentCustomerCenter = useCallback(async () => {
+    if (!purchasesReady) return;
+    const RevenueCatUI = (await import('react-native-purchases-ui')).default;
+    await RevenueCatUI.presentCustomerCenter();
+  }, []);
+
   const value = useMemo<PurchasesContextValue>(
     () => ({
       isAvailable: purchasesReady,
       loading,
       isPro,
+      customerInfo,
       offering,
       purchasePackage,
       restorePurchases,
+      presentPaywallIfNeeded,
+      presentCustomerCenter,
     }),
-    [loading, isPro, offering, purchasePackage, restorePurchases]
+    [
+      loading,
+      isPro,
+      customerInfo,
+      offering,
+      purchasePackage,
+      restorePurchases,
+      presentPaywallIfNeeded,
+      presentCustomerCenter,
+    ]
   );
 
   return <PurchasesContext.Provider value={value}>{children}</PurchasesContext.Provider>;

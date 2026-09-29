@@ -15,7 +15,7 @@ export default function SettingsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { signOut, user } = useAuth();
-  const { isPro } = usePurchases();
+  const { isPro, presentCustomerCenter } = usePurchases();
   const { logs } = useWorkoutLogs(user?.uid);
   const [exporting, setExporting] = useState(false);
 
@@ -51,6 +51,18 @@ export default function SettingsScreen() {
               <ProBadge />
             </View>
           </Pressable>
+          {isPro && (
+            <Pressable
+              style={styles.row}
+              onPress={() =>
+                presentCustomerCenter().catch((e) =>
+                  Alert.alert('Could not open', e instanceof Error ? e.message : 'Try again.')
+                )
+              }
+            >
+              <Text style={styles.rowLabel}>Manage Subscription</Text>
+            </Pressable>
+          )}
           <Pressable style={styles.row} onPress={() => router.push('/insights')}>
             <Text style={styles.rowLabel}>Insights</Text>
           </Pressable>

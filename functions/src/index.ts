@@ -32,7 +32,9 @@ const VERIFICATION_EMAIL_FROM = 'Iron Pillar <onboarding@resend.dev>';
 // empty-value skip below only matters locally (e.g. the emulator with no
 // secret provided).
 const REVENUECAT_SECRET_KEY = defineSecret('REVENUECAT_SECRET_KEY');
-const PRO_ENTITLEMENT_ID = 'pro';
+// Must match the entitlement identifier in the RevenueCat dashboard and
+// contexts/PurchasesContext.tsx.
+const PRO_ENTITLEMENT_ID = 'iron_pillar_pro';
 
 // Set with: firebase functions:secrets:set WHOOP_CLIENT_ID
 //           firebase functions:secrets:set WHOOP_CLIENT_SECRET

@@ -9,6 +9,14 @@
       "distribution": "internal",
       "ios": {
         "simulator": true
+      },
+      "environment": "development"
+    },
+    "development-device": {
+      "extends": "development",
+      "environment": "development",
+      "ios": {
+        "simulator": false
       }
     },
     "preview": {

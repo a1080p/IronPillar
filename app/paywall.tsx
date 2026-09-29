@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,11 +19,73 @@ const FALLBACK_PLANS = [
   { id: 'annual', label: 'Annual', price: '$79.99', period: '/year', badge: 'Best value' },
 ];
 
+// Props we use on RevenueCatUI.Paywall. Typed locally because the module is
+// loaded with a dynamic import (it's native-only; importing it statically
+// would crash Expo Go and web).
+type RevenueCatPaywallProps = {
+  options?: { displayCloseButton?: boolean };
+  onPurchaseCompleted?: () => void;
+  onRestoreCompleted?: () => void;
+  onPurchaseError?: (args: { error: { message?: string } }) => void;
+  onDismiss?: () => void;
+};
+
 export default function PaywallScreen() {
+  const { isAvailable, isPro } = usePurchases();
+  const [RevenueCatPaywall, setRevenueCatPaywall] =
+    useState<ComponentType<RevenueCatPaywallProps> | null>(null);
+
+  useEffect(() => {
+    if (!isAvailable || isPro) return;
+    let cancelled = false;
+    import('react-native-purchases-ui')
+      .then((m) => {
+        if (!cancelled) setRevenueCatPaywall(() => m.default.Paywall as ComponentType<RevenueCatPaywallProps>);
+      })
+      .catch((e) => console.warn('RevenueCat UI unavailable, using built-in paywall', e));
+    return () => {
+      cancelled = true;
+    };
+  }, [isAvailable, isPro]);
+
+  // RevenueCat Paywall: designed and A/B-tested in the RevenueCat dashboard
+  // (attached to the current offering). It handles purchase, restore, and
+  // errors itself; the customerInfo listener in PurchasesContext flips isPro.
+  if (RevenueCatPaywall && !isPro) {
+    return (
+      <RevenueCatPaywall
+        options={{ displayCloseButton: true }}
+        onPurchaseCompleted={() => {
+          Alert.alert('Welcome to Pro', 'Your subscription is active.', [
+            { text: 'Done', onPress: () => router.back() },
+          ]);
+        }}
+        onRestoreCompleted={() => router.back()}
+        onPurchaseError={({ error }) =>
+          Alert.alert('Purchase failed', error.message ?? 'Try again.')
+        }
+        onDismiss={() => router.back()}
+      />
+    );
+  }
+
+  return <BuiltInPaywall />;
+}
+
+// Shown to Pro users (as a "you're Pro" summary), and as the purchase screen
+// wherever RevenueCat's native UI isn't available.
+function BuiltInPaywall() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const { isAvailable, loading, isPro, offering, purchasePackage, restorePurchases } =
-    usePurchases();
+  const {
+    isAvailable,
+    loading,
+    isPro,
+    offering,
+    purchasePackage,
+    restorePurchases,
+    presentCustomerCenter,
+  } = usePurchases();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -81,6 +143,13 @@ export default function PaywallScreen() {
             <Ionicons name="checkmark-circle" size={20} color={colors.success} />
             <Text style={styles.proBannerText}>You're already Pro. Thanks for supporting Iron Pillar.</Text>
           </View>
+        ) : null}
+        {isPro ? (
+          // Pro users get Customer Center (manage/cancel, restore, refunds)
+          // instead of the pricing cards.
+          <Text style={styles.manageLink} onPress={() => presentCustomerCenter()}>
+            Manage subscription
+          </Text>
         ) : (
           <>
             <View style={styles.plansRow}>
@@ -254,6 +323,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   freeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
   freeText: { color: colors.textMuted, fontSize: typography.sizes.small, flex: 1 },
   legal: { color: colors.textMuted, fontSize: 11, marginTop: spacing.lg },
+  manageLink: { color: colors.primary, fontWeight: '700', marginBottom: spacing.lg },
   legalLinks: { flexDirection: 'row', gap: spacing.lg },
   legalLink: { color: colors.textMuted, fontSize: 11, textDecorationLine: 'underline' },
   footer: { padding: spacing.lg, alignItems: 'center', gap: spacing.sm },
