@@ -10,10 +10,14 @@ import { Resend } from 'resend';
 import {
   BADGE_NAMES,
   STATS_VERSION,
+  XP_PER_PERSONAL_RECORD,
   applyWorkout,
   emptyStats,
+  improvementsOver,
   levelForXp,
   qualifyingBadgeIds,
+  workoutTotals,
+  type ComparableWorkout,
   type StatsWorkout,
   type UserStats,
 } from './achievements';
@@ -74,6 +78,8 @@ const STREAK_MILESTONE_INTERVAL = 5;
 // least this many minutes (summed across every workout logged that day).
 const MIN_STREAK_DAY_MINUTES = 30;
 const XP_PER_KM = 40;
+// How many recent logs to search for the previous time a workout was done.
+const PREVIOUS_WORKOUT_LOOKBACK = 40;
 // Pro subscribers earn double XP on every workout (see constants/pro.ts).
 const PRO_XP_MULTIPLIER = 2;
 const MAX_ROUTE_POINTS = 20000; // ~5.5hrs at one point/sec — well beyond any real workout
@@ -327,15 +333,6 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     }
     const longestStreak = Math.max(profile.longestStreak ?? 0, streakCountAfter, profile.streakCount);
 
-    const setCount = exercises.reduce((sum, e) => sum + (e.sets?.length ?? 0), 0);
-    const exerciseXp = exercises.length * XP_PER_EXERCISE;
-    const setXp = setCount * XP_PER_SET;
-    const distanceXp = distanceMeters ? Math.round((distanceMeters / 1000) * XP_PER_KM) : 0;
-    const baseStreakBonus = dayQualifiesNow ? streakCountAfter * XP_PER_STREAK_DAY : 0;
-    const baseXp = exerciseXp + setXp + distanceXp;
-    const xpEarned = (baseXp + baseStreakBonus) * xpMultiplier;
-    const streakBonus = baseStreakBonus * xpMultiplier;
-
     // Lifetime totals live in userStats/{uid}. The first time (or after a
     // deleted log reset them) they're rebuilt from the full history, without
     // the GPS routes.
@@ -385,6 +382,47 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     };
     const applied = applyWorkout(stats, thisWorkout, timeZone);
     const personalRecords = applied.personalRecords;
+
+    // The last time this same workout (or the same kind of outdoor activity)
+    // was done, to reward beating it.
+    const recentSnap = await tx.get(
+      logsRef
+        .orderBy('completedAt', 'desc')
+        .limit(PREVIOUS_WORKOUT_LOOKBACK)
+        .select('workoutId', 'workoutSource', 'activityType', 'durationSeconds', 'exercises', 'distanceMeters')
+    );
+    const isOutdoor = workout.category === 'outdoor';
+    const previousDoc = recentSnap.docs.find((doc) =>
+      isOutdoor
+        ? doc.get('workoutSource') === 'outdoor' && doc.get('activityType') === activityType
+        : doc.get('workoutId') === workout.id
+    );
+    const previous: ComparableWorkout | null = previousDoc
+      ? {
+          exercises: Array.isArray(previousDoc.get('exercises')) ? previousDoc.get('exercises') : [],
+          durationSeconds: Number(previousDoc.get('durationSeconds')) || 0,
+          distanceMeters: Number(previousDoc.get('distanceMeters')) || 0,
+        }
+      : null;
+    const improvements = improvementsOver(
+      { exercises, durationSeconds, distanceMeters: distanceMeters ?? 0 },
+      previous,
+      isOutdoor
+    );
+
+    // XP is earned for what was actually logged: exercises with at least one
+    // completed set, and each completed set. Blank rows earn nothing.
+    const totals = workoutTotals(exercises);
+    const setCount = totals.setsDone;
+    const exerciseXp = totals.exercisesDone * XP_PER_EXERCISE;
+    const setXp = setCount * XP_PER_SET;
+    const distanceXp = distanceMeters ? Math.round((distanceMeters / 1000) * XP_PER_KM) : 0;
+    const prBonus = personalRecords.length * XP_PER_PERSONAL_RECORD;
+    const improvementXp = improvements.reduce((sum, i) => sum + i.xp, 0);
+    const baseStreakBonus = dayQualifiesNow ? streakCountAfter * XP_PER_STREAK_DAY : 0;
+    const baseXp = exerciseXp + setXp + distanceXp + prBonus + improvementXp;
+    const xpEarned = (baseXp + baseStreakBonus) * xpMultiplier;
+    const streakBonus = baseStreakBonus * xpMultiplier;
 
     const levelBefore = levelForXp(profile.xp ?? 0);
     const levelAfter = levelForXp((profile.xp ?? 0) + xpEarned);
@@ -500,11 +538,13 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
       levelAfter,
       xpMultiplier,
       breakdown: {
-        exercises: exercises.length,
+        exercises: totals.exercisesDone,
         exerciseXp,
         sets: setCount,
         setXp,
         distanceXp,
+        prBonus,
+        improvements,
         baseStreakBonus,
       },
       dayMinutes,

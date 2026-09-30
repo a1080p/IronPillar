@@ -45,10 +45,22 @@ function buildLines(result: CompletionResult): Line[] {
 
   const lines: Line[] = [];
   if (b.exerciseXp > 0) {
-    lines.push({ label: 'Exercises', detail: `${b.exercises} × 50`, value: b.exerciseXp });
+    lines.push({ label: 'Exercises completed', detail: `${b.exercises} × 50`, value: b.exerciseXp });
   }
-  if (b.setXp > 0) lines.push({ label: 'Sets', detail: `${b.sets} × 5`, value: b.setXp });
+  if (b.setXp > 0) lines.push({ label: 'Sets completed', detail: `${b.sets} × 5`, value: b.setXp });
   if (b.distanceXp > 0) lines.push({ label: 'Distance', detail: '40 per km', value: b.distanceXp });
+  if (b.prBonus && b.prBonus > 0) {
+    const count = result.personalRecords?.length ?? 1;
+    lines.push({
+      label: count === 1 ? 'Personal record' : 'Personal records',
+      detail: `${count} × ${Math.round(b.prBonus / count)}`,
+      value: b.prBonus,
+      accent: true,
+    });
+  }
+  for (const improvement of b.improvements ?? []) {
+    lines.push({ label: improvement.label, detail: 'Beat your last session', value: improvement.xp });
+  }
   if (b.baseStreakBonus > 0) {
     lines.push({
       label: 'Streak bonus',
@@ -57,7 +69,7 @@ function buildLines(result: CompletionResult): Line[] {
     });
   }
   if (multiplier > 1) {
-    const base = b.exerciseXp + b.setXp + b.distanceXp + b.baseStreakBonus;
+    const base = lines.reduce((sum, line) => sum + line.value, 0);
     lines.push({
       label: `Pro ${multiplier}× bonus`,
       detail: 'Iron Pillar Pro',

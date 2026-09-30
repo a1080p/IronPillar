@@ -9,6 +9,8 @@ export interface XpBreakdown {
   sets: number;
   setXp: number;
   distanceXp: number;
+  prBonus?: number; // personal records; absent from older functions
+  improvements?: { label: string; xp: number }[]; // ways this beat last time
   baseStreakBonus: number; // before the Pro multiplier
 }
 

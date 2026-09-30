@@ -281,3 +281,87 @@ export function qualifyingBadgeIds(stats: UserStats, longestStreak: number, leve
   };
   return BADGE_RULES.filter((r) => values[r.metric] >= r.threshold).map((r) => r.id);
 }
+
+// A set counts once something was actually logged for it. Rows left blank on
+// the logging screen earn nothing.
+export function isCompletedSet(set: LoggedSet | undefined) {
+  return !!set && ((Number(set.reps) || 0) > 0 || (Number(set.durationSeconds) || 0) > 0);
+}
+
+export interface WorkoutTotals {
+  exercisesDone: number; // exercises with at least one completed set
+  setsDone: number;
+  reps: number;
+  volumeLb: number;
+  holdSeconds: number;
+}
+
+export function workoutTotals(exercises: ExerciseLog[] | undefined): WorkoutTotals {
+  const totals: WorkoutTotals = { exercisesDone: 0, setsDone: 0, reps: 0, volumeLb: 0, holdSeconds: 0 };
+  for (const exercise of exercises ?? []) {
+    let done = 0;
+    for (const set of exercise.sets ?? []) {
+      if (!isCompletedSet(set)) continue;
+      done += 1;
+      const reps = Number(set.reps) || 0;
+      totals.reps += reps;
+      totals.volumeLb += reps * (Number(set.weight) || 0);
+      totals.holdSeconds += Number(set.durationSeconds) || 0;
+    }
+    totals.setsDone += done;
+    if (done > 0) totals.exercisesDone += 1;
+  }
+  return totals;
+}
+
+export interface Improvement {
+  label: string;
+  xp: number;
+}
+
+export interface ComparableWorkout {
+  exercises: ExerciseLog[];
+  durationSeconds: number;
+  distanceMeters: number;
+}
+
+export const XP_PER_IMPROVEMENT = 30;
+export const XP_PER_PERSONAL_RECORD = 50;
+// Pace is only compared once both efforts are long enough to mean something.
+const MIN_PACE_DISTANCE_METERS = 400;
+
+// The ways this workout beat the last time the same workout (or the same kind
+// of outdoor activity) was done. Each one earns a bonus.
+export function improvementsOver(
+  current: ComparableWorkout,
+  previous: ComparableWorkout | null,
+  isOutdoor: boolean
+): Improvement[] {
+  if (!previous) return [];
+  const improvements: Improvement[] = [];
+  const add = (label: string) => improvements.push({ label, xp: XP_PER_IMPROVEMENT });
+
+  if (isOutdoor) {
+    if (previous.distanceMeters > 0 && current.distanceMeters > previous.distanceMeters) {
+      add('Went farther than last time');
+    }
+    if (
+      current.distanceMeters >= MIN_PACE_DISTANCE_METERS &&
+      previous.distanceMeters >= MIN_PACE_DISTANCE_METERS &&
+      current.durationSeconds > 0 &&
+      previous.durationSeconds > 0 &&
+      current.durationSeconds / current.distanceMeters < previous.durationSeconds / previous.distanceMeters
+    ) {
+      add('Faster pace than last time');
+    }
+    return improvements;
+  }
+
+  const now = workoutTotals(current.exercises);
+  const before = workoutTotals(previous.exercises);
+  if (before.volumeLb > 0 && now.volumeLb > before.volumeLb) add('Moved more weight than last time');
+  if (before.reps > 0 && now.reps > before.reps) add('More reps than last time');
+  if (before.holdSeconds > 0 && now.holdSeconds > before.holdSeconds) add('Longer holds than last time');
+  if (before.setsDone > 0 && now.setsDone > before.setsDone) add('More sets than last time');
+  return improvements;
+}

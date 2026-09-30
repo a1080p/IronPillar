@@ -27,6 +27,8 @@ import type { OutdoorActivityType, RoutePoint } from '../../../types/models';
 import { useAuth } from '../../../contexts/AuthContext';
 import { XpBreakdown } from '../../../components/XpBreakdown';
 import { CelebrationFlow, hasCelebrations } from '../../../components/Celebrations';
+import { Confetti } from '../../../components/Confetti';
+import { completionMessages, pickMessage } from '../../../constants/motivation';
 import { formatDistance, formatPace } from '../../../lib/units';
 import { useUnits } from '../../../hooks/useUnits';
 import { usePurchases } from '../../../contexts/PurchasesContext';
@@ -210,7 +212,10 @@ export default function OutdoorTrackScreen() {
           <MapRoute route={route} style={StyleSheet.absoluteFill} />
         </View>
         <ScrollView contentContainerStyle={styles.summaryBody}>
-          <Text style={styles.heading}>{ACTIVITY_LABELS[activityType]} Complete!</Text>
+          <Text style={styles.heading}>{ACTIVITY_LABELS[activityType]} Complete</Text>
+          <Text style={styles.summarySub}>
+            {pickMessage(completionMessages, result.xpEarned + result.streakCountAfter).sub}.
+          </Text>
           <View style={styles.statsRow}>
             <Stat label="Distance" value={formatDistance(distanceMeters, units)} />
             <Stat label="Time" value={formatElapsed(elapsedSeconds)} />
@@ -224,6 +229,7 @@ export default function OutdoorTrackScreen() {
             onPress={() => (celebrations ? setCelebrating(true) : router.replace('/'))}
           />
         </View>
+        <Confetti />
         <CelebrationFlow result={result} visible={celebrating} onDone={() => router.replace('/')} />
       </SafeAreaView>
     );
@@ -320,6 +326,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primary,
     textAlign: 'center',
   },
+  summarySub: { color: colors.textMuted, textAlign: 'center', marginTop: -spacing.sm },
   bigTimer: {
     fontSize: 64,
     fontWeight: '800',

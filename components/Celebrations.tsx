@@ -6,9 +6,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Modal, ScrollView, StyleSheet, Text, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BadgeMedal } from './BadgeMedal';
+import { Confetti } from './Confetti';
 import { Button } from './Button';
 import { ProgressBar } from './ProgressBar';
 import { levelProgress } from '../constants/gamification';
+import {
+  badgeMessages,
+  levelUpMessages,
+  personalRecordMessages,
+  pickMessage,
+} from '../constants/motivation';
 import { radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
@@ -189,7 +196,7 @@ function LevelUp({ result, onContinue }: { result: CompletionResult; onContinue:
         <Animated.View style={[styles.levelTextWrap, textStyle]}>
           <Text style={styles.kicker}>LEVEL UP</Text>
           <Text style={styles.title}>You reached Level {level}</Text>
-          <Text style={styles.body}>Every rep got you here. Keep building.</Text>
+          <Text style={styles.body}>{pickMessage(levelUpMessages, level)}</Text>
 
           {showProgress && progress && (
             <View style={styles.progressWrap}>
@@ -212,8 +219,9 @@ function LevelUp({ result, onContinue }: { result: CompletionResult; onContinue:
         </Animated.View>
       </View>
       <View style={styles.footer}>
-        <Button label="Continue" onPress={onContinue} />
+        <Button label="Keep Going" onPress={onContinue} />
       </View>
+      <Confetti delay={200} />
     </View>
   );
 }
@@ -235,13 +243,14 @@ function BadgesEarned({
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.badgesScroll}>
         <Text style={styles.kicker}>{single ? 'BADGE EARNED' : `${badges.length} BADGES EARNED`}</Text>
-        <Text style={styles.title}>{single ? badges[0].name : 'Added to your collection'}</Text>
+        <Text style={styles.title}>{single ? badges[0].name : pickMessage(badgeMessages, badges.length)}</Text>
         {single ? (
           <>
             <PopIn delay={150} style={{ marginVertical: spacing.xl }}>
               <BadgeMedal badge={badges[0]} size={148} />
             </PopIn>
             <Text style={styles.body}>{badges[0].description}</Text>
+            <Text style={styles.body}>{pickMessage(badgeMessages, badges[0].name.length)}</Text>
           </>
         ) : (
           <View style={styles.badgeList}>
@@ -258,8 +267,9 @@ function BadgesEarned({
         )}
       </ScrollView>
       <View style={styles.footer}>
-        <Button label={isLast ? 'Done' : 'Continue'} onPress={onContinue} />
+        <Button label={isLast ? 'Done' : 'Keep Going'} onPress={onContinue} />
       </View>
+      <Confetti delay={200} />
     </View>
   );
 }
@@ -336,6 +346,7 @@ export function PersonalRecordPopup({ records }: { records: PersonalRecordResult
           <Text style={styles.popupTitle}>
             {count === 1 ? 'New Personal Record' : `${count} New Personal Records`}
           </Text>
+          <Text style={styles.popupSub}>{pickMessage(personalRecordMessages, records[0].estimatedOneRepMax)}</Text>
           <View style={styles.recordList}>
             {records.map((record) => (
               <View key={record.exerciseName} style={styles.recordRow}>
@@ -353,7 +364,7 @@ export function PersonalRecordPopup({ records }: { records: PersonalRecordResult
             ))}
           </View>
           <View style={styles.popupButton}>
-            <Button label="Nice" onPress={() => setVisible(false)} />
+            <Button label="Let's Go" onPress={() => setVisible(false)} />
           </View>
         </View>
       </View>
@@ -457,6 +468,7 @@ const getStyles = (colors: ThemeColors) =>
       marginTop: spacing.md,
       textAlign: 'center',
     },
+    popupSub: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xs },
     recordList: { alignSelf: 'stretch', marginTop: spacing.md, gap: spacing.md },
     recordRow: { alignItems: 'center' },
     recordName: { color: colors.text, fontWeight: '700' },

@@ -9,6 +9,8 @@ import { formatVolume } from '../../../lib/units';
 import { useUnits } from '../../../hooks/useUnits';
 import { useAuth } from '../../../contexts/AuthContext';
 import { XpBreakdown } from '../../../components/XpBreakdown';
+import { Confetti } from '../../../components/Confetti';
+import { completionMessages, pickMessage } from '../../../constants/motivation';
 import { CelebrationFlow, PersonalRecordPopup, hasCelebrations } from '../../../components/Celebrations';
 import type { CompletionResult } from '../../../lib/workoutCompletion';
 
@@ -70,8 +72,10 @@ export default function WorkoutCompleteScreen() {
     `${minutes} min`,
     volumeNum > 0 ? `${formatVolume(volumeNum, units)} lifted` : null,
     repsNum > 0 ? `${repsNum} reps` : null,
-    setsNum > 0 ? `${setsNum} sets` : null,
+    setsNum > 0 ? `${setsNum} ${setsNum === 1 ? 'set' : 'sets'}` : null,
   ].filter(Boolean) as string[];
+
+  const message = pickMessage(completionMessages, result.xpEarned + result.streakCountAfter);
 
   // Level-up and badge screens (if any) come between this summary and Home.
   const celebrations = hasCelebrations(result);
@@ -83,8 +87,11 @@ export default function WorkoutCompleteScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.heading}>Workout Completed!</Text>
-        <Text style={styles.subheading}>Awesome job{profile?.name ? `, ${profile.name}` : ''}!</Text>
+        <Text style={styles.heading}>{message.heading}</Text>
+        <Text style={styles.subheading}>
+          {message.sub}
+          {profile?.name ? `, ${profile.name}` : ''}.
+        </Text>
 
         {summaryChips.length > 0 && (
           <View style={styles.summaryRow}>
@@ -105,6 +112,7 @@ export default function WorkoutCompleteScreen() {
       <View style={styles.footer}>
         <Button label={celebrations ? 'Next' : 'Done'} onPress={handleNext} />
       </View>
+      <Confetti />
       <PersonalRecordPopup records={result.personalRecords} />
       <CelebrationFlow result={result} visible={celebrating} onDone={() => router.replace('/')} />
     </SafeAreaView>
@@ -115,7 +123,12 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { flexGrow: 1, alignItems: 'center', padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md },
   heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, textAlign: 'center' },
-  subheading: { fontSize: typography.sizes.md, color: colors.primary, marginTop: spacing.xs },
+  subheading: {
+    fontSize: typography.sizes.md,
+    color: colors.primary,
+    marginTop: spacing.xs,
+    textAlign: 'center',
+  },
   streakLabel: { fontSize: typography.sizes.md, fontWeight: '700', color: colors.primary, marginTop: spacing.sm },
   streakValue: { color: colors.accentFlame },
   xpLine: { fontSize: typography.sizes.md, color: colors.primary, marginTop: spacing.sm },
