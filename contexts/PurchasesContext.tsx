@@ -66,6 +66,9 @@ interface PurchasesContextValue {
   presentPaywallIfNeeded: () => Promise<PAYWALL_RESULT | null>;
   // RevenueCat Customer Center: manage/cancel, restore, refund requests.
   presentCustomerCenter: () => Promise<void>;
+  // Apple's sheet for redeeming a subscription offer code (made in App Store
+  // Connect). iOS only; the new entitlement arrives through the listener.
+  redeemOfferCode: () => Promise<void>;
 }
 
 const PurchasesContext = createContext<PurchasesContextValue | undefined>(undefined);
@@ -156,6 +159,11 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const redeemOfferCode = useCallback(async () => {
+    const Purchases = (await import('react-native-purchases')).default;
+    await Purchases.presentCodeRedemptionSheet();
+  }, []);
+
   const value = useMemo<PurchasesContextValue>(
     () => ({
       isAvailable: purchasesReady,
@@ -167,6 +175,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
       restorePurchases,
       presentPaywallIfNeeded,
       presentCustomerCenter,
+      redeemOfferCode,
     }),
     [
       loading,
@@ -177,6 +186,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
       restorePurchases,
       presentPaywallIfNeeded,
       presentCustomerCenter,
+      redeemOfferCode,
     ]
   );
 

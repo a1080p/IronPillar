@@ -10,9 +10,12 @@ import { spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { deleteAvatar, uploadAvatar } from '../lib/avatar';
+import { changeUsername } from '../lib/account';
 import { formatBirthdayInput } from '../lib/dates';
 
 const BIRTHDAY_RE = /^\d{2}-\d{2}-\d{4}$/;
+const USERNAME_RE = /^[a-z0-9_.]{3,20}$/;
+const normalizeUsername = (value: string) => value.trim().toLowerCase().replace(/^@/, '');
 
 export default function EditProfileScreen() {
   const { colors } = useTheme();
@@ -20,6 +23,7 @@ export default function EditProfileScreen() {
   const { user, profile, updateProfile } = useAuth();
 
   const [name, setName] = useState(profile?.name ?? '');
+  const [username, setUsername] = useState(profile?.username ?? '');
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   // Newly-picked local photo waiting to be uploaded on save.
   const [pickedUri, setPickedUri] = useState<string | null>(null);
@@ -44,6 +48,7 @@ export default function EditProfileScreen() {
     !!profile &&
     (name !== (profile.name ?? '') ||
       birthday !== (profile.birthday ?? '') ||
+      normalizeUsername(username) !== (profile.username ?? '') ||
       pickedUri !== null ||
       avatarKey !== (profile.avatarKey ?? null) ||
       keepPhoto !== !!profile.avatarUrl);
@@ -105,8 +110,21 @@ export default function EditProfileScreen() {
       return;
     }
 
+    const newUsername = normalizeUsername(username);
+    if (!USERNAME_RE.test(newUsername)) {
+      Alert.alert(
+        'Check your username',
+        'Use 3 to 20 characters: letters, numbers, periods and underscores.'
+      );
+      return;
+    }
+
     setSaving(true);
     try {
+      // First, so a taken username stops the save before anything else changes.
+      if (newUsername !== profile.username) {
+        await changeUsername(newUsername);
+      }
       let avatarUrl: string | null = keepPhoto ? profile.avatarUrl ?? null : null;
       if (pickedUri) {
         avatarUrl = await uploadAvatar(user.uid, pickedUri);
@@ -165,6 +183,18 @@ export default function EditProfileScreen() {
 
         <TextField label="Name" value={name} onChangeText={setName} placeholder="Name" />
         <TextField
+          label="Username"
+          value={username}
+          onChangeText={(text) => setUsername(text.replace(/\s/g, ''))}
+          placeholder="username"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={21}
+        />
+        <Text style={styles.hint}>
+          Friends add you with this. 3 to 20 letters, numbers, periods or underscores.
+        </Text>
+        <TextField
           label="Birthday"
           value={birthday}
           onChangeText={(text) => setBirthday(formatBirthdayInput(text))}
@@ -196,6 +226,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   avatarWrap: { alignItems: 'center', gap: spacing.md },
   link: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.body },
   linkMuted: { color: colors.textMuted },
+  hint: { color: colors.textMuted, fontSize: typography.sizes.small, marginTop: -spacing.md },
   footer: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,

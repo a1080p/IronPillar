@@ -341,36 +341,8 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     if (storedStats && storedStats.version === STATS_VERSION) {
       stats = storedStats;
     } else {
-      stats = emptyStats();
-      const historySnap = await tx.get(
-        logsRef
-          .orderBy('completedAt', 'asc')
-          .select('workoutId', 'workoutSource', 'completedAt', 'durationSeconds', 'exercises', 'distanceMeters')
-      );
-      for (const doc of historySnap.docs) {
-        const past = doc.data() as {
-          workoutId?: string;
-          workoutSource?: string;
-          completedAt?: string;
-          durationSeconds?: number;
-          exercises?: ExerciseLog[];
-          distanceMeters?: number;
-        };
-        const completedAt = new Date(past.completedAt ?? '');
-        if (Number.isNaN(completedAt.getTime())) continue;
-        stats = applyWorkout(
-          stats,
-          {
-            workoutId: past.workoutId ?? doc.id,
-            isOutdoor: past.workoutSource === 'outdoor',
-            completedAt,
-            durationSeconds: past.durationSeconds ?? 0,
-            exercises: Array.isArray(past.exercises) ? past.exercises : [],
-            distanceMeters: past.distanceMeters ?? 0,
-          },
-          timeZone
-        ).stats;
-      }
+      const historySnap = await tx.get(logsRef.orderBy('completedAt', 'asc').select(...STATS_LOG_FIELDS));
+      stats = statsFromHistory(historySnap.docs, timeZone);
     }
     const thisWorkout: StatsWorkout = {
       workoutId: workout.id,
@@ -548,6 +520,7 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
         baseStreakBonus,
       },
       dayMinutes,
+      dayMinutesBefore: dayMinutes - workoutMinutes,
       minStreakDayMinutes: MIN_STREAK_DAY_MINUTES,
       dayCountedNow: dayQualifiesNow,
       dayAlreadyCounted,
@@ -556,6 +529,44 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
 
   return result;
 });
+
+const STATS_LOG_FIELDS = ['workoutId', 'workoutSource', 'completedAt', 'durationSeconds', 'exercises', 'distanceMeters'];
+
+// Lifetime totals rebuilt from a user's logs (oldest first), skipping
+// `excludeId`. Used when there are no stored totals yet, and after a delete.
+function statsFromHistory(
+  docs: FirebaseFirestore.QueryDocumentSnapshot[],
+  timeZone: string,
+  excludeId?: string
+): UserStats {
+  let stats = emptyStats();
+  for (const doc of docs) {
+    if (doc.id === excludeId) continue;
+    const past = doc.data() as {
+      workoutId?: string;
+      workoutSource?: string;
+      completedAt?: string;
+      durationSeconds?: number;
+      exercises?: ExerciseLog[];
+      distanceMeters?: number;
+    };
+    const completedAt = new Date(past.completedAt ?? '');
+    if (Number.isNaN(completedAt.getTime())) continue;
+    stats = applyWorkout(
+      stats,
+      {
+        workoutId: past.workoutId ?? doc.id,
+        isOutdoor: past.workoutSource === 'outdoor',
+        completedAt,
+        durationSeconds: past.durationSeconds ?? 0,
+        exercises: Array.isArray(past.exercises) ? past.exercises : [],
+        distanceMeters: past.distanceMeters ?? 0,
+      },
+      timeZone
+    ).stats;
+  }
+  return stats;
+}
 
 // Deletes one of the caller's own workout logs (e.g. a bugged or accidental
 // one from Recent Workouts) and takes back the XP it awarded, so deleting
@@ -575,8 +586,15 @@ export const deleteWorkoutLog = onCall(async (request) => {
   const userRef = db.collection('users').doc(uid);
   const logRef = db.collection('workoutLogs').doc(uid).collection('logs').doc(logId);
 
+  const logsRef = db.collection('workoutLogs').doc(uid).collection('logs');
+  const statsRef = db.collection('userStats').doc(uid);
+
   return db.runTransaction(async (tx) => {
-    const [userSnap, logSnap] = await Promise.all([tx.get(userRef), tx.get(logRef)]);
+    const [userSnap, logSnap, historySnap] = await Promise.all([
+      tx.get(userRef),
+      tx.get(logRef),
+      tx.get(logsRef.orderBy('completedAt', 'asc').select(...STATS_LOG_FIELDS)),
+    ]);
     if (!logSnap.exists) {
       throw new HttpsError('not-found', 'That workout was already deleted.');
     }
@@ -589,7 +607,10 @@ export const deleteWorkoutLog = onCall(async (request) => {
     };
 
     const xpToRemove = Math.min(Math.max(0, log.xpEarned ?? 0), Math.max(0, profile.xp ?? 0));
-    const updates: Record<string, unknown> = { xp: FieldValue.increment(-xpToRemove) };
+    const updates: Record<string, unknown> = {
+      xp: FieldValue.increment(-xpToRemove),
+      level: levelForXp(Math.max(0, (profile.xp ?? 0) - xpToRemove)),
+    };
 
     if (log.completedAt && profile.activeDate) {
       const logDay = localDateString(new Date(log.completedAt), profile.timeZone ?? 'UTC');
@@ -600,12 +621,61 @@ export const deleteWorkoutLog = onCall(async (request) => {
     }
 
     tx.delete(logRef);
-    // Lifetime totals (and personal bests) may have come from this log, so
-    // drop them; the next completed workout rebuilds them from what's left.
-    // Badges already earned are kept.
-    tx.delete(db.collection('userStats').doc(uid));
+    // Lifetime totals and personal bests are rebuilt without this log, so
+    // profile stats and badge progress drop right away. Badges already
+    // earned are kept.
+    tx.set(statsRef, statsFromHistory(historySnap.docs, profile.timeZone ?? 'UTC', logId));
     if (userSnap.exists) tx.update(userRef, updates);
     return { deleted: true, xpRemoved: xpToRemove };
+  });
+});
+
+const USERNAME_PATTERN = /^[a-z0-9_.]{3,20}$/;
+
+// Changes the caller's username if nobody else has it. Usernames are claimed
+// in usernames/{name} (one doc per name), so the check and the swap happen in
+// one transaction and two people can't grab the same name at once. Friends'
+// copies of the name are updated too.
+export const changeUsername = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError('unauthenticated', 'Must be signed in to change your username.');
+  }
+  const raw = (request.data as { username?: unknown } | undefined)?.username;
+  const username = typeof raw === 'string' ? raw.trim().toLowerCase().replace(/^@/, '') : '';
+  if (!USERNAME_PATTERN.test(username)) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Usernames are 3 to 20 characters: letters, numbers, periods and underscores.'
+    );
+  }
+
+  const userRef = db.collection('users').doc(uid);
+  const newRef = db.collection('usernames').doc(username);
+  const friendsRef = db.collection('friendships').doc(uid).collection('friends');
+
+  return db.runTransaction(async (tx) => {
+    const [userSnap, newSnap, friendsSnap] = await Promise.all([
+      tx.get(userRef),
+      tx.get(newRef),
+      tx.get(friendsRef),
+    ]);
+    if (!userSnap.exists) {
+      throw new HttpsError('failed-precondition', 'Profile not found.');
+    }
+    const current = (userSnap.data() as { username?: string }).username;
+    if (current === username) return { username };
+    if (newSnap.exists && newSnap.get('uid') !== uid) {
+      throw new HttpsError('already-exists', `@${username} is taken. Try another.`);
+    }
+
+    tx.set(newRef, { uid });
+    if (current) tx.delete(db.collection('usernames').doc(current));
+    tx.update(userRef, { username });
+    for (const friend of friendsSnap.docs) {
+      tx.update(db.collection('friendships').doc(friend.id).collection('friends').doc(uid), { username });
+    }
+    return { username };
   });
 });
 

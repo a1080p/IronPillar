@@ -42,7 +42,10 @@ service cloud.firestore {
         && request.resource.data.get('longestStreak', null) == resource.data.get('longestStreak', null)
         && request.resource.data.get('activeDate', null) == resource.data.get('activeDate', null)
         && request.resource.data.get('activeDayMinutes', null) == resource.data.get('activeDayMinutes', null)
-        && request.resource.data.friendCount == resource.data.friendCount;
+        && request.resource.data.friendCount == resource.data.friendCount
+        // Changed only through the changeUsername Cloud Function, which
+        // keeps the usernames/{name} claims in step.
+        && request.resource.data.username == resource.data.username;
 
       allow delete: if false;
 

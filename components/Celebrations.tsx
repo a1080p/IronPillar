@@ -15,7 +15,9 @@ import {
   levelUpMessages,
   personalRecordMessages,
   pickMessage,
+  streakKeepGoingMessages,
 } from '../constants/motivation';
+import { FlameIcon } from './icons/BrandIcons';
 import { radii, spacing, typography } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
@@ -36,10 +38,11 @@ function leveledUp(result: CompletionResult) {
   return result.levelAfter != null && result.levelBefore != null && result.levelAfter > result.levelBefore;
 }
 
-type Step = 'level' | 'badges';
+type Step = 'streak' | 'level' | 'badges';
 
 function stepsFor(result: CompletionResult): Step[] {
   const steps: Step[] = [];
+  if (result.minStreakDayMinutes != null && result.dayMinutes != null) steps.push('streak');
   if (leveledUp(result)) steps.push('level');
   // A level badge is shown on the level-up screen itself.
   const others = earnedBadges(result).filter((b) => !(leveledUp(result) && b.category === 'levels'));
@@ -77,7 +80,9 @@ export function CelebrationFlow({
   return (
     <Modal visible animationType="fade" onRequestClose={next}>
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        {step === 'level' ? (
+        {step === 'streak' ? (
+          <StreakDay key="streak" result={result} onContinue={next} isLast={index + 1 >= steps.length} />
+        ) : step === 'level' ? (
           <LevelUp key="level" result={result} onContinue={next} />
         ) : (
           <BadgesEarned
@@ -222,6 +227,109 @@ function LevelUp({ result, onContinue }: { result: CompletionResult; onContinue:
         <Button label="Keep Going" onPress={onContinue} />
       </View>
       <Confetti delay={200} />
+    </View>
+  );
+}
+
+// Today's progress toward the 30 minutes a streak day needs: the bar fills
+// from where the day stood before this workout, and if it reaches the end the
+// streak counts up.
+function StreakDay({
+  result,
+  onContinue,
+  isLast,
+}: {
+  result: CompletionResult;
+  onContinue: () => void;
+  isLast: boolean;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  const goal = result.minStreakDayMinutes ?? 30;
+  const after = Math.min(result.dayMinutes ?? 0, goal);
+  const before = Math.min(result.dayMinutesBefore ?? 0, after);
+  const extended = !!result.dayCountedNow;
+  const alreadyCounted = !!result.dayAlreadyCounted;
+  const streak = result.streakCountAfter;
+  const left = Math.max(0, goal - (result.dayMinutes ?? 0));
+
+  const fill = useRef(new Animated.Value(alreadyCounted ? 1 : before / goal)).current;
+  const flame = useRef(new Animated.Value(0)).current;
+  const [shownStreak, setShownStreak] = useState(extended ? Math.max(0, streak - 1) : streak);
+  const [filled, setFilled] = useState(alreadyCounted);
+
+  useEffect(() => {
+    if (alreadyCounted) return;
+    Animated.timing(fill, {
+      toValue: after / goal,
+      duration: 1400,
+      delay: 350,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start(() => {
+      if (!extended) return;
+      setFilled(true);
+      setShownStreak(streak);
+      Vibration.vibrate(60);
+      Animated.spring(flame, { toValue: 1, friction: 4, tension: 90, useNativeDriver: true }).start();
+    });
+  }, [fill, flame, after, goal, extended, alreadyCounted, streak]);
+
+  const heading = extended
+    ? streak === 1
+      ? 'Streak Started'
+      : 'Streak Extended'
+    : alreadyCounted
+      ? 'Today Already Counts'
+      : 'Keep It Going';
+  const body = extended
+    ? `${streak} day${streak === 1 ? '' : 's'} in a row. See you tomorrow.`
+    : alreadyCounted
+      ? `Your ${streak}-day streak is safe today. Come back tomorrow to extend it.`
+      : `${left} more minute${left === 1 ? '' : 's'} today extends your streak. ${pickMessage(streakKeepGoingMessages, left)}`;
+
+  return (
+    <View style={styles.screen}>
+      <View style={styles.centered}>
+        <Animated.View
+          style={{
+            transform: [{ scale: flame.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.35, 1] }) }],
+          }}
+        >
+          <FlameIcon size={88} color={filled ? colors.accentFlame : colors.divider} />
+        </Animated.View>
+        <Text style={styles.streakNumber} accessibilityLabel={`${shownStreak} day streak`}>
+          {shownStreak}
+        </Text>
+        <Text style={styles.streakUnit}>day streak</Text>
+
+        <Text style={[styles.kicker, { marginTop: spacing.xl }]}>{heading.toUpperCase()}</Text>
+        <Text style={styles.body}>{body}</Text>
+
+        <View
+          style={styles.dayBarWrap}
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel="Today's training toward a streak day"
+          accessibilityValue={{ min: 0, max: goal, now: Math.round(after) }}
+        >
+          <View style={styles.dayBarTrack}>
+            <Animated.View
+              style={[
+                styles.dayBarFill,
+                { width: fill.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) },
+              ]}
+            />
+          </View>
+          <Text style={styles.dayBarLabel}>
+            {Math.min(result.dayMinutes ?? 0, 999)} / {goal} min today
+          </Text>
+        </View>
+      </View>
+      <View style={styles.footer}>
+        <Button label={isLast ? 'Done' : 'Keep Going'} onPress={onContinue} />
+      </View>
+      {extended && filled && <Confetti />}
     </View>
   );
 }
@@ -419,6 +527,24 @@ const getStyles = (colors: ThemeColors) =>
       marginTop: spacing.xs,
     },
     body: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm },
+    streakNumber: {
+      fontSize: 72,
+      lineHeight: 80,
+      fontWeight: '800',
+      color: colors.text,
+      marginTop: spacing.md,
+      fontVariant: ['tabular-nums'],
+    },
+    streakUnit: { color: colors.textMuted, fontWeight: '700', letterSpacing: 1 },
+    dayBarWrap: { alignSelf: 'stretch', marginTop: spacing.xl, gap: spacing.xs },
+    dayBarTrack: {
+      height: 16,
+      borderRadius: radii.pill,
+      backgroundColor: colors.surfaceMuted,
+      overflow: 'hidden',
+    },
+    dayBarFill: { height: '100%', backgroundColor: colors.accentFlame, borderRadius: radii.pill },
+    dayBarLabel: { color: colors.textMuted, fontSize: typography.sizes.small, textAlign: 'center' },
     progressWrap: { alignSelf: 'stretch', marginTop: spacing.lg, gap: spacing.xs },
     progressLabel: { color: colors.textMuted, fontSize: typography.sizes.small, textAlign: 'center' },
     levelBadgeRow: {

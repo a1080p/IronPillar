@@ -10,7 +10,30 @@ import { BROWSE_CATEGORIES } from '../../data/browseWorkoutTemplates';
 import { useWorkoutTemplates } from '../../hooks/useWorkoutTemplates';
 import type { WorkoutTemplate } from '../../types/models';
 
+const AT_HOME = 'At Home (No Equipment)';
+
+// Categories and names that need somewhere to go (a trail, a pool, stairs),
+// even when they need no equipment.
+const NOT_AT_HOME_CATEGORIES = new Set(['Sports & Outdoor', 'Swimming', 'Cycling']);
+const NOT_AT_HOME_NAME = /outdoor|trail|hik|stair|walk|run\b|swim/i;
+
+// Every workout, from any section, that can be done at home with nothing but
+// the floor: shortest first.
+function atHomeWorkouts(templates: WorkoutTemplate[]) {
+  const seen = new Set<string>();
+  return templates
+    .filter(
+      (t) =>
+        !t.equipmentRequired &&
+        !NOT_AT_HOME_CATEGORIES.has(t.browseCategory ?? '') &&
+        !NOT_AT_HOME_NAME.test(t.name)
+    )
+    .filter((t) => (seen.has(t.id) ? false : (seen.add(t.id), true)))
+    .sort((a, b) => a.durationMinutes - b.durationMinutes);
+}
+
 const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  [AT_HOME]: 'home',
   Cardio: 'heart',
   'Strength Training': 'barbell',
   HIIT: 'flash',
@@ -29,10 +52,13 @@ export default function BrowseScreen() {
   const { templates, loading } = useWorkoutTemplates();
   const browseWorkouts = templates.filter((t) => t.category === 'browse');
 
-  const sections = BROWSE_CATEGORIES.map((category) => ({
-    category,
-    workouts: browseWorkouts.filter((w) => w.browseCategory === category),
-  })).filter((s) => s.workouts.length > 0);
+  const sections = [
+    { category: AT_HOME, workouts: atHomeWorkouts(templates) },
+    ...BROWSE_CATEGORIES.map((category) => ({
+      category: category as string,
+      workouts: browseWorkouts.filter((w) => w.browseCategory === category),
+    })),
+  ].filter((s) => s.workouts.length > 0);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

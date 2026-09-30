@@ -35,6 +35,7 @@ export interface CompletionResult {
   xpMultiplier?: number; // 2 for Pro subscribers; absent from older functions
   breakdown?: XpBreakdown; // absent from older functions
   dayMinutes?: number; // today's combined workout minutes, this one included
+  dayMinutesBefore?: number; // the same, before this workout
   minStreakDayMinutes?: number; // minutes a day needs to count toward the streak
   dayCountedNow?: boolean; // this workout pushed today over the threshold
   dayAlreadyCounted?: boolean; // today had already counted before this workout

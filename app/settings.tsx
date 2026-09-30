@@ -1,4 +1,4 @@
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, type Href } from 'expo-router';
@@ -25,7 +25,7 @@ export default function SettingsScreen() {
       Alert.alert('Could not save', e instanceof Error ? e.message : 'Try again.')
     );
   };
-  const { isPro, presentCustomerCenter } = usePurchases();
+  const { isPro, presentCustomerCenter, redeemOfferCode, isAvailable: purchasesAvailable } = usePurchases();
   const { logs } = useWorkoutLogs(user?.uid);
   const [exporting, setExporting] = useState(false);
 
@@ -100,6 +100,19 @@ export default function SettingsScreen() {
               }
             >
               <Text style={styles.rowLabel}>Manage Subscription</Text>
+            </Pressable>
+          )}
+          {Platform.OS === 'ios' && purchasesAvailable && !isPro && (
+            <Pressable
+              style={styles.row}
+              accessibilityRole="button"
+              onPress={() =>
+                redeemOfferCode().catch((e) =>
+                  Alert.alert('Could not open', e instanceof Error ? e.message : 'Try again.')
+                )
+              }
+            >
+              <Text style={styles.rowLabel}>Redeem Pro Code</Text>
             </Pressable>
           )}
           <Pressable style={styles.row} accessibilityRole="button" onPress={exporting ? undefined : handleExport}>

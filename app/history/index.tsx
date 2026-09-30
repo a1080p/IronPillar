@@ -2,17 +2,18 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { WorkoutHeader } from '../components/WorkoutHeader';
-import { radii, spacing, typography } from '../constants/theme';
-import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useWorkoutLogs } from '../hooks/useWorkoutLogs';
-import { formatShortDate } from '../lib/dates';
-import { formatDistance } from '../lib/units';
-import { useUnits } from '../hooks/useUnits';
-import type { UnitSystem } from '../types/models';
-import { deleteWorkoutLog } from '../lib/workoutCompletion';
-import type { WorkoutLog } from '../types/models';
+import { router, type Href } from 'expo-router';
+import { WorkoutHeader } from '../../components/WorkoutHeader';
+import { radii, spacing, typography } from '../../constants/theme';
+import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useWorkoutLogs } from '../../hooks/useWorkoutLogs';
+import { formatShortDate } from '../../lib/dates';
+import { formatDistance } from '../../lib/units';
+import { useUnits } from '../../hooks/useUnits';
+import type { UnitSystem } from '../../types/models';
+import { deleteWorkoutLog } from '../../lib/workoutCompletion';
+import type { WorkoutLog } from '../../types/models';
 
 function activityMeta(log: WorkoutLog, units: UnitSystem): string {
   if (log.workoutSource === 'outdoor') {
@@ -64,7 +65,13 @@ export default function HistoryScreen() {
         )}
 
         {logs.map((log) => (
-          <View key={log.id} style={styles.card}>
+          <Pressable
+            key={log.id}
+            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            onPress={() => router.push(`/history/${log.id}` as Href)}
+            accessibilityRole="button"
+            accessibilityLabel={`${log.workoutName}, ${formatShortDate(log.completedAt)}. Shows what you did`}
+          >
             <View style={styles.cardHeader}>
               <Text style={[styles.workoutName, { flex: 1 }]} numberOfLines={1}>
                 {log.workoutName}
@@ -89,7 +96,7 @@ export default function HistoryScreen() {
             {log.streakBonusEarned > 0 && (
               <Text style={styles.streakBonus}>Streak Bonus: +{log.streakBonusEarned}xp</Text>
             )}
-          </View>
+          </Pressable>
         ))}
       </ScrollView>
     </SafeAreaView>
@@ -107,6 +114,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
   },
+  cardPressed: { opacity: 0.7 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   workoutName: { fontWeight: '700', color: colors.primary, fontSize: typography.sizes.body },
   xp: { fontWeight: '700', color: colors.accentFlameText },
