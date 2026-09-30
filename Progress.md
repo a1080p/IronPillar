@@ -8,6 +8,9 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 - **App Store Connect Business:** Paid Apps Agreement, bank account, W-9, and Digital Services Act status are all Active (owner screenshot).
 - **Review risk fixed** (`app/(auth)/welcome.tsx`, 56c4326): the production EAS environment has no `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, so "Continue with Google" showed a "coming soon" alert. Social sign-in buttons are now hidden when that provider isn't set up on the build. Typecheck clean; not yet seen on a device.
+- **Google sign-in configured** (e66110b): iOS OAuth client + URL scheme in `app.json`, `iosClientId` passed to `GoogleSignin.configure`, web + iOS client IDs added to `.env` and all three EAS environments. Firebase Google provider confirmed enabled via the admin API. Untested until build #6.
+- **Found: Firebase has no Apple provider configured** (admin API returns CONFIGURATION_NOT_FOUND for `apple.com`), so "Continue with Apple" will fail at the Firebase step. Owner must enable it in Firebase Console → Authentication → Sign-in method before review.
+- **Listing re-checked in App Store Connect:** Support URL, Marketing URL, Privacy Policy URL set; App Privacy published; demo sign-in and contact info filled; 7 screenshots. Subscription review screenshots not checked.
 - **Still open:** build #6 (must include 56c4326) has not been started; listing items (Privacy Policy + Support URLs, App Privacy publish, demo account, subscription review screenshots) were not re-checked this session; TestFlight sandbox purchase test; submit.
 
 ---
