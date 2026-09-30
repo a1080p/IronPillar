@@ -9,6 +9,7 @@ import { formatVolume } from '../../../lib/units';
 import { useUnits } from '../../../hooks/useUnits';
 import { useAuth } from '../../../contexts/AuthContext';
 import { XpBreakdown } from '../../../components/XpBreakdown';
+import { MoreMenu } from '../../../components/MoreMenu';
 import { Confetti } from '../../../components/Confetti';
 import { completionMessages, pickMessage } from '../../../constants/motivation';
 import { CelebrationFlow, PersonalRecordPopup, hasCelebrations } from '../../../components/Celebrations';
@@ -87,6 +88,9 @@ export default function WorkoutCompleteScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.more}>
+          <MoreMenu />
+        </View>
         <Text style={styles.heading}>{message.heading}</Text>
         <Text style={styles.subheading}>
           {message.sub}
@@ -121,7 +125,7 @@ export default function WorkoutCompleteScreen() {
 
 const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scroll: { flexGrow: 1, alignItems: 'center', padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md },
+  scroll: { flexGrow: 1, alignItems: 'center', padding: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
   heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, textAlign: 'center' },
   subheading: {
     fontSize: typography.sizes.md,
@@ -148,5 +152,6 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   summaryChipText: { color: colors.text, fontSize: typography.sizes.small, fontWeight: '600' },
+  more: { alignSelf: 'flex-end', marginBottom: -spacing.md },
   footer: { padding: spacing.lg },
 });

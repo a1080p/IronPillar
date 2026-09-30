@@ -1,6 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import { usePathname } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { onOpenBugReport } from '../lib/bugReport';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { submitBugReport } from '../lib/bugReports';
@@ -35,7 +34,8 @@ const CATEGORIES: { value: BugReportCategory; label: string }[] = [
 export function BugReportButton({ uid }: { uid: string }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
+  // Opened from the "..." menu in every screen header (components/MoreMenu).
+  useEffect(() => onOpenBugReport(() => setOpen(true)), []);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<BugReportCategory>('bug');
@@ -67,15 +67,6 @@ export function BugReportButton({ uid }: { uid: string }) {
 
   return (
     <>
-      <Pressable
-        onPress={() => setOpen(true)}
-        style={[styles.fab, { bottom: Math.max(spacing.lg, insets.bottom) + 92 }]}
-        accessibilityRole="button"
-        accessibilityLabel="Report a bug or issue"
-      >
-        <Ionicons name="bug" size={22} color={colors.textOnDark} />
-      </Pressable>
-
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <KeyboardAvoidingView
           style={styles.backdrop}
@@ -162,25 +153,6 @@ export function BugReportButton({ uid }: { uid: string }) {
 }
 
 const getStyles = (colors: ThemeColors) => StyleSheet.create({
-  fab: {
-    position: 'absolute',
-    // Left, not right — Expo dev-client's own floating "Tools" bubble
-    // always sits bottom-right in dev builds, so this avoids any overlap
-    // regardless of screen size (see IP-34).
-    left: spacing.lg,
-    width: 48,
-    height: 48,
-    borderRadius: radii.pill,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 50,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',

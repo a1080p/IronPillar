@@ -19,6 +19,9 @@ import { usePurchases } from '../../contexts/PurchasesContext';
 import { useAppleHealth } from '../../hooks/useAppleHealth';
 import { ProBadge, ProLockCard } from '../../components/ProLock';
 import { BadgeMedal } from '../../components/BadgeMedal';
+import { BadgeDetail } from '../../components/BadgeList';
+import { useAchievementStats } from '../../hooks/useAchievementStats';
+import type { Badge } from '../../types/models';
 import { BADGE_LIST } from '../../data/badges';
 
 export default function ProfileScreen() {
@@ -26,7 +29,9 @@ export default function ProfileScreen() {
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { user, profile } = useAuth();
   const { logs } = useWorkoutLogs(user?.uid);
-  const { earned } = useEarnedBadges(user?.uid);
+  const { earned, earnedAt } = useEarnedBadges(user?.uid);
+  const stats = useAchievementStats(user?.uid, profile, logs.length);
+  const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
 
   if (!profile || !user) {
     return (
@@ -93,7 +98,13 @@ export default function ProfileScreen() {
           <View style={styles.badgeRow}>
             {/* Newest first; the full set lives on the Collection screen. */}
             {[...earned].reverse().slice(0, 8).map((badge) => (
-              <Pressable key={badge.id} style={styles.badgeItem} onPress={() => router.push('/badges')}>
+              <Pressable
+                key={badge.id}
+                style={styles.badgeItem}
+                onPress={() => setSelectedBadge(badge)}
+                accessibilityRole="button"
+                accessibilityLabel={`${badge.name} badge details`}
+              >
                 <BadgeMedal badge={badge} size={64} />
                 <Text style={styles.badgeName} numberOfLines={2}>
                   {badge.name}
@@ -102,6 +113,14 @@ export default function ProfileScreen() {
             ))}
           </View>
         )}
+
+        <BadgeDetail
+          badge={selectedBadge}
+          earned
+          earnedAt={selectedBadge ? earnedAt[selectedBadge.id] : null}
+          stats={stats}
+          onClose={() => setSelectedBadge(null)}
+        />
 
         <WearablesSection uid={user.uid} />
       </ScrollView>

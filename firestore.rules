@@ -152,10 +152,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Lifetime totals and personal bests behind badges — read and written
-    // only by the completeWorkout/deleteWorkoutLog Cloud Functions.
+    // Lifetime totals and personal bests behind badges. The owner can read
+    // them (to show progress toward a badge); only the completeWorkout and
+    // deleteWorkoutLog Cloud Functions write them.
     match /userStats/{uid} {
-      allow read, write: if false;
+      allow read: if isOwner(uid);
+      allow write: if false;
     }
 
     // Everything else is denied until its collection is built (build steps 9+)

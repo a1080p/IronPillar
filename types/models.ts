@@ -136,6 +136,39 @@ export type BadgeCategory =
   | 'time'
   | 'habits';
 
+// What a badge counts. Same names as the rules in functions/src/achievements.ts.
+export type BadgeMetric =
+  | 'workouts'
+  | 'streak'
+  | 'level'
+  | 'prs'
+  | 'volumeLb'
+  | 'distanceMeters'
+  | 'singleDistanceMeters'
+  | 'seconds'
+  | 'singleSeconds'
+  | 'early'
+  | 'late'
+  | 'variety';
+
+// A person's current value for each badge metric. A missing value means it
+// isn't known (e.g. no lifetime totals recorded yet).
+export type AchievementStats = Partial<Record<BadgeMetric, number>>;
+
+// What a friend can see of someone's profile (from getFriendProfile).
+export interface FriendProfile {
+  uid: string;
+  name: string;
+  username: string;
+  avatarUrl: string | null;
+  avatarKey: string | null;
+  xp: number;
+  streakCount: number;
+  friendCount: number;
+  badges: { badgeId: string; earnedAt: string | null }[];
+  stats: AchievementStats;
+}
+
 export type BadgeTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 
 export interface Badge {
@@ -145,6 +178,8 @@ export interface Badge {
   iconKey: string; // an Ionicons glyph name
   category: BadgeCategory;
   tier: BadgeTier;
+  metric: BadgeMetric; // what it counts
+  threshold: number; // value of `metric` that unlocks it
 }
 
 export interface EarnedBadge {

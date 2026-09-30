@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, type Href } from 'expo-router';
 import { TopBar } from '../../components/TopBar';
 import { Button } from '../../components/Button';
 import { FlameIcon, GymIcon } from '../../components/icons/BrandIcons';
@@ -86,6 +87,30 @@ export default function SocialScreen() {
           )}
         </View>
 
+        {friends.length > 0 && (
+          <>
+            <Text style={styles.sectionHeading}>Friends</Text>
+            <View style={styles.friendList}>
+              {friends.map((friend) => (
+                <Pressable
+                  key={friend.uid}
+                  style={({ pressed }) => [styles.friendRow, pressed && styles.friendRowPressed]}
+                  onPress={() => router.push(`/friend/${friend.uid}` as Href)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`View ${friend.name}'s profile`}
+                >
+                  <Ionicons name="person-circle" size={36} color={colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.friendName}>{friend.name}</Text>
+                    <Text style={styles.friendHandle}>@{friend.username}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </Pressable>
+              ))}
+            </View>
+          </>
+        )}
+
         <Text style={styles.sectionHeading}>Activity</Text>
         {items.length === 0 ? (
           <Text style={styles.note}>
@@ -96,7 +121,16 @@ export default function SocialScreen() {
             <View key={item.id} style={styles.feedItem}>
               {iconForType[item.type] ?? iconForType.friend_workout}
               <View style={{ flex: 1 }}>
-                <Text style={styles.feedMessage}>{item.message}</Text>
+                <Text
+                  style={styles.feedMessage}
+                  onPress={
+                    item.actorUid !== user?.uid
+                      ? () => router.push(`/friend/${item.actorUid}` as Href)
+                      : undefined
+                  }
+                >
+                  {item.message}
+                </Text>
                 <Text style={styles.feedTime}>{timeAgo(item.createdAt)}</Text>
                 {item.type !== 'reaction' && item.actorUid !== user?.uid && (
                   <ReactionButtons item={item} />
@@ -160,6 +194,18 @@ function ReactionButtons({ item }: { item: ActivityFeedItem }) {
 }
 
 const getStyles = (colors: ThemeColors) => StyleSheet.create({
+  friendList: { marginBottom: spacing.lg },
+  friendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.divider,
+  },
+  friendRowPressed: { backgroundColor: colors.surfaceMuted },
+  friendName: { color: colors.text, fontWeight: '700', fontSize: typography.sizes.body },
+  friendHandle: { color: colors.textMuted, fontSize: typography.sizes.small },
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 120 },
   heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, marginBottom: spacing.lg },

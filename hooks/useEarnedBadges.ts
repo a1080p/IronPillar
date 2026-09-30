@@ -6,6 +6,8 @@ import type { Badge } from '../types/models';
 
 export function useEarnedBadges(uid: string | undefined) {
   const [earned, setEarned] = useState<Badge[]>([]);
+  // badge id -> ISO date it was earned
+  const [earnedAt, setEarnedAt] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,6 +21,14 @@ export function useEarnedBadges(uid: string | undefined) {
             .map((d) => badgeCatalog[d.id])
             .filter((b): b is Badge => !!b)
         );
+        setEarnedAt(
+          Object.fromEntries(
+            snap.docs.map((d) => {
+              const at = d.get('earnedAt');
+              return [d.id, at && typeof at.toDate === 'function' ? at.toDate().toISOString() : null];
+            })
+          )
+        );
         setLoading(false);
       },
       () => setLoading(false)
@@ -26,5 +36,5 @@ export function useEarnedBadges(uid: string | undefined) {
     return unsubscribe;
   }, [uid]);
 
-  return { earned, loading };
+  return { earned, earnedAt, loading };
 }

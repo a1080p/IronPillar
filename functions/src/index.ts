@@ -609,6 +609,90 @@ export const deleteWorkoutLog = onCall(async (request) => {
   });
 });
 
+// A friend's public profile: name, level, streak, badges and lifetime totals.
+// Profiles are owner-read-only in Firestore, so this checks the friendship
+// and returns only what a friend may see (no birthday, body metrics, email,
+// exercise notes or individual lifts).
+export const getFriendProfile = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError('unauthenticated', 'Must be signed in to view a profile.');
+  }
+  const friendUid = (request.data as { uid?: unknown } | undefined)?.uid;
+  if (typeof friendUid !== 'string' || !/^[A-Za-z0-9]{1,128}$/.test(friendUid)) {
+    throw new HttpsError('invalid-argument', 'Missing or malformed uid.');
+  }
+  if (friendUid !== uid) {
+    const friendship = await db.collection('friendships').doc(uid).collection('friends').doc(friendUid).get();
+    if (!friendship.exists) {
+      throw new HttpsError('permission-denied', 'You can only view friends’ profiles.');
+    }
+  }
+
+  const userRef = db.collection('users').doc(friendUid);
+  const [userSnap, badgesSnap, statsSnap] = await Promise.all([
+    userRef.get(),
+    userRef.collection('badges').get(),
+    db.collection('userStats').doc(friendUid).get(),
+  ]);
+  if (!userSnap.exists) {
+    throw new HttpsError('not-found', 'That profile no longer exists.');
+  }
+  const profile = userSnap.data() as {
+    name?: string;
+    username?: string;
+    avatarUrl?: string | null;
+    avatarKey?: string | null;
+    xp?: number;
+    streakCount?: number;
+    longestStreak?: number;
+    friendCount?: number;
+  };
+  const xp = profile.xp ?? 0;
+  const stored = statsSnap.data() as UserStats | undefined;
+  // Totals exist once the friend has finished a workout on a recent build;
+  // before that only the workout count is known.
+  const workouts =
+    stored?.workoutCount ??
+    (await db.collection('workoutLogs').doc(friendUid).collection('logs').count().get()).data().count;
+
+  return {
+    uid: friendUid,
+    name: profile.name ?? 'Friend',
+    username: profile.username ?? '',
+    avatarUrl: profile.avatarUrl ?? null,
+    avatarKey: profile.avatarKey ?? null,
+    xp,
+    streakCount: profile.streakCount ?? 0,
+    friendCount: profile.friendCount ?? 0,
+    badges: badgesSnap.docs.map((d) => {
+      const earnedAt = d.get('earnedAt');
+      return {
+        badgeId: d.id,
+        earnedAt: earnedAt && typeof earnedAt.toDate === 'function' ? earnedAt.toDate().toISOString() : null,
+      };
+    }),
+    stats: {
+      workouts,
+      streak: Math.max(profile.longestStreak ?? 0, profile.streakCount ?? 0),
+      level: levelForXp(xp),
+      ...(stored
+        ? {
+            prs: stored.prCount,
+            volumeLb: stored.totalVolumeLb,
+            distanceMeters: stored.totalDistanceMeters,
+            singleDistanceMeters: stored.maxDistanceMeters,
+            seconds: stored.totalSeconds,
+            singleSeconds: stored.maxSeconds,
+            early: stored.earlyCount,
+            late: stored.lateCount,
+            variety: stored.workoutIds.length,
+          }
+        : {}),
+    },
+  };
+});
+
 type Reaction = 'heart' | 'congrats';
 
 // Lets a user react to a friend's workout, badge, or streak milestone in

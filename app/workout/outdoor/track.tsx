@@ -27,6 +27,7 @@ import type { OutdoorActivityType, RoutePoint } from '../../../types/models';
 import { useAuth } from '../../../contexts/AuthContext';
 import { XpBreakdown } from '../../../components/XpBreakdown';
 import { CelebrationFlow, hasCelebrations } from '../../../components/Celebrations';
+import { MoreMenu } from '../../../components/MoreMenu';
 import { Confetti } from '../../../components/Confetti';
 import { completionMessages, pickMessage } from '../../../constants/motivation';
 import { formatDistance, formatPace } from '../../../lib/units';
@@ -212,6 +213,9 @@ export default function OutdoorTrackScreen() {
           <MapRoute route={route} style={StyleSheet.absoluteFill} />
         </View>
         <ScrollView contentContainerStyle={styles.summaryBody}>
+          <View style={styles.summaryMore}>
+            <MoreMenu />
+          </View>
           <Text style={styles.heading}>{ACTIVITY_LABELS[activityType]} Complete</Text>
           <Text style={styles.summarySub}>
             {pickMessage(completionMessages, result.xpEarned + result.streakCountAfter).sub}.
@@ -242,6 +246,9 @@ export default function OutdoorTrackScreen() {
       </View>
 
       <View style={styles.panel}>
+        <View style={styles.panelMore}>
+          <MoreMenu />
+        </View>
         <View style={styles.titleRow}>
           <Ionicons name={ACTIVITY_ICONS[activityType]} size={18} color={colors.primary} />
           <Text style={styles.activityLabel}>{ACTIVITY_LABELS[activityType]}</Text>
@@ -326,6 +333,8 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primary,
     textAlign: 'center',
   },
+  summaryMore: { alignSelf: 'flex-end', marginBottom: -spacing.lg },
+  panelMore: { position: 'absolute', top: spacing.md, right: spacing.lg, zIndex: 1 },
   summarySub: { color: colors.textMuted, textAlign: 'center', marginTop: -spacing.sm },
   bigTimer: {
     fontSize: 64,

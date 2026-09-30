@@ -5,6 +5,7 @@ import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Logo } from './Logo';
+import { MoreMenu } from './MoreMenu';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,18 +26,27 @@ export function TopBar() {
 
   return (
     <View style={styles.bar}>
-      <Pressable
-        onPress={() => setMenuOpen(true)}
-        hitSlop={12}
-        accessibilityRole="button"
-        accessibilityLabel="Open menu"
-      >
-        <Ionicons name="menu" size={26} color={colors.text} />
-      </Pressable>
+      <View style={styles.side}>
+        <Pressable
+          onPress={() => setMenuOpen(true)}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Open menu"
+        >
+          <Ionicons name="menu" size={26} color={colors.text} />
+        </Pressable>
+      </View>
       <Logo />
-      <View style={styles.streak}>
-        <Text style={styles.streakCount}>{profile?.streakCount ?? 0}</Text>
-        <FlameIcon size={20} color={colors.accentFlame} />
+      <View style={styles.right}>
+        <View
+          style={styles.streak}
+          accessible
+          accessibilityLabel={`${profile?.streakCount ?? 0} day streak`}
+        >
+          <Text style={styles.streakCount}>{profile?.streakCount ?? 0}</Text>
+          <FlameIcon size={20} color={colors.accentFlame} />
+        </View>
+        <MoreMenu color={colors.text} />
       </View>
 
       <Modal visible={menuOpen} animationType="slide" transparent onRequestClose={close}>
@@ -115,6 +125,9 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
+  // Left and right take equal width so the logo stays centered.
+  side: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  right: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: spacing.md },
   streak: {
     flexDirection: 'row',
     alignItems: 'center',
