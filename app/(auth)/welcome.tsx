@@ -43,12 +43,6 @@ export default function WelcomeScreen() {
     isGoogleSignInAvailable().then(setGoogleAvailable);
   }, [isAppleSignInAvailable, isGoogleSignInAvailable]);
 
-  const socialComingSoon = (provider: string) =>
-    Alert.alert(
-      `${provider} sign-in coming soon`,
-      'Email sign-up works now — social login needs OAuth set up in the Firebase console first.'
-    );
-
   const openForm = (targetMode: 'sign_up' | 'log_in') => {
     setError(null);
     setMode(targetMode);
@@ -135,23 +129,11 @@ export default function WelcomeScreen() {
           <Text style={styles.sectionLabel}>{mode === 'sign_up' ? 'Sign up' : 'Log in'}</Text>
 
           <View style={styles.socialGroup}>
-            {googleAvailable ? (
+            {googleAvailable && (
               <Button label="Continue with Google" variant="outline" onPress={handleGoogle} />
-            ) : (
-              <Button
-                label="Continue with Google"
-                variant="outline"
-                onPress={() => socialComingSoon('Google')}
-              />
             )}
-            {appleAvailable ? (
+            {appleAvailable && (
               <Button label="Continue with Apple" variant="outline" onPress={handleApple} />
-            ) : (
-              <Button
-                label="Continue with Apple"
-                variant="outline"
-                onPress={() => socialComingSoon('Apple')}
-              />
             )}
             <Button
               label="Continue with Email"
