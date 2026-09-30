@@ -4,6 +4,14 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-30: Submission prep: business side Active; "coming soon" sign-in alert removed
+
+- **App Store Connect Business:** Paid Apps Agreement, bank account, W-9, and Digital Services Act status are all Active (owner screenshot).
+- **Review risk fixed** (`app/(auth)/welcome.tsx`, 56c4326): the production EAS environment has no `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, so "Continue with Google" showed a "coming soon" alert. Social sign-in buttons are now hidden when that provider isn't set up on the build. Typecheck clean; not yet seen on a device.
+- **Still open:** build #6 (must include 56c4326) has not been started; listing items (Privacy Policy + Support URLs, App Privacy publish, demo account, subscription review screenshots) were not re-checked this session; TestFlight sandbox purchase test; submit.
+
+---
+
 ## 2026-09-29 (night): Functions were never actually deploying; screenshots uploaded
 
 - **Root cause found:** `firebase.json` had no predeploy build, so every deploy since 2026-09-21 shipped a stale `functions/lib`. The local-day streak fix, 2x XP, the XP breakdown, 30-minute streak days, deleteWorkoutLog, and reactToActivity were never live. Fixed with a predeploy `npm run build` (13d6ce3). WHOOP secrets are no longer declared, so deploys don't prompt for them (6b61252). Redeployed by the owner, and all 9 functions are ACTIVE.
