@@ -50,7 +50,12 @@
           "photosPermission": "Allow Iron Pillar to access your photos so you can set a profile picture."
         }
       ],
-      "@react-native-google-signin/google-signin",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.875028642720-fog1jl3a2rkiqbmre1euka5dprv5th2l"
+        }
+      ],
       [
         "expo-location",
         {

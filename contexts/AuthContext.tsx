@@ -41,6 +41,7 @@ const verifyEmailCodeFn = httpsCallable<{ code: string }, { verified: true }>(
 // attempt on a build that actually has the native module.
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 const googleSignInReady = !isExpoGo && !!googleWebClientId;
 let googleSignInConfigured = false;
 
@@ -48,7 +49,7 @@ async function ensureGoogleSignInConfigured() {
   if (!googleSignInReady) return false;
   if (!googleSignInConfigured) {
     const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
-    GoogleSignin.configure({ webClientId: googleWebClientId });
+    GoogleSignin.configure({ webClientId: googleWebClientId, iosClientId: googleIosClientId });
     googleSignInConfigured = true;
   }
   return true;
