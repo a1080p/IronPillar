@@ -33,6 +33,8 @@ export type WorkoutActivityProps = {
 const WorkoutActivity = (props: WorkoutActivityProps) => {
   'widget';
   const flame = '#FF8A00';
+  // A count-up timer needs an end; a workout never runs this long.
+  const dayMs = 24 * 60 * 60 * 1000;
   const symbol = props.icon as SFSymbol;
   const resting = !!props.restEndsAt && props.restEndsAt > Date.now();
 
@@ -42,8 +44,8 @@ const WorkoutActivity = (props: WorkoutActivityProps) => {
     </Text>
   ) : (
     <Text
-      date={new Date(props.timerStart)}
-      dateStyle="timer"
+      timerInterval={{ lower: new Date(props.timerStart), upper: new Date(props.timerStart + dayMs) }}
+      countsDown={false}
       modifiers={[
         font({ weight: 'bold', size: 22 }),
         monospacedDigit(),
@@ -60,8 +62,8 @@ const WorkoutActivity = (props: WorkoutActivityProps) => {
     </Text>
   ) : (
     <Text
-      date={new Date(props.timerStart)}
-      dateStyle="timer"
+      timerInterval={{ lower: new Date(props.timerStart), upper: new Date(props.timerStart + dayMs) }}
+      countsDown={false}
       modifiers={[
         font({ size: 14, weight: 'semibold' }),
         monospacedDigit(),
@@ -78,9 +80,8 @@ const WorkoutActivity = (props: WorkoutActivityProps) => {
       <Text
         timerInterval={{ lower: new Date(), upper: new Date(props.restEndsAt ?? 0) }}
         countsDown
-        modifiers={[font({ size: 13, weight: 'semibold' }), monospacedDigit(), frame({ maxWidth: 48 })]}
+        modifiers={[font({ size: 13, weight: 'semibold' }), monospacedDigit(), multilineTextAlignment('leading')]}
       />
-      <Spacer />
     </HStack>
   ) : (
     <Text modifiers={[font({ size: 13 }), lineLimit(1)]}>

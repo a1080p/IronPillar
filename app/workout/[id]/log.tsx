@@ -13,7 +13,12 @@ import { useWorkout } from '../../../hooks/useWorkout';
 import { useAuth } from '../../../contexts/AuthContext';
 import { completeWorkout } from '../../../lib/workoutCompletion';
 import { noteWorkoutStarted } from '../../../lib/gymReminders';
-import { endWorkoutActivity, startWorkoutActivity, updateWorkoutActivity } from '../../../lib/liveActivity';
+import {
+  endWorkoutActivity,
+  hasWorkoutActivity,
+  startWorkoutActivity,
+  updateWorkoutActivity,
+} from '../../../lib/liveActivity';
 import { startStrengthWatchdog, stopStrengthWatchdog } from '../../../lib/workoutWatchdog';
 import { summarizeExerciseLogs } from '../../../lib/workoutStats';
 import { lastPerformance } from '../../../lib/insights';
@@ -108,7 +113,6 @@ export default function WorkoutLogScreen() {
   // set, and the rest countdown. The set shown is the first one not filled in.
   const firstEmptySet = sets.findIndex((set) => set.reps == null && set.durationSeconds == null);
   const currentSet = sets.length === 0 ? 1 : firstEmptySet === -1 ? sets.length : firstEmptySet + 1;
-  const activityStarted = useRef(false);
   useEffect(() => {
     if (!template || !exercise) return;
     const props = {
@@ -119,12 +123,8 @@ export default function WorkoutLogScreen() {
       timerStart: startTime.current,
       ...(restEndsAt ? { restEndsAt } : {}),
     };
-    if (activityStarted.current) {
-      updateWorkoutActivity(props);
-    } else {
-      activityStarted.current = true;
-      startWorkoutActivity(props);
-    }
+    if (hasWorkoutActivity()) updateWorkoutActivity(props);
+    else startWorkoutActivity(props);
   }, [template?.id, exercise?.id, exerciseIndex, currentSet, restEndsAt]);
 
   // A reminder in case the workout is left running, cancelled on the way out

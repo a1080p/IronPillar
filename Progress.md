@@ -17,7 +17,8 @@ Build #6 was never started, so all of this can go into it (94b59e7).
 - **Recommendations:** Home no longer suggests sport-specific workouts (basketball, tennis, soccer, golf, climbing); they remain in Browse.
 - **Polish:** logo splash on launch, button press spring, animated progress bars, Edit Profile's Save button pinned to the bottom once something changes.
 - **Deployed:** Firestore rules and all functions. Older app builds keep working (they read only `badgeEarnedId`).
-- **Verified:** app + functions typecheck; achievements logic unit-checked in Node; the widget compiles through the Expo babel preset; `expo prebuild` generates the widget target.
+- **Verified in the simulator** on a fresh dev build (widget extension compiles after bumping Expo packages to the current SDK 57 patches; `@expo/ui` 57.0.21 would not compile against `expo-modules-core` 57.0.13): lock-screen Live Activity with timer, exercise and rest countdown; PR trophy (Barbell Deadlift 300 x 5); level-up screen (Level 3); 6 badges granted from history by the live function; notes editor opens. **Not yet tested:** saving a note, the outdoor Live Activity and idle reminder (need real movement), Dynamic Island layouts, Edit Profile's pinned Save. The test left a 9-minute Deadlift Focus Strength log (300 x 5) on the owner's account.
+- A Metro server started before `expo-widgets` was installed must be restarted with `--clear`, or the widget isn't compiled and the Live Activity throws.
 
 ---
 
