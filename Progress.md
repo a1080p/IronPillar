@@ -4,6 +4,14 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-30 (afternoon): XP for completed sets only, PR and beat-last-time bonuses, confetti
+
+- **XP** (`completeWorkout`, deployed): exercises and sets only earn XP when something was logged for them (reps or seconds); blank rows earn nothing. New bonuses: +50 per personal record, +30 for each way the workout beat the last time the same workout was done (more weight moved, more reps, longer holds, more sets) or, outdoors, the last activity of the same type (farther, faster pace). The Pro 2x multiplier applies to all of it. The XP receipt lists each bonus.
+- **Confetti** (`components/Confetti.tsx`) on the workout summary (strength and outdoor), the level-up screen and the badge screen. New rotating copy in `constants/motivation.ts` for the summary, level-up, badges and PR pop-up.
+- **Verified in the simulator:** a note saved on Deadlift Focus Strength is in Firestore, shows again after a full app restart, and the logging screen shows "View notes for this workout". A 2-set workout earned 1 x 50 + 2 x 5 + PR 50 + three 30s = 200 XP. Outdoor walk with simulated GPS: the lock-screen Live Activity showed distance, pace and timer updating while locked.
+
+---
+
 ## 2026-09-30 (later): Badges, level-ups, PR trophies, workout notes, Live Activities, left-running reminders
 
 Build #6 was never started, so all of this can go into it (94b59e7).
