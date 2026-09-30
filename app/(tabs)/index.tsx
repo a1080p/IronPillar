@@ -203,7 +203,7 @@ export default function HomeScreen() {
       <TopBar />
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll}>
         <Text style={styles.heading}>
-          {profile?.name ? `${profile.name}, Lets Get Started` : 'Lets Get Started'}
+          {profile?.name ? `${profile.name}, Let's Get Started` : "Let's Get Started"}
         </Text>
 
         {loading && <Text style={styles.note}>Loading workouts...</Text>}
@@ -216,7 +216,7 @@ export default function HomeScreen() {
 
         {recommended && (
           <View style={styles.section} ref={recommendedRef}>
-            <Text style={styles.sectionLabel}>Todays Recommended Workout:</Text>
+            <Text style={styles.sectionLabel}>Today's Recommended Workout:</Text>
             <Pressable
               style={styles.recommendedCard}
               accessibilityRole="button"

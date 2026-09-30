@@ -287,6 +287,12 @@ export default function WorkoutLogScreen() {
           )}
         </View>
 
+        {last && (
+          <Text style={styles.setsHint}>
+            Grey numbers are from last time. Type yours to log each set.
+          </Text>
+        )}
+
         {sets.map((set, i) => (
           <View key={i} style={styles.setRow}>
             <Text style={styles.setLabel}>Set {i + 1}</Text>
@@ -418,6 +424,12 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   restSkip: { color: colors.textMuted, fontWeight: '600', fontSize: typography.sizes.small },
   setsHeader: { flexDirection: 'row', marginBottom: spacing.sm, gap: spacing.md },
   setsHeaderLabel: { flex: 1, textAlign: 'center', color: colors.textMuted, fontSize: typography.sizes.small },
+  setsHint: {
+    textAlign: 'center',
+    color: colors.textMuted,
+    fontSize: typography.sizes.small,
+    marginBottom: spacing.sm,
+  },
   setRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
   setLabel: { flex: 1, fontWeight: '700', color: colors.primary },
   input: {

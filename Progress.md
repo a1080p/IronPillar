@@ -4,6 +4,17 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-30 (evening): Notes per exercise; UI and accessibility pass
+
+- **Notes are per exercise, not per workout.** Stored at `users/{uid}/exerciseNotes/{slug of exercise name}`, so a note on Leg Extension shows wherever Leg Extension appears. Each exercise row on the workout page and each step while logging shows the note (or "Add notes for this exercise"). The earlier per-workout `workoutNotes` collection is gone from the app and rules; account deletion clears both.
+- **Contrast (WCAG AA):** orange text on light backgrounds was 2.4:1; text now uses a new `accentFlameText` token (#A84E00, 5.6:1), with `accentFlame` kept for fills and icons. Light-theme `danger` text 3.9 -> 5.3:1. Silver and gold badge rings darkened to pass 3:1.
+- **Screen readers:** every `Button` announces as a button with disabled/busy state; tab bar items are tabs with names and selected state; roles/labels/states added to menu rows, the dark-mode switch, action sheets, chips, workout cards, set inputs ("Set 2 reps"), text fields, progress bars, badges, and text links. Small links got larger tap areas; rest-timer pills are bigger.
+- **UI fixes:** "Lets Get Started" -> "Let's Get Started", "Todays" -> "Today's"; a hint on the logging screen that grey set numbers are last time's values, not logged ones.
+- **Verified in the simulator:** note saved on Barbell Deadlift shows on the workout page and on that step while logging, and Romanian Deadlift has its own empty note; Edit Profile's Save button appears pinned at the bottom after a change; Collection screen renders. **Not done:** a real VoiceOver pass, Dynamic Type at large sizes, and a visual check in dark mode (dark-theme primary on surfaces is 3.8-4.2:1, slightly under AA for small text; left as is).
+- **Open UI issue:** the floating bug-report button covers content on every screen (e.g. the notes link on the second exercise).
+
+---
+
 ## 2026-09-30 (afternoon): XP for completed sets only, PR and beat-last-time bonuses, confetti
 
 - **XP** (`completeWorkout`, deployed): exercises and sets only earn XP when something was logged for them (reps or seconds); blank rows earn nothing. New bonuses: +50 per personal record, +30 for each way the workout beat the last time the same workout was done (more weight moved, more reps, longer holds, more sets) or, outdoors, the last activity of the same type (farther, faster pace). The Pro 2x multiplier applies to all of it. The XP receipt lists each bonus.
