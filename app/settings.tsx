@@ -83,7 +83,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.rowGroup}>
-          <Pressable style={styles.row} onPress={() => router.push('/paywall')}>
+          <Pressable style={styles.row} accessibilityRole="button" onPress={() => router.push('/paywall')}>
             <View style={styles.rowInline}>
               <Text style={styles.rowLabel}>{isPro ? 'Iron Pillar Pro' : 'Upgrade to Pro'}</Text>
               <ProBadge />
@@ -92,6 +92,7 @@ export default function SettingsScreen() {
           {isPro && (
             <Pressable
               style={styles.row}
+              accessibilityRole="button"
               onPress={() =>
                 presentCustomerCenter().catch((e) =>
                   Alert.alert('Could not open', e instanceof Error ? e.message : 'Try again.')
@@ -101,7 +102,7 @@ export default function SettingsScreen() {
               <Text style={styles.rowLabel}>Manage Subscription</Text>
             </Pressable>
           )}
-          <Pressable style={styles.row} onPress={exporting ? undefined : handleExport}>
+          <Pressable style={styles.row} accessibilityRole="button" onPress={exporting ? undefined : handleExport}>
             <View style={styles.rowInline}>
               <Text style={styles.rowLabel}>
                 {exporting ? 'Preparing export...' : 'Export Workout Data (CSV)'}
@@ -109,19 +110,19 @@ export default function SettingsScreen() {
               {!isPro && <ProBadge />}
             </View>
           </Pressable>
-          <Pressable style={styles.row} onPress={() => router.push('/edit-profile')}>
+          <Pressable style={styles.row} accessibilityRole="button" onPress={() => router.push('/edit-profile')}>
             <Text style={styles.rowLabel}>Edit Profile</Text>
           </Pressable>
-          <Pressable style={styles.row} onPress={() => router.push('/account-details')}>
+          <Pressable style={styles.row} accessibilityRole="button" onPress={() => router.push('/account-details')}>
             <Text style={styles.rowLabel}>Account Details</Text>
           </Pressable>
-          <Pressable style={styles.row} onPress={() => router.push('/history')}>
+          <Pressable style={styles.row} accessibilityRole="button" onPress={() => router.push('/history')}>
             <Text style={styles.rowLabel}>History</Text>
           </Pressable>
-          <Pressable style={styles.row} onPress={() => router.push('/reminders' as Href)}>
+          <Pressable style={styles.row} accessibilityRole="button" onPress={() => router.push('/reminders' as Href)}>
             <Text style={styles.rowLabel}>Reminders</Text>
           </Pressable>
-          <Pressable style={styles.row} onPress={signOut}>
+          <Pressable style={styles.row} accessibilityRole="button" onPress={signOut}>
             <Text style={styles.rowLabel}>Sign Out</Text>
           </Pressable>
         </View>

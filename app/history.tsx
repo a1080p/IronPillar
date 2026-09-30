@@ -109,7 +109,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   workoutName: { fontWeight: '700', color: colors.primary, fontSize: typography.sizes.body },
-  xp: { fontWeight: '700', color: colors.accentFlame },
+  xp: { fontWeight: '700', color: colors.accentFlameText },
   deleteButton: { marginLeft: spacing.sm },
   meta: { color: colors.textMuted, fontSize: typography.sizes.small, marginTop: 4 },
   streakBonus: { color: colors.text, fontSize: typography.sizes.small, marginTop: 2 },

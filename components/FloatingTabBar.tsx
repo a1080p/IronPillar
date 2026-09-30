@@ -42,9 +42,10 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
           <Pressable
             key={route.key}
             onPress={onPress}
-            accessibilityRole="button"
-            accessibilityState={focused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: focused }}
+            accessibilityLabel={options.tabBarAccessibilityLabel ?? options.title ?? route.name}
+            hitSlop={6}
             style={styles.item}
           >
             {options.tabBarIcon?.({ focused, color, size: ICON_SIZE })}

@@ -13,7 +13,12 @@ export function ProgressBar({ progress }: { progress: number }) {
     Animated.timing(value, { toValue: clamped, duration: 350, useNativeDriver: false }).start();
   }, [clamped, value]);
   return (
-    <View style={styles.track}>
+    <View
+      style={styles.track}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped * 100) }}
+    >
       <Animated.View
         style={[
           styles.fill,

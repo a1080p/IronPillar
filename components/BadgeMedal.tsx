@@ -3,12 +3,13 @@ import { StyleSheet, View } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import type { Badge, BadgeTier } from '../types/models';
 
-// Ring colour per tier. Platinum uses the brand colour so the top tier reads
+// Ring colour per tier, each at least 3:1 against both the light and dark
+// backgrounds. Platinum uses the brand colour so the top tier reads
 // as "Iron Pillar's own" rather than a fourth metal.
 const TIER_COLORS: Record<BadgeTier, string> = {
   bronze: '#B8733A',
-  silver: '#8A97A8',
-  gold: '#D9A514',
+  silver: '#6F7C8D',
+  gold: '#A87B00',
   platinum: '#3D4FEA',
 };
 
@@ -32,6 +33,9 @@ export function BadgeMedal({
   const iconName = (badge.iconKey in Ionicons.glyphMap ? badge.iconKey : 'ribbon') as keyof typeof Ionicons.glyphMap;
   return (
     <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`${badge.name} badge, ${locked ? 'locked' : badge.tier}`}
       style={[
         styles.medal,
         {

@@ -15,29 +15,29 @@ import {
 import { Button } from './Button';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
-import { WORKOUT_NOTE_MAX_LENGTH, useWorkoutNote } from '../hooks/useWorkoutNote';
+import { EXERCISE_NOTE_MAX_LENGTH, useExerciseNote } from '../hooks/useExerciseNote';
 
-// "Add notes for this workout": a small button that opens an editor for the
-// user's own note on a workout. With `showPreview`, a saved note is also shown
-// inline (used on the workout detail page; the logging screen keeps it to the
-// button so it doesn't push the sets down).
-export function WorkoutNotes({
+// The user's own note on one exercise (seat height, machine settings, what to
+// try next time). Shows the saved note, or an "Add notes" link when there
+// isn't one; tapping either opens the editor. `compact` is the smaller form
+// used in the workout page's exercise list.
+export function ExerciseNotes({
   uid,
-  workoutId,
-  showPreview = false,
+  exerciseName,
+  compact = false,
 }: {
   uid: string | undefined;
-  workoutId: string | undefined;
-  showPreview?: boolean;
+  exerciseName: string | undefined;
+  compact?: boolean;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const { note, saveNote } = useWorkoutNote(uid, workoutId);
+  const { note, saveNote } = useExerciseNote(uid, exerciseName);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
 
-  if (!uid || !workoutId) return null;
+  if (!uid || !exerciseName) return null;
 
   const openEditor = () => {
     setDraft(note);
@@ -58,18 +58,32 @@ export function WorkoutNotes({
 
   return (
     <>
-      {showPreview && note ? (
-        <Pressable style={styles.preview} onPress={openEditor} accessibilityRole="button">
+      {note ? (
+        <Pressable
+          style={[styles.preview, compact && styles.previewCompact]}
+          onPress={openEditor}
+          accessibilityRole="button"
+          accessibilityLabel={`Your notes for ${exerciseName}: ${note}`}
+          accessibilityHint="Opens the notes editor"
+        >
           <View style={styles.previewHeader}>
             <Text style={styles.previewHeading}>Your notes</Text>
             <Text style={styles.previewEdit}>Edit</Text>
           </View>
-          <Text style={styles.previewText}>{note}</Text>
+          <Text style={styles.previewText} numberOfLines={compact ? 3 : undefined}>
+            {note}
+          </Text>
         </Pressable>
       ) : (
-        <Pressable style={styles.link} onPress={openEditor} hitSlop={8} accessibilityRole="button">
+        <Pressable
+          style={styles.link}
+          onPress={openEditor}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={`Add notes for ${exerciseName}`}
+        >
           <Ionicons name="document-text-outline" size={16} color={colors.primary} />
-          <Text style={styles.linkText}>{note ? 'View notes for this workout' : 'Add notes for this workout'}</Text>
+          <Text style={styles.linkText}>Add notes for this exercise</Text>
         </Pressable>
       )}
 
@@ -79,7 +93,9 @@ export function WorkoutNotes({
           style={styles.backdrop}
         >
           <Pressable style={styles.card} onPress={Keyboard.dismiss}>
-            <Text style={styles.heading}>Workout notes</Text>
+            <Text style={styles.heading} accessibilityRole="header">
+              {exerciseName} notes
+            </Text>
             <Text style={styles.hint}>
               Seat heights, machine settings, what to try next time. Only you can see these.
             </Text>
@@ -91,7 +107,8 @@ export function WorkoutNotes({
               placeholderTextColor={colors.textMuted}
               multiline
               autoFocus
-              maxLength={WORKOUT_NOTE_MAX_LENGTH}
+              maxLength={EXERCISE_NOTE_MAX_LENGTH}
+              accessibilityLabel={`Notes for ${exerciseName}`}
               textAlignVertical="top"
             />
             <View style={styles.buttons}>
@@ -111,12 +128,14 @@ export function WorkoutNotes({
 
 const getStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    link: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    link: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: spacing.xs },
+    previewCompact: { paddingVertical: spacing.sm, marginTop: spacing.xs },
     linkText: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.small },
     preview: {
       backgroundColor: colors.surfaceMuted,
       borderRadius: radii.md,
       padding: spacing.md,
+      alignSelf: 'stretch',
     },
     previewHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs },
     previewHeading: { fontWeight: '700', color: colors.primary, fontSize: typography.sizes.small },

@@ -219,6 +219,8 @@ export default function HomeScreen() {
             <Text style={styles.sectionLabel}>Todays Recommended Workout:</Text>
             <Pressable
               style={styles.recommendedCard}
+              accessibilityRole="button"
+              accessibilityLabel={`Today's recommended workout: ${recommended.name}, ${recommended.durationMinutes} minutes`}
               onPress={() => router.push(`/workout/${recommended.id}`)}
             >
               <Text style={styles.recommendedTitle}>{recommended.name}</Text>
@@ -245,6 +247,8 @@ export default function HomeScreen() {
                 <Pressable
                   key={log.id}
                   style={styles.recentCard}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${log.workoutName}, last done ${formatShortDate(log.completedAt)}`}
                   onPress={() =>
                     log.workoutSource === 'outdoor' && log.activityType
                       ? router.push({
@@ -297,7 +301,12 @@ export default function HomeScreen() {
             {customWorkouts.map((w) => (
               <QuickStartCard key={w.id} workout={w} editable atCustomLimit={atCustomLimit} />
             ))}
-            <Pressable style={styles.createCard} onPress={() => router.push('/workout/new')}>
+            <Pressable
+              style={styles.createCard}
+              onPress={() => router.push('/workout/new')}
+              accessibilityRole="button"
+              accessibilityLabel="Create your own workout"
+            >
               <Ionicons name="add-circle-outline" size={26} color={colors.primary} />
               <Text style={styles.createCardTitle}>Create Your Own</Text>
             </Pressable>
@@ -345,7 +354,12 @@ function OutdoorActivityCard({ activityType }: { activityType: OutdoorActivityTy
     router.push({ pathname: '/workout/outdoor/intro', params: { activityType } });
 
   return (
-    <Pressable style={styles.quickCard} onPress={handlePress}>
+    <Pressable
+      style={styles.quickCard}
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={`Start an outdoor ${OUTDOOR_ACTIVITY_LABELS[activityType]}`}
+    >
       <View style={styles.quickCardHeader}>
         <Ionicons
           name={activityType === 'bike' ? 'bicycle' : 'walk'}
@@ -413,7 +427,12 @@ function QuickStartCard({
   };
 
   return (
-    <Pressable style={styles.quickCard} onPress={() => router.push(`/workout/${workout.id}`)}>
+    <Pressable
+      style={styles.quickCard}
+      onPress={() => router.push(`/workout/${workout.id}`)}
+      accessibilityRole="button"
+      accessibilityLabel={`${workout.name}, ${workout.durationMinutes} minutes`}
+    >
       <View style={styles.quickCardHeader}>
         <Text style={styles.quickCardTitle} numberOfLines={2}>
           {workout.name}

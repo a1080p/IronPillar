@@ -151,7 +151,12 @@ export default function NewWorkoutScreen() {
                 {ex.logType === 'duration' ? ' (timed)' : ''}
               </Text>
             </View>
-            <Pressable onPress={() => handleRemoveExercise(ex.id)} hitSlop={12}>
+            <Pressable
+              onPress={() => handleRemoveExercise(ex.id)}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${ex.name}`}
+            >
               <Ionicons name="close-circle" size={24} color={colors.textMuted} />
             </Pressable>
           </View>
@@ -171,6 +176,8 @@ export default function NewWorkoutScreen() {
             <Pressable
               style={[styles.typeOption, logType === 'reps_weight' && styles.typeOptionActive]}
               onPress={() => setLogType('reps_weight')}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: logType === 'reps_weight' }}
             >
               <Text
                 style={[styles.typeLabel, logType === 'reps_weight' && styles.typeLabelActive]}
@@ -181,6 +188,8 @@ export default function NewWorkoutScreen() {
             <Pressable
               style={[styles.typeOption, logType === 'duration' && styles.typeOptionActive]}
               onPress={() => setLogType('duration')}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: logType === 'duration' }}
             >
               <Text style={[styles.typeLabel, logType === 'duration' && styles.typeLabelActive]}>
                 Timed

@@ -28,6 +28,9 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading 
       onPressIn={() => springTo(0.97)}
       onPressOut={() => springTo(1)}
       disabled={isDisabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
       style={({ pressed }) => [
         styles.base,
         variant === 'primary' && styles.primary,

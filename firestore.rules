@@ -52,12 +52,12 @@ service cloud.firestore {
         allow write: if false;
       }
 
-      // A user's own free-text notes per workout (seat heights, machine
-      // settings). Private to the owner; one short text field per workout.
-      match /workoutNotes/{workoutId} {
+      // A user's own free-text notes per exercise (seat heights, machine
+      // settings). Private to the owner; one short text field per exercise.
+      match /exerciseNotes/{exerciseId} {
         allow read, delete: if isOwner(uid);
         allow create, update: if isOwner(uid)
-          && request.resource.data.keys().hasOnly(['text', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['text', 'exerciseName', 'updatedAt'])
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 2000;
       }

@@ -169,11 +169,17 @@ export function AppTour({ visible, steps, onFinish }: AppTourProps) {
             <Text style={styles.description}>{step.description}</Text>
 
             <View style={styles.actions}>
-              <Pressable onPress={onFinish} hitSlop={8}>
+              <Pressable
+                onPress={onFinish}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Skip the tour"
+              >
                 <Text style={styles.skip}>Skip</Text>
               </Pressable>
               <Pressable
                 style={styles.nextButton}
+                accessibilityRole="button"
                 onPress={() => (isLast ? onFinish() : setStepIndex((i) => i + 1))}
               >
                 <Text style={styles.nextLabel}>{isLast ? 'Done' : 'Next'}</Text>

@@ -143,7 +143,9 @@ export default function EditProfileScreen() {
         style={{ flex: 1 }}
       >
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.heading}>Edit Profile</Text>
+        <Text style={styles.heading} accessibilityRole="header">
+          Edit Profile
+        </Text>
 
         <View style={styles.avatarWrap}>
           <AvatarPicker
@@ -155,7 +157,7 @@ export default function EditProfileScreen() {
             showRemove
           />
           {(hasPhoto || avatarKey) && (
-            <Pressable onPress={removeImage} hitSlop={8}>
+            <Pressable onPress={removeImage} hitSlop={12} accessibilityRole="button">
               <Text style={[styles.link, styles.linkMuted]}>Remove avatar</Text>
             </Pressable>
           )}

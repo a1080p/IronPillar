@@ -358,9 +358,9 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   stat: { alignItems: 'center', gap: 4 },
   statValue: { fontSize: typography.sizes.lg, fontWeight: '800', color: colors.text },
   statLabel: { fontSize: typography.sizes.small, color: colors.textMuted },
-  xpLine: { fontSize: typography.sizes.xl, fontWeight: '800', color: colors.accentFlame },
+  xpLine: { fontSize: typography.sizes.xl, fontWeight: '800', color: colors.accentFlameText },
   xpUnit: { fontSize: typography.sizes.body, fontWeight: '600' },
-  proXp: { color: colors.accentFlame, fontWeight: '700', fontSize: typography.sizes.small },
+  proXp: { color: colors.accentFlameText, fontWeight: '700', fontSize: typography.sizes.small },
   footer: {
     padding: spacing.lg,
   },

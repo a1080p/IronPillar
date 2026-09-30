@@ -797,7 +797,8 @@ export const deleteAccount = onCall(async (request) => {
   await Promise.all([
     deleteCollection(db.collection('users').doc(uid).collection('badges')),
     deleteCollection(db.collection('users').doc(uid).collection('metrics')),
-    deleteCollection(db.collection('users').doc(uid).collection('workoutNotes')),
+    deleteCollection(db.collection('users').doc(uid).collection('exerciseNotes')),
+    deleteCollection(db.collection('users').doc(uid).collection('workoutNotes')), // earlier per-workout notes
     db.collection('userStats').doc(uid).delete(),
     deleteCollection(db.collection('workoutLogs').doc(uid).collection('logs')),
     deleteCollection(db.collection('userWorkouts').doc(uid).collection('customWorkouts')),

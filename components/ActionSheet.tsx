@@ -29,9 +29,9 @@ export function ActionSheet({
   const styles = useMemo(() => getStyles(colors), [colors]);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close menu">
         {/* Inner Pressable swallows taps so they don't dismiss the sheet. */}
-        <Pressable>
+        <Pressable accessible={false}>
           <SafeAreaView edges={['bottom']} style={styles.sheet}>
             {title ? (
               <Text style={styles.title} numberOfLines={1}>
@@ -42,6 +42,8 @@ export function ActionSheet({
               <Pressable
                 key={action.label}
                 style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                accessibilityRole="button"
+                accessibilityLabel={action.label}
                 onPress={() => {
                   onClose();
                   // Let the modal finish dismissing before the action runs —
@@ -61,6 +63,7 @@ export function ActionSheet({
             ))}
             <Pressable
               style={({ pressed }) => [styles.row, styles.cancelRow, pressed && styles.rowPressed]}
+              accessibilityRole="button"
               onPress={onClose}
             >
               <Text style={styles.cancelLabel}>Cancel</Text>

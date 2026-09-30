@@ -130,11 +130,11 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'center',
   },
   streakLabel: { fontSize: typography.sizes.md, fontWeight: '700', color: colors.primary, marginTop: spacing.sm },
-  streakValue: { color: colors.accentFlame },
+  streakValue: { color: colors.accentFlameText },
   xpLine: { fontSize: typography.sizes.md, color: colors.primary, marginTop: spacing.sm },
   streakBonus: { fontSize: typography.sizes.body, color: colors.text, marginTop: spacing.xs },
   xpUnit: { color: colors.primary, fontSize: typography.sizes.small },
-  proXp: { color: colors.accentFlame, fontWeight: '800', fontSize: typography.sizes.small, marginTop: spacing.xs },
+  proXp: { color: colors.accentFlameText, fontWeight: '800', fontSize: typography.sizes.small, marginTop: spacing.xs },
   summaryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

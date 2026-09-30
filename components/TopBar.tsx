@@ -42,9 +42,9 @@ export function TopBar() {
       <Modal visible={menuOpen} animationType="slide" transparent onRequestClose={close}>
         {/* Re-provide safe-area context — a Modal renders outside the app's provider. */}
         <SafeAreaProvider>
-          <Pressable style={styles.backdrop} onPress={close}>
+          <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close menu">
             {/* Inner Pressable swallows taps so touching the drawer doesn't close it. */}
-            <Pressable style={styles.drawer} onPress={() => {}}>
+            <Pressable style={styles.drawer} onPress={() => {}} accessible={false}>
               <SafeAreaView edges={['top', 'bottom']} style={styles.drawerInner}>
               <Text style={styles.drawerHeading}>Menu</Text>
 
@@ -53,6 +53,8 @@ export function TopBar() {
                   <Pressable
                     key={item.label}
                     style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.label}
                     onPress={() => {
                       close();
                       router.push(item.route);
@@ -69,6 +71,9 @@ export function TopBar() {
               <Pressable
                 style={({ pressed }) => [styles.row, styles.darkModeRow, pressed && styles.rowPressed]}
                 onPress={toggleTheme}
+                accessibilityRole="switch"
+                accessibilityLabel="Dark Mode"
+                accessibilityState={{ checked: isDark }}
               >
                 <Text style={styles.rowLabel}>Dark Mode</Text>
                 <Switch
@@ -82,6 +87,8 @@ export function TopBar() {
 
               <Pressable
                 style={({ pressed }) => [styles.row, styles.signOutRow, pressed && styles.rowPressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Sign out"
                 onPress={async () => {
                   close();
                   await signOut();

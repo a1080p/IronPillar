@@ -79,7 +79,12 @@ function BrowseCard({ workout }: { workout: WorkoutTemplate }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   return (
-    <Pressable style={styles.card} onPress={() => router.push(`/workout/${workout.id}`)}>
+    <Pressable
+      style={styles.card}
+      onPress={() => router.push(`/workout/${workout.id}`)}
+      accessibilityRole="button"
+      accessibilityLabel={`${workout.name}, ${workout.durationMinutes} minutes`}
+    >
       <Text style={styles.cardTitle} numberOfLines={2}>
         {workout.name}
       </Text>

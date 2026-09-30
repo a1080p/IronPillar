@@ -88,6 +88,9 @@ export function AvatarPicker({
               key={preset.key}
               onPress={() => onChangeAvatarKey(buildAvatarKey(preset.key, preset.color))}
               style={[styles.swatchWrap, selected && styles.swatchWrapSelected]}
+              accessibilityRole="radio"
+              accessibilityLabel={`${preset.key} avatar`}
+              accessibilityState={{ checked: selected }}
             >
               <View style={[styles.swatch, { backgroundColor: preset.color }]}>
                 <Ionicons name={preset.icon} size={26} color={colors.textOnDark} />

@@ -118,7 +118,11 @@ export default function InsightsScreen() {
             </View>
           ))}
           {!readiness.hasWearableData && (
-            <Pressable onPress={() => router.push('/(tabs)/profile')}>
+            <Pressable
+              onPress={() => router.push('/(tabs)/profile')}
+              hitSlop={12}
+              accessibilityRole="link"
+            >
               <Text style={styles.linkText}>
                 Connect Apple Health in Profile for a recovery-aware score →
               </Text>
@@ -154,6 +158,9 @@ export default function InsightsScreen() {
                   <Pressable
                     key={h.name}
                     style={[styles.pickChip, active && styles.pickChipActive]}
+                    accessibilityRole="radio"
+                    accessibilityLabel={h.name}
+                    accessibilityState={{ checked: active }}
                     onPress={() => setSelectedName(h.name)}
                   >
                     <Text style={[styles.pickChipText, active && styles.pickChipTextActive]}>

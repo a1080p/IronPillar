@@ -16,6 +16,9 @@ export function SelectableOption({ label, selected, onPress }: SelectableOptionP
     <Pressable
       onPress={onPress}
       style={[styles.base, selected && styles.selected]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
     >
       <Text style={[styles.label, selected && styles.labelSelected]}>{label}</Text>
     </Pressable>

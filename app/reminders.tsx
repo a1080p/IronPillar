@@ -152,7 +152,11 @@ export default function RemindersScreen() {
         <Text style={styles.heading}>Reminders</Text>
 
         {!notificationsAllowed ? (
-          <Pressable style={styles.banner} onPress={() => Linking.openSettings()}>
+          <Pressable
+            style={styles.banner}
+            onPress={() => Linking.openSettings()}
+            accessibilityRole="button"
+          >
             <Text style={styles.bannerText}>
               Notifications are turned off for Iron Pillar. Tap to open Settings and allow them.
             </Text>
@@ -234,6 +238,9 @@ export default function RemindersScreen() {
                     <Pressable
                       key={m}
                       style={[styles.chip, selected && styles.chipSelected]}
+                      accessibilityRole="radio"
+                      accessibilityLabel={`${m} minutes`}
+                      accessibilityState={{ checked: selected }}
                       onPress={() => update({ ...settings, gymDelayMinutes: m })}
                     >
                       <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{m} min</Text>
@@ -251,7 +258,12 @@ export default function RemindersScreen() {
             settings.gyms.map((g) => (
               <View key={g.id} style={styles.row}>
                 <Text style={styles.rowLabel}>{g.name}</Text>
-                <Pressable onPress={() => removeGym(g.id)} hitSlop={8}>
+                <Pressable
+                  onPress={() => removeGym(g.id)}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${g.name}`}
+                >
                   <Text style={styles.remove}>Remove</Text>
                 </Pressable>
               </View>

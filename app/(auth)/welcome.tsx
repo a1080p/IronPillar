@@ -152,7 +152,7 @@ export default function WelcomeScreen() {
 
           {showForm && (
             <>
-              <Text style={styles.backLink} onPress={() => setShowForm(false)}>
+              <Text style={styles.backLink} accessibilityRole="button" onPress={() => setShowForm(false)}>
                 ‹ Back
               </Text>
 
@@ -184,7 +184,7 @@ export default function WelcomeScreen() {
               </View>
 
               {mode === 'log_in' && (
-                <Text style={styles.forgotPasswordLink} onPress={handleForgotPassword}>
+                <Text style={styles.forgotPasswordLink} accessibilityRole="button" onPress={handleForgotPassword}>
                   Forgot password?
                 </Text>
               )}
@@ -200,6 +200,7 @@ export default function WelcomeScreen() {
 
                 <Text
                   style={styles.switchModeLink}
+                  accessibilityRole="button"
                   onPress={() => {
                     setMode(mode === 'sign_up' ? 'log_in' : 'sign_up');
                     setError(null);

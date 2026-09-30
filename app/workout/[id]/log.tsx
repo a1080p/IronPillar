@@ -5,7 +5,7 @@ import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { WorkoutHeader } from '../../../components/WorkoutHeader';
-import { WorkoutNotes } from '../../../components/WorkoutNotes';
+import { ExerciseNotes } from '../../../components/ExerciseNotes';
 import { radii, spacing, typography } from '../../../constants/theme';
 import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { motivationalMessages } from '../../../constants/motivation';
@@ -218,7 +218,9 @@ export default function WorkoutLogScreen() {
     <SafeAreaView style={styles.container}>
       <WorkoutHeader onBack={() => router.back()} />
       <View style={styles.progressWrap}>
-        <Text style={styles.timer}>{formatTime(elapsedSeconds)}</Text>
+        <Text style={styles.timer} accessibilityLabel={`Elapsed time ${formatTime(elapsedSeconds)}`}>
+          {formatTime(elapsedSeconds)}
+        </Text>
         <ProgressBar progress={progress} />
       </View>
 
@@ -227,7 +229,9 @@ export default function WorkoutLogScreen() {
         style={{ flex: 1 }}
       >
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.exerciseName}>{exercise.name}</Text>
+        <Text style={styles.exerciseName} accessibilityRole="header">
+          {exercise.name}
+        </Text>
         <Text style={styles.exerciseMeta}>
           {exercise.targetSets} {exercise.targetSets === 1 ? 'Set' : 'Sets'} ·{' '}
           {exercise.logType === 'duration' ? 'Target: ' : 'Reps: '}
@@ -236,14 +240,19 @@ export default function WorkoutLogScreen() {
         {exercise.tips && <Text style={styles.tips}>{exercise.tips}</Text>}
         {last && <Text style={styles.lastTime}>Last time: {formatLastSets(last.sets, units)}</Text>}
         <View style={styles.notesWrap}>
-          <WorkoutNotes uid={user?.uid} workoutId={template.id} />
+          <ExerciseNotes uid={user?.uid} exerciseName={exercise.name} />
         </View>
 
         <View style={styles.restRow}>
           {restRemaining != null ? (
             <>
               <Text style={styles.restCountdown}>Rest {formatTime(restRemaining)}</Text>
-              <Pressable onPress={() => setRestEndsAt(null)} hitSlop={8}>
+              <Pressable
+                onPress={() => setRestEndsAt(null)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Skip rest"
+              >
                 <Text style={styles.restSkip}>Skip</Text>
               </Pressable>
             </>
@@ -254,6 +263,7 @@ export default function WorkoutLogScreen() {
                 <Pressable
                   key={sec}
                   style={styles.restPill}
+                  hitSlop={8}
                   onPress={() => setRestEndsAt(Date.now() + sec * 1000)}
                   accessibilityRole="button"
                   accessibilityLabel={`Start ${sec} second rest`}
@@ -284,6 +294,7 @@ export default function WorkoutLogScreen() {
               <TextInput
                 style={styles.input}
                 keyboardType="number-pad"
+                accessibilityLabel={`Set ${i + 1} seconds`}
                 placeholder={last?.sets[i]?.durationSeconds?.toString() ?? exercise.targetRepsLabel}
                 placeholderTextColor={colors.textMuted}
                 value={set.durationSeconds?.toString() ?? ''}
@@ -294,6 +305,7 @@ export default function WorkoutLogScreen() {
                 <TextInput
                   style={styles.input}
                   keyboardType="number-pad"
+                  accessibilityLabel={`Set ${i + 1} reps`}
                   placeholder={last?.sets[i]?.reps?.toString() ?? 'reps'}
                   placeholderTextColor={colors.textMuted}
                   value={set.reps?.toString() ?? ''}
@@ -303,6 +315,7 @@ export default function WorkoutLogScreen() {
                   <TextInput
                     style={styles.input}
                     keyboardType="decimal-pad"
+                    accessibilityLabel={`Set ${i + 1} weight in ${weightUnit(units)}`}
                     placeholder={
                       last?.sets[i]?.weight != null
                         ? String(lbToDisplay(last.sets[i].weight!, units))
@@ -397,11 +410,11 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.primary,
     borderRadius: radii.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
   },
   restPillText: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.small },
-  restCountdown: { color: colors.accentFlame, fontWeight: '800', fontSize: typography.sizes.md },
+  restCountdown: { color: colors.accentFlameText, fontWeight: '800', fontSize: typography.sizes.md },
   restSkip: { color: colors.textMuted, fontWeight: '600', fontSize: typography.sizes.small },
   setsHeader: { flexDirection: 'row', marginBottom: spacing.sm, gap: spacing.md },
   setsHeaderLabel: { flex: 1, textAlign: 'center', color: colors.textMuted, fontSize: typography.sizes.small },
@@ -419,7 +432,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   motivation: {
     textAlign: 'center',
-    color: colors.accentFlame,
+    color: colors.accentFlameText,
     fontWeight: '800',
     fontSize: typography.sizes.md,
     marginTop: spacing.lg,

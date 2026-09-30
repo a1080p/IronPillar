@@ -6,7 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { FlameIcon, GymIcon } from '../../../components/icons/BrandIcons';
 import { WorkoutHeader } from '../../../components/WorkoutHeader';
-import { WorkoutNotes } from '../../../components/WorkoutNotes';
+import { ExerciseNotes } from '../../../components/ExerciseNotes';
 import { radii, spacing, typography } from '../../../constants/theme';
 import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { useWorkout } from '../../../hooks/useWorkout';
@@ -73,7 +73,9 @@ export default function WorkoutDetailScreen() {
     <SafeAreaView style={styles.container}>
       <WorkoutHeader />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.title}>{template.name}</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          {template.name}
+        </Text>
 
         {showBanner && (
           <View style={[styles.banner, generated !== '1' && styles.bannerWarn]}>
@@ -120,16 +122,14 @@ export default function WorkoutDetailScreen() {
         {isOwnCustom && (
           <Pressable
             style={styles.editLink}
+            hitSlop={12}
+            accessibilityRole="button"
             onPress={() => router.push(`/workout/${template.id}/edit`)}
           >
             <Ionicons name="create-outline" size={16} color={colors.primary} />
             <Text style={styles.editLinkText}>Edit Details</Text>
           </Pressable>
         )}
-
-        <View style={styles.notesWrap}>
-          <WorkoutNotes uid={user?.uid} workoutId={template.id} showPreview />
-        </View>
 
         <View style={styles.tabs}>
           <TabButton label="Overview" active={tab === 'overview'} onPress={() => setTab('overview')} />
@@ -154,6 +154,7 @@ export default function WorkoutDetailScreen() {
                   {ex.targetRepsLabel}
                 </Text>
                 {ex.tips ? <Text style={styles.exerciseTip}>{ex.tips}</Text> : null}
+                <ExerciseNotes uid={user?.uid} exerciseName={ex.name} compact />
               </View>
             ))}
           </>
@@ -195,7 +196,13 @@ function TabButton({ label, active, onPress }: { label: string; active: boolean;
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   return (
-    <Text onPress={onPress} style={[styles.tabLabel, active && styles.tabLabelActive]}>
+    <Text
+      onPress={onPress}
+      style={[styles.tabLabel, active && styles.tabLabelActive]}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
+    >
       {label} {'>'}
     </Text>
   );
@@ -249,7 +256,6 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.xs,
   },
   equipmentSummaryText: { color: colors.text, fontSize: typography.sizes.small, lineHeight: 18 },
-  notesWrap: { marginBottom: spacing.lg },
   editLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.lg },
   editLinkText: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.small },
   overview: { color: colors.text, lineHeight: 21, marginBottom: spacing.lg },

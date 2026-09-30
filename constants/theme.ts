@@ -9,6 +9,7 @@ export const lightColors: Record<
   | 'primary'
   | 'primaryPressed'
   | 'accentFlame'
+  | 'accentFlameText'
   | 'border'
   | 'surfaceMuted'
   | 'divider'
@@ -25,11 +26,15 @@ export const lightColors: Record<
   primary: '#3D4FEA',
   primaryPressed: '#2E3DBE',
   accentFlame: '#FF8A00',
+  // The flame orange fails contrast as text on a light surface (2.4:1), so
+  // text uses this darker shade (5.6:1 on white). Fills and icons keep
+  // accentFlame.
+  accentFlameText: '#A84E00',
   border: '#3D4FEA',
   surfaceMuted: '#F2F2F2',
   divider: '#E4E4E4',
-  success: '#FF8A00',
-  danger: '#E5484D',
+  success: '#A84E00',
+  danger: '#C4363B',
   warningBg: '#FFF1E0',
 };
 
@@ -44,6 +49,7 @@ export const darkColors: typeof lightColors = {
   primary: '#5B6AF0',
   primaryPressed: '#4650C4',
   accentFlame: '#FF9C33',
+  accentFlameText: '#FF9C33',
   border: '#5B6AF0',
   surfaceMuted: '#1E1E26',
   divider: '#2C2C36',

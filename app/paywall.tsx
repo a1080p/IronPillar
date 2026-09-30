@@ -147,7 +147,7 @@ function BuiltInPaywall() {
         {isPro ? (
           // Pro users get Customer Center (manage/cancel, restore, refunds)
           // instead of the pricing cards.
-          <Text style={styles.manageLink} onPress={() => presentCustomerCenter()}>
+          <Text style={styles.manageLink} accessibilityRole="button" onPress={() => presentCustomerCenter()}>
             Manage subscription
           </Text>
         ) : (
@@ -225,14 +225,14 @@ function BuiltInPaywall() {
             loading={purchasing}
             disabled={loading || restoring}
           />
-          <Text style={styles.restoreLink} onPress={handleRestore}>
+          <Text style={styles.restoreLink} accessibilityRole="button" onPress={handleRestore}>
             {restoring ? 'Restoring...' : 'Restore Purchases'}
           </Text>
           <View style={styles.legalLinks}>
-            <Text style={styles.legalLink} onPress={() => Linking.openURL('https://www.ironpillar.app/terms')}>
+            <Text style={styles.legalLink} accessibilityRole="link" onPress={() => Linking.openURL('https://www.ironpillar.app/terms')}>
               Terms of Use
             </Text>
-            <Text style={styles.legalLink} onPress={() => Linking.openURL('https://www.ironpillar.app/privacy')}>
+            <Text style={styles.legalLink} accessibilityRole="link" onPress={() => Linking.openURL('https://www.ironpillar.app/privacy')}>
               Privacy Policy
             </Text>
           </View>

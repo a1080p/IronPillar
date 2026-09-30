@@ -25,7 +25,7 @@ import { formatWeight } from '../lib/units';
 import type { CompletionResult, PersonalRecordResult } from '../lib/workoutCompletion';
 import type { Badge } from '../types/models';
 
-const TROPHY_GOLD = '#D9A514';
+const TROPHY_GOLD = '#A87B00';
 
 function earnedBadges(result: CompletionResult): Badge[] {
   const ids = result.badgesEarned ?? (result.badgeEarnedId ? [result.badgeEarnedId] : []);
@@ -405,7 +405,7 @@ const getStyles = (colors: ThemeColors) =>
     levelNumber: { color: colors.textOnDark, fontWeight: '800', fontSize: 76, lineHeight: 84 },
     levelTextWrap: { alignItems: 'center', alignSelf: 'stretch', marginTop: spacing.md },
     kicker: {
-      color: colors.accentFlame,
+      color: colors.accentFlameText,
       fontWeight: '800',
       letterSpacing: 3,
       fontSize: typography.sizes.small,
@@ -472,7 +472,7 @@ const getStyles = (colors: ThemeColors) =>
     recordList: { alignSelf: 'stretch', marginTop: spacing.md, gap: spacing.md },
     recordRow: { alignItems: 'center' },
     recordName: { color: colors.text, fontWeight: '700' },
-    recordValue: { color: colors.accentFlame, fontWeight: '800', fontSize: typography.sizes.lg },
+    recordValue: { color: colors.accentFlameText, fontWeight: '800', fontSize: typography.sizes.lg },
     recordDetail: { color: colors.textMuted, fontSize: typography.sizes.small, textAlign: 'center' },
     popupButton: { alignSelf: 'stretch', marginTop: spacing.lg },
   });

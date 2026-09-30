@@ -71,6 +71,7 @@ export default function SocialScreen() {
             <TextInput
               style={styles.input}
               placeholder="username"
+              accessibilityLabel="Friend's username"
               placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
               value={username}

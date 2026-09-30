@@ -198,7 +198,7 @@ const getStyles = (colors: ThemeColors) =>
     lineLabel: { fontWeight: '700', color: colors.text },
     lineDetail: { color: colors.textMuted, fontSize: typography.sizes.small },
     lineValue: { fontWeight: '800', color: colors.text, fontSize: typography.sizes.body },
-    accent: { color: colors.accentFlame },
+    accent: { color: colors.accentFlameText },
     totalRow: {
       flexDirection: 'row',
       alignItems: 'center',

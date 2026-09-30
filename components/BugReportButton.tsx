@@ -81,13 +81,18 @@ export function BugReportButton({ uid }: { uid: string }) {
           style={styles.backdrop}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-        <Pressable style={styles.backdropTouch} onPress={() => setOpen(false)}>
+        <Pressable
+          style={styles.backdropTouch}
+          onPress={() => setOpen(false)}
+          accessibilityLabel="Close report form"
+        >
           {/* Tapping inside the card (but outside the input/chips/buttons)
               only dismisses the keyboard, not the whole modal — previously
               the only way to get the keyboard out of the way was the
               backdrop tap above, which closed the report entirely. */}
           <Pressable
             style={styles.card}
+            accessible={false}
             onPress={(e) => {
               e.stopPropagation();
               Keyboard.dismiss();
@@ -102,6 +107,9 @@ export function BugReportButton({ uid }: { uid: string }) {
                   key={c.value}
                   onPress={() => setCategory(c.value)}
                   style={[styles.chip, category === c.value && styles.chipSelected]}
+                  accessibilityRole="radio"
+                  accessibilityLabel={c.label}
+                  accessibilityState={{ checked: category === c.value }}
                 >
                   <Text style={[styles.chipLabel, category === c.value && styles.chipLabelSelected]}>
                     {c.label}
@@ -124,6 +132,7 @@ export function BugReportButton({ uid }: { uid: string }) {
             <View style={styles.actions}>
               <Pressable
                 style={[styles.button, styles.cancelButton]}
+                accessibilityRole="button"
                 onPress={() => setOpen(false)}
                 disabled={submitting}
               >
@@ -131,6 +140,9 @@ export function BugReportButton({ uid }: { uid: string }) {
               </Pressable>
               <Pressable
                 style={[styles.button, styles.submitButton]}
+                accessibilityRole="button"
+                accessibilityLabel="Submit report"
+                accessibilityState={{ busy: submitting }}
                 onPress={handleSubmit}
                 disabled={submitting}
               >
