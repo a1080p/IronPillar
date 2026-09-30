@@ -4,6 +4,23 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-30 (later): Badges, level-ups, PR trophies, workout notes, Live Activities, left-running reminders
+
+Build #6 was never started, so all of this can go into it (94b59e7).
+
+- **Badges:** 51 badges in 8 groups (workouts, streaks, levels, personal records, strength volume, distance, time, habits), each with its own icon and a bronze/silver/gold/platinum ring. Awarded only by `completeWorkout` from lifetime totals kept in the new server-only `userStats/{uid}` doc (rebuilt from history the first time, and after a log is deleted). Rules live in `functions/src/achievements.ts`; names/icons in `data/badges.ts` (ids must match). New `/badges` Collection screen; Profile shows the newest 8.
+- **Personal records:** best estimated 1RM per exercise. The first time an exercise is logged sets a baseline; beating it later is a PR. The completion screen pops up a trophy listing them.
+- **Level-up screen:** shown after the summary when a workout crosses a level, with the level badge (every 5 levels, then 40 and 50). `completeWorkout` returns `levelBefore`/`levelAfter`, `personalRecords`, `badgesEarned` and now writes `level`.
+- **Workout notes:** "Add notes for this workout" on the workout page and while logging, stored at `users/{uid}/workoutNotes/{workoutId}` (owner-only rule, 2000 chars). Removed on account deletion.
+- **Live Activity** (`expo-widgets` + `@expo/ui`, `widgets/WorkoutActivity.tsx`, `lib/liveActivity.ts`): lock screen / Dynamic Island shows the workout timer plus current exercise and set (and rest countdown) for strength, or distance and average pace for outdoor. Outdoor updates come from the background location task. Adds a widget extension target (`com.aidand510.ironpillar.ExpoWidgetsTarget`) and app group, so the next EAS build has to create credentials for it.
+- **Left-running reminders** (`lib/workoutWatchdog.ts`): strength nudges at 2x the expected length (min 75 min) and an hour later; outdoor nudges after 15 min without ~40 m of movement, at 3 hours, and 20 min into a pause. All cancelled when the workout ends.
+- **Recommendations:** Home no longer suggests sport-specific workouts (basketball, tennis, soccer, golf, climbing); they remain in Browse.
+- **Polish:** logo splash on launch, button press spring, animated progress bars, Edit Profile's Save button pinned to the bottom once something changes.
+- **Deployed:** Firestore rules and all functions. Older app builds keep working (they read only `badgeEarnedId`).
+- **Verified:** app + functions typecheck; achievements logic unit-checked in Node; the widget compiles through the Expo babel preset; `expo prebuild` generates the widget target.
+
+---
+
 ## 2026-09-30: Submission prep: business side Active; "coming soon" sign-in alert removed
 
 - **App Store Connect Business:** Paid Apps Agreement, bank account, W-9, and Digital Services Act status are all Active (owner screenshot).
