@@ -4,6 +4,16 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-09-30 (night): Verification emails reach any address; friend profiles; badge details
+
+- **Verification codes only reached the owner's email.** Cause: `sendVerificationCode` sent from Resend's shared `onboarding@resend.dev`, which only delivers to the Resend account owner. The owner verified `ironpillar.app` in Resend; the sender is now `Iron Pillar <no-reply@ironpillar.app>` (deployed). A test send from that address to Resend's test inbox was accepted. Send failures now show a friendly message; the provider error is logged server-side. The Resend key is send-only, so domain status can't be read from the API.
+- **Friend profiles** (`getFriendProfile`, friends only; `/friend/[uid]`): level, current/longest streak, workouts, PRs, total lifted, distance, training time and the full badge collection. Reached from a new Friends list on Social and by tapping a friend's feed item.
+- **Badge details** (`components/BadgeList.tsx`): tapping any badge shows how it's unlocked, the date earned, and the score behind it, with progress toward locked ones. `userStats/{uid}` is now owner-readable. Badge catalog entries carry `metric` + `threshold` generated from the server rules.
+- **Bug report** moved off the floating button into a "..." menu in every header (and on the workout summary and outdoor tracking screens).
+- **Not yet tested on the simulator:** friend profile, badge detail sheet, the new header menu.
+
+---
+
 ## 2026-09-30 (evening): Notes per exercise; UI and accessibility pass
 
 - **Notes are per exercise, not per workout.** Stored at `users/{uid}/exerciseNotes/{slug of exercise name}`, so a note on Leg Extension shows wherever Leg Extension appears. Each exercise row on the workout page and each step while logging shows the note (or "Add notes for this exercise"). The earlier per-workout `workoutNotes` collection is gone from the app and rules; account deletion clears both.

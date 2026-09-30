@@ -29,11 +29,11 @@ const db = getFirestore();
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
 
 // Set with: firebase functions:secrets:set RESEND_API_KEY
-// Get a free key at https://resend.com. Resend's shared "onboarding@resend.dev"
-// sender only delivers to the Resend account owner's own address; every other
-// address is rejected. Real users need a verified domain as the sender.
+// Get a key at https://resend.com. Sends from ironpillar.app, which is
+// verified in Resend (DNS records added 2026-09-30). Resend's shared
+// onboarding@resend.dev sender only delivers to the account owner's address.
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
-const VERIFICATION_EMAIL_FROM = 'Iron Pillar <onboarding@resend.dev>';
+const VERIFICATION_EMAIL_FROM = 'Iron Pillar <no-reply@ironpillar.app>';
 
 // Set with: firebase functions:secrets:set REVENUECAT_SECRET_KEY
 // Get it from the RevenueCat dashboard (Project Settings > API Keys > Secret
