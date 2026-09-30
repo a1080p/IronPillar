@@ -40,6 +40,23 @@ const QUICK_START_MAX_MINUTES = 30;
 const SKILL_EXACT_MATCH_BONUS = 1.5;
 const SKILL_ADJACENT_MATCH_BONUS = 0.5;
 
+// Workouts built around playing a specific sport (they need a court, a
+// course, or a wall) stay in the Browse tab for anyone who wants them, but are
+// never suggested on the Home screen.
+const SPORT_SPECIFIC_WORKOUT_IDS = new Set([
+  'basketball-skills-conditioning',
+  'tennis-cardio-drills',
+  'soccer-skills-conditioning',
+  'golf-fitness-mobility',
+  'rock-climbing-session',
+]);
+const SPORT_NAME_PATTERN =
+  /\b(golf|tennis|basketball|soccer|football|baseball|softball|volleyball|hockey|pickleball|rugby|cricket|lacrosse|badminton|climbing)\b/i;
+
+export function isSportSpecific(template: Pick<WorkoutTemplate, 'id' | 'name'>) {
+  return SPORT_SPECIFIC_WORKOUT_IDS.has(template.id) || SPORT_NAME_PATTERN.test(template.name);
+}
+
 function templateKeys(template: WorkoutTemplate): PreferenceKey[] {
   const keys: PreferenceKey[] = [...template.tags];
   if (template.browseCategory) keys.push(template.browseCategory as PreferenceKey);
@@ -154,7 +171,7 @@ export function pickRecommendedWorkout(
 ): WorkoutTemplate | undefined {
   // `templates` here is only presets/quick-starts/browse (custom workouts are
   // a separate type, already front-and-center under "My Workouts").
-  const discoverable = templates;
+  const discoverable = templates.filter((t) => !isSportSpecific(t));
   if (discoverable.length === 0) return undefined;
 
   if (logs.length === 0) {
@@ -208,7 +225,8 @@ export function pickQuickStartWorkouts(
   excludeIds: string[] = []
 ): WorkoutTemplate[] {
   const pool = templates.filter(
-    (t) => t.durationMinutes <= QUICK_START_MAX_MINUTES && !excludeIds.includes(t.id)
+    (t) =>
+      t.durationMinutes <= QUICK_START_MAX_MINUTES && !excludeIds.includes(t.id) && !isSportSpecific(t)
   );
   if (pool.length === 0) return [];
 

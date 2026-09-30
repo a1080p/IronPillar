@@ -12,11 +12,24 @@ export interface XpBreakdown {
   baseStreakBonus: number; // before the Pro multiplier
 }
 
+export interface PersonalRecordResult {
+  exerciseName: string;
+  weight: number; // lb
+  reps: number;
+  estimatedOneRepMax: number;
+  previousOneRepMax: number;
+}
+
 export interface CompletionResult {
   xpEarned: number;
   streakBonus: number; // after the Pro multiplier
   streakCountAfter: number;
   badgeEarnedId: string | null;
+  // The three below are absent from older functions.
+  badgesEarned?: string[]; // every badge this workout unlocked
+  personalRecords?: PersonalRecordResult[];
+  levelBefore?: number;
+  levelAfter?: number;
   xpMultiplier?: number; // 2 for Pro subscribers; absent from older functions
   breakdown?: XpBreakdown; // absent from older functions
   dayMinutes?: number; // today's combined workout minutes, this one included

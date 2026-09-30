@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { FlameIcon, GymIcon } from '../../../components/icons/BrandIcons';
 import { WorkoutHeader } from '../../../components/WorkoutHeader';
+import { WorkoutNotes } from '../../../components/WorkoutNotes';
 import { radii, spacing, typography } from '../../../constants/theme';
 import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { useWorkout } from '../../../hooks/useWorkout';
@@ -126,6 +127,10 @@ export default function WorkoutDetailScreen() {
           </Pressable>
         )}
 
+        <View style={styles.notesWrap}>
+          <WorkoutNotes uid={user?.uid} workoutId={template.id} showPreview />
+        </View>
+
         <View style={styles.tabs}>
           <TabButton label="Overview" active={tab === 'overview'} onPress={() => setTab('overview')} />
           <TabButton label="Workout Tips" active={tab === 'tips'} onPress={() => setTab('tips')} />
@@ -244,6 +249,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.xs,
   },
   equipmentSummaryText: { color: colors.text, fontSize: typography.sizes.small, lineHeight: 18 },
+  notesWrap: { marginBottom: spacing.lg },
   editLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.lg },
   editLinkText: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.small },
   overview: { color: colors.text, lineHeight: 21, marginBottom: spacing.lg },

@@ -1,5 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
-import { useMemo } from 'react';
+import { ActivityIndicator, Animated, Pressable, StyleSheet, Text } from 'react-native';
+import { useMemo, useRef } from 'react';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 
@@ -17,9 +17,16 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading 
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const isDisabled = disabled || loading;
+  // Buttons give slightly under the finger and spring back.
+  const scale = useRef(new Animated.Value(1)).current;
+  const springTo = (toValue: number) =>
+    Animated.spring(scale, { toValue, friction: 6, tension: 220, useNativeDriver: true }).start();
   return (
+    <Animated.View style={{ transform: [{ scale }] }}>
     <Pressable
       onPress={onPress}
+      onPressIn={() => springTo(0.97)}
+      onPressOut={() => springTo(1)}
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.base,
@@ -45,6 +52,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, loading 
         </Text>
       )}
     </Pressable>
+    </Animated.View>
   );
 }
 

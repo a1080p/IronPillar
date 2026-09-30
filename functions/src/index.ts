@@ -7,6 +7,16 @@ import { defineSecret } from 'firebase-functions/params';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { randomInt } from 'node:crypto';
 import { Resend } from 'resend';
+import {
+  BADGE_NAMES,
+  STATS_VERSION,
+  applyWorkout,
+  emptyStats,
+  levelForXp,
+  qualifyingBadgeIds,
+  type StatsWorkout,
+  type UserStats,
+} from './achievements';
 
 initializeApp();
 const db = getFirestore();
@@ -73,10 +83,6 @@ const MAX_ROUTE_POINTS = 20000; // ~5.5hrs at one point/sec — well beyond any 
 // dates at once). Rate-limited, each change can pull at most one day
 // forward — the same slack an honest eastbound traveler gets.
 const MIN_TIME_ZONE_CHANGE_INTERVAL_MS = 20 * 60 * 60 * 1000;
-
-const BADGE_NAMES: Record<string, string> = {
-  'the-journey-begins': 'The Journey Begins',
-};
 
 interface LoggedSet {
   reps?: number;
@@ -237,17 +243,16 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
   const userRef = db.collection('users').doc(uid);
   const logRef = db.collection('workoutLogs').doc(uid).collection('logs').doc();
   const friendsRef = db.collection('friendships').doc(uid).collection('friends');
+  const badgesRef = userRef.collection('badges');
+  const statsRef = db.collection('userStats').doc(uid);
+  const logsRef = db.collection('workoutLogs').doc(uid).collection('logs');
 
   const result = await db.runTransaction(async (tx) => {
-    const firstBadgeRef = db
-      .collection('users')
-      .doc(uid)
-      .collection('badges')
-      .doc('the-journey-begins');
-    const [userSnap, friendsSnap, firstBadgeSnap] = await Promise.all([
+    const [userSnap, friendsSnap, badgesSnap, statsSnap] = await Promise.all([
       tx.get(userRef),
       tx.get(friendsRef),
-      tx.get(firstBadgeRef),
+      tx.get(badgesRef),
+      tx.get(statsRef),
     ]);
     if (!userSnap.exists) {
       throw new HttpsError('failed-precondition', 'User profile does not exist yet.');
@@ -331,7 +336,65 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     const xpEarned = (baseXp + baseStreakBonus) * xpMultiplier;
     const streakBonus = baseStreakBonus * xpMultiplier;
 
-    const badgeEarnedId = firstBadgeSnap.exists ? null : 'the-journey-begins';
+    // Lifetime totals live in userStats/{uid}. The first time (or after a
+    // deleted log reset them) they're rebuilt from the full history, without
+    // the GPS routes.
+    const storedStats = statsSnap.data() as UserStats | undefined;
+    let stats: UserStats;
+    if (storedStats && storedStats.version === STATS_VERSION) {
+      stats = storedStats;
+    } else {
+      stats = emptyStats();
+      const historySnap = await tx.get(
+        logsRef
+          .orderBy('completedAt', 'asc')
+          .select('workoutId', 'workoutSource', 'completedAt', 'durationSeconds', 'exercises', 'distanceMeters')
+      );
+      for (const doc of historySnap.docs) {
+        const past = doc.data() as {
+          workoutId?: string;
+          workoutSource?: string;
+          completedAt?: string;
+          durationSeconds?: number;
+          exercises?: ExerciseLog[];
+          distanceMeters?: number;
+        };
+        const completedAt = new Date(past.completedAt ?? '');
+        if (Number.isNaN(completedAt.getTime())) continue;
+        stats = applyWorkout(
+          stats,
+          {
+            workoutId: past.workoutId ?? doc.id,
+            isOutdoor: past.workoutSource === 'outdoor',
+            completedAt,
+            durationSeconds: past.durationSeconds ?? 0,
+            exercises: Array.isArray(past.exercises) ? past.exercises : [],
+            distanceMeters: past.distanceMeters ?? 0,
+          },
+          timeZone
+        ).stats;
+      }
+    }
+    const thisWorkout: StatsWorkout = {
+      workoutId: workout.id,
+      isOutdoor: workout.category === 'outdoor',
+      completedAt: now,
+      durationSeconds,
+      exercises,
+      distanceMeters: distanceMeters ?? 0,
+    };
+    const applied = applyWorkout(stats, thisWorkout, timeZone);
+    const personalRecords = applied.personalRecords;
+
+    const levelBefore = levelForXp(profile.xp ?? 0);
+    const levelAfter = levelForXp((profile.xp ?? 0) + xpEarned);
+
+    const alreadyEarned = new Set(badgesSnap.docs.map((d) => d.id));
+    const badgesEarned = qualifyingBadgeIds(applied.stats, longestStreak, levelAfter).filter(
+      (id) => !alreadyEarned.has(id)
+    );
+    // Older app builds only read this single id.
+    const badgeEarnedId = badgesEarned[0] ?? null;
     const hitStreakMilestone =
       dayQualifiesNow && streakCountAfter > 0 && streakCountAfter % STREAK_MILESTONE_INTERVAL === 0;
 
@@ -352,6 +415,7 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
 
     tx.update(userRef, {
       xp: FieldValue.increment(xpEarned),
+      level: levelAfter,
       streakCount: streakCountAfter,
       longestStreak,
       activeDate: today,
@@ -360,9 +424,11 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
       ...(timeZoneChanged ? { timeZone, timeZoneUpdatedAt: now.toISOString() } : {}),
     });
 
-    if (badgeEarnedId) {
-      tx.set(db.collection('users').doc(uid).collection('badges').doc(badgeEarnedId), {
-        badgeId: badgeEarnedId,
+    tx.set(statsRef, applied.stats);
+
+    for (const badgeId of badgesEarned) {
+      tx.set(badgesRef.doc(badgeId), {
+        badgeId,
         earnedAt: FieldValue.serverTimestamp(),
       });
     }
@@ -384,8 +450,9 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
           workout.name
         )
       );
-      if (badgeEarnedId) {
-        const badgeName = BADGE_NAMES[badgeEarnedId] ?? badgeEarnedId;
+      // One feed item however many badges were earned at once.
+      if (badgesEarned.length === 1) {
+        const badgeName = BADGE_NAMES[badgesEarned[0]] ?? badgesEarned[0];
         tx.set(
           feedCol.doc(),
           newFeedItem(
@@ -394,6 +461,17 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
             profile.name,
             `${profile.name} earned the ${badgeName} badge!`,
             `the ${badgeName} badge`
+          )
+        );
+      } else if (badgesEarned.length > 1) {
+        tx.set(
+          feedCol.doc(),
+          newFeedItem(
+            'badge_earned',
+            uid,
+            profile.name,
+            `${profile.name} earned ${badgesEarned.length} new badges!`,
+            `${badgesEarned.length} new badges`
           )
         );
       }
@@ -416,6 +494,10 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
       streakBonus,
       streakCountAfter,
       badgeEarnedId,
+      badgesEarned,
+      personalRecords,
+      levelBefore,
+      levelAfter,
       xpMultiplier,
       breakdown: {
         exercises: exercises.length,
@@ -478,6 +560,10 @@ export const deleteWorkoutLog = onCall(async (request) => {
     }
 
     tx.delete(logRef);
+    // Lifetime totals (and personal bests) may have come from this log, so
+    // drop them; the next completed workout rebuilds them from what's left.
+    // Badges already earned are kept.
+    tx.delete(db.collection('userStats').doc(uid));
     if (userSnap.exists) tx.update(userRef, updates);
     return { deleted: true, xpRemoved: xpToRemove };
   });
@@ -671,6 +757,8 @@ export const deleteAccount = onCall(async (request) => {
   await Promise.all([
     deleteCollection(db.collection('users').doc(uid).collection('badges')),
     deleteCollection(db.collection('users').doc(uid).collection('metrics')),
+    deleteCollection(db.collection('users').doc(uid).collection('workoutNotes')),
+    db.collection('userStats').doc(uid).delete(),
     deleteCollection(db.collection('workoutLogs').doc(uid).collection('logs')),
     deleteCollection(db.collection('userWorkouts').doc(uid).collection('customWorkouts')),
     deleteCollection(db.collection('friendships').doc(uid).collection('friends')),

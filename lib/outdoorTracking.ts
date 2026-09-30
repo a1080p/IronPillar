@@ -1,7 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import type { RoutePoint } from '../types/models';
+import { formatElapsed, routeDistanceMeters } from './geo';
+import { endWorkoutActivity, startWorkoutActivity, updateWorkoutActivity } from './liveActivity';
+import { formatDistance, formatPace } from './units';
+import {
+  noteOutdoorMovement,
+  noteOutdoorPaused,
+  noteOutdoorResumed,
+  startOutdoorWatchdog,
+  stopOutdoorWatchdog,
+} from './workoutWatchdog';
+import type { OutdoorActivityType, RoutePoint, UnitSystem } from '../types/models';
 
 // Must be defined at true module top level (not inside a component or a
 // function called later) — this file is imported for its side effects at
@@ -13,6 +23,73 @@ const STORAGE_KEY = 'outdoorTracking.points';
 const STARTED_AT_KEY = 'outdoorTracking.startedAt';
 const PAUSED_MS_KEY = 'outdoorTracking.pausedMs';
 const PAUSED_AT_KEY = 'outdoorTracking.pausedAt';
+const META_KEY = 'outdoorTracking.meta';
+
+// What the session is, for the lock-screen Live Activity and the "forgot to
+// stop?" reminders. Persisted so the background task still has it after the
+// OS relaunches the app headlessly.
+export interface TrackingMeta {
+  activityType: OutdoorActivityType;
+  units: UnitSystem;
+}
+
+const ACTIVITY_TITLES: Record<OutdoorActivityType, string> = {
+  walk: 'Outdoor Walk',
+  run: 'Outdoor Run',
+  bike: 'Outdoor Bike Ride',
+};
+const ACTIVITY_LABELS: Record<OutdoorActivityType, string> = { walk: 'Walk', run: 'Run', bike: 'Ride' };
+const ACTIVITY_SYMBOLS: Record<OutdoorActivityType, string> = {
+  walk: 'figure.walk',
+  run: 'figure.run',
+  bike: 'figure.outdoor.cycle',
+};
+
+let meta: TrackingMeta | null = null;
+let lastActivityHeadline = '';
+
+async function loadMeta(): Promise<TrackingMeta | null> {
+  if (meta) return meta;
+  const raw = await AsyncStorage.getItem(META_KEY).catch(() => null);
+  if (raw) {
+    try {
+      meta = JSON.parse(raw) as TrackingMeta;
+    } catch {
+      // ignore
+    }
+  }
+  return meta;
+}
+
+// Builds the Live Activity content from the current session state.
+async function activityProps(points: RoutePoint[]) {
+  const m = await loadMeta();
+  if (!m) return null;
+  const startedAt = Number((await AsyncStorage.getItem(STARTED_AT_KEY)) ?? Date.now());
+  const pausedMs = Number((await AsyncStorage.getItem(PAUSED_MS_KEY)) ?? '0');
+  const pausedAtRaw = await AsyncStorage.getItem(PAUSED_AT_KEY);
+  const now = pausedAtRaw ? Number(pausedAtRaw) : Date.now();
+  const elapsedSeconds = Math.max(0, Math.floor((now - startedAt - pausedMs) / 1000));
+  const meters = routeDistanceMeters(points);
+  return {
+    title: ACTIVITY_TITLES[m.activityType],
+    headline: formatDistance(meters, m.units),
+    detail: `Avg pace ${formatPace(meters, elapsedSeconds, m.units)}`,
+    icon: ACTIVITY_SYMBOLS[m.activityType],
+    timerStart: startedAt + pausedMs,
+    ...(pausedAtRaw ? { pausedElapsed: formatElapsed(elapsedSeconds) } : {}),
+  };
+}
+
+async function refreshActivity(points: RoutePoint[], force = false) {
+  const props = await activityProps(points);
+  if (!props) return;
+  // From the background task, only push an update when the distance shown
+  // has actually changed.
+  if (!force && props.headline === lastActivityHeadline) return;
+  lastActivityHeadline = props.headline;
+  updateWorkoutActivity(props);
+}
 
 const LOCATION_UPDATE_OPTIONS: Location.LocationTaskOptions = {
   accuracy: Location.Accuracy.BestForNavigation,
@@ -62,6 +139,9 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   // picks this back up if the tracking screen remounts mid-run.
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(buffer)).catch(() => {});
   listeners.forEach((l) => l(buffer));
+  refreshActivity(buffer).catch(() => {});
+  const m = await loadMeta();
+  if (m) noteOutdoorMovement(newPoints[newPoints.length - 1], ACTIVITY_LABELS[m.activityType]);
 });
 
 export function subscribe(listener: Listener): () => void {
@@ -89,11 +169,14 @@ export async function requestTrackingPermissions(): Promise<boolean> {
 // start time every time. Returns the session's actual start time (ms epoch)
 // so the screen can show a correct elapsed time immediately, even after a
 // remount.
-export async function startTracking(): Promise<number> {
+export async function startTracking(sessionMeta: TrackingMeta): Promise<number> {
   const alreadyRunning = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
   if (alreadyRunning) {
     const existing = await AsyncStorage.getItem(STARTED_AT_KEY);
-    if (existing) return Number(existing);
+    if (existing) {
+      await loadMeta();
+      return Number(existing);
+    }
     // Tracking is running but we somehow never recorded a start time (should
     // not normally happen) — treat "now" as the start rather than lose the
     // session entirely.
@@ -111,6 +194,12 @@ export async function startTracking(): Promise<number> {
   if (!alreadyRunning) {
     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, LOCATION_UPDATE_OPTIONS);
   }
+  meta = sessionMeta;
+  await AsyncStorage.setItem(META_KEY, JSON.stringify(sessionMeta));
+  lastActivityHeadline = '';
+  const props = await activityProps(buffer);
+  if (props) startWorkoutActivity(props);
+  startOutdoorWatchdog(ACTIVITY_LABELS[sessionMeta.activityType]);
   return startedAt;
 }
 
@@ -119,6 +208,10 @@ export async function stopTracking(): Promise<RoutePoint[]> {
   if (isRunning) {
     await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
   }
+  endWorkoutActivity();
+  stopOutdoorWatchdog();
+  meta = null;
+  await AsyncStorage.removeItem(META_KEY);
   const finalPoints = buffer;
   buffer = [];
   hydrated = false;
@@ -138,6 +231,9 @@ export async function pauseTracking(): Promise<void> {
     await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
   }
   await AsyncStorage.setItem(PAUSED_AT_KEY, String(Date.now()));
+  await refreshActivity(buffer, true).catch(() => {});
+  const m = await loadMeta();
+  if (m) noteOutdoorPaused(ACTIVITY_LABELS[m.activityType]);
 }
 
 export async function resumeTracking(): Promise<void> {
@@ -152,6 +248,9 @@ export async function resumeTracking(): Promise<void> {
   if (!isRunning) {
     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, LOCATION_UPDATE_OPTIONS);
   }
+  await refreshActivity(buffer, true).catch(() => {});
+  const m = await loadMeta();
+  if (m) noteOutdoorResumed(ACTIVITY_LABELS[m.activityType]);
 }
 
 // Total paused duration so far (ms), plus the timestamp the current pause

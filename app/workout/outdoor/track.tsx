@@ -7,7 +7,6 @@ import { MapRoute } from '../../../components/MapRoute';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '../../../constants/theme';
 import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
-import { badges } from '../../../data/badges';
 import {
   formatElapsed,
   routeDistanceMeters,
@@ -27,6 +26,7 @@ import { noteWorkoutStarted } from '../../../lib/gymReminders';
 import type { OutdoorActivityType, RoutePoint } from '../../../types/models';
 import { useAuth } from '../../../contexts/AuthContext';
 import { XpBreakdown } from '../../../components/XpBreakdown';
+import { CelebrationFlow, hasCelebrations } from '../../../components/Celebrations';
 import { formatDistance, formatPace } from '../../../lib/units';
 import { useUnits } from '../../../hooks/useUnits';
 import { usePurchases } from '../../../contexts/PurchasesContext';
@@ -58,6 +58,7 @@ export default function OutdoorTrackScreen() {
   const [pausing, setPausing] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [result, setResult] = useState<CompletionResult | null>(null);
+  const [celebrating, setCelebrating] = useState(false);
   const startedAtRef = useRef<number | null>(null);
   const totalPausedMsRef = useRef(0);
   const navigation = useNavigation();
@@ -112,7 +113,7 @@ export default function OutdoorTrackScreen() {
         );
         return;
       }
-      startedAtRef.current = await startTracking();
+      startedAtRef.current = await startTracking({ activityType, units });
       noteWorkoutStarted();
       const pauseState = await getPauseState();
       totalPausedMsRef.current = pauseState.totalPausedMs;
@@ -202,7 +203,7 @@ export default function OutdoorTrackScreen() {
   };
 
   if (result) {
-    const badge = result.badgeEarnedId ? badges[result.badgeEarnedId] : null;
+    const celebrations = hasCelebrations(result);
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.summaryMapWrap}>
@@ -216,16 +217,14 @@ export default function OutdoorTrackScreen() {
             <Stat label="Avg Pace" value={formatPace(distanceMeters, elapsedSeconds, units)} />
           </View>
           <XpBreakdown result={result} />
-          {badge && (
-            <View style={styles.badgeRow}>
-              <Ionicons name="ribbon" size={22} color={colors.primary} />
-              <Text style={styles.badgeText}>Earned: {badge.name}</Text>
-            </View>
-          )}
         </ScrollView>
         <View style={styles.footer}>
-          <Button label="Done" onPress={() => router.replace('/')} />
+          <Button
+            label={celebrations ? 'Next' : 'Done'}
+            onPress={() => (celebrations ? setCelebrating(true) : router.replace('/'))}
+          />
         </View>
+        <CelebrationFlow result={result} visible={celebrating} onDone={() => router.replace('/')} />
       </SafeAreaView>
     );
   }
@@ -355,8 +354,6 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   xpLine: { fontSize: typography.sizes.xl, fontWeight: '800', color: colors.accentFlame },
   xpUnit: { fontSize: typography.sizes.body, fontWeight: '600' },
   proXp: { color: colors.accentFlame, fontWeight: '700', fontSize: typography.sizes.small },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  badgeText: { color: colors.primary, fontWeight: '700' },
   footer: {
     padding: spacing.lg,
   },

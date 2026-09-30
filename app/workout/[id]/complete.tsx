@@ -1,16 +1,15 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { radii, spacing, typography } from '../../../constants/theme';
 import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
-import { badges } from '../../../data/badges';
 import { formatVolume } from '../../../lib/units';
 import { useUnits } from '../../../hooks/useUnits';
 import { useAuth } from '../../../contexts/AuthContext';
 import { XpBreakdown } from '../../../components/XpBreakdown';
+import { CelebrationFlow, PersonalRecordPopup, hasCelebrations } from '../../../components/Celebrations';
 import type { CompletionResult } from '../../../lib/workoutCompletion';
 
 export default function WorkoutCompleteScreen() {
@@ -42,9 +41,7 @@ export default function WorkoutCompleteScreen() {
     }>();
   const { profile } = useAuth();
   const units = useUnits();
-  const [showBadge, setShowBadge] = useState(false);
-
-  const badge = badgeEarnedId ? badges[badgeEarnedId] : null;
+  const [celebrating, setCelebrating] = useState(false);
 
   // Full server result (with the per-source XP breakdown). Older call sites
   // only pass the flat params, so rebuild a minimal result from those.
@@ -76,31 +73,12 @@ export default function WorkoutCompleteScreen() {
     setsNum > 0 ? `${setsNum} sets` : null,
   ].filter(Boolean) as string[];
 
+  // Level-up and badge screens (if any) come between this summary and Home.
+  const celebrations = hasCelebrations(result);
   const handleNext = () => {
-    if (badge && !showBadge) {
-      setShowBadge(true);
-    } else {
-      router.replace('/');
-    }
+    if (celebrations) setCelebrating(true);
+    else router.replace('/');
   };
-
-  if (showBadge && badge) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <Text style={styles.congrats}>Congrats!</Text>
-          <Text style={styles.subheading}>You Earned a Badge</Text>
-          <View style={styles.badgeCircle}>
-            <Ionicons name="ribbon" size={56} color={colors.primary} />
-          </View>
-          <Text style={styles.badgeName}>{badge.name}</Text>
-        </View>
-        <View style={styles.footer}>
-          <Button label="Done" onPress={() => router.replace('/')} />
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -125,15 +103,16 @@ export default function WorkoutCompleteScreen() {
         </Text>
       </ScrollView>
       <View style={styles.footer}>
-        <Button label={badge ? 'Next' : 'Done'} onPress={handleNext} />
+        <Button label={celebrations ? 'Next' : 'Done'} onPress={handleNext} />
       </View>
+      <PersonalRecordPopup records={result.personalRecords} />
+      <CelebrationFlow result={result} visible={celebrating} onDone={() => router.replace('/')} />
     </SafeAreaView>
   );
 }
 
 const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   scroll: { flexGrow: 1, alignItems: 'center', padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md },
   heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, textAlign: 'center' },
   subheading: { fontSize: typography.sizes.md, color: colors.primary, marginTop: spacing.xs },
@@ -156,23 +135,5 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   summaryChipText: { color: colors.text, fontSize: typography.sizes.small, fontWeight: '600' },
-  congrats: { fontSize: typography.sizes.xl, fontWeight: '800', color: colors.primary, textAlign: 'center' },
-  badgeCircle: {
-    width: 140,
-    height: 140,
-    borderRadius: radii.pill,
-    borderWidth: 3,
-    borderColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.xl,
-    marginBottom: spacing.lg,
-  },
-  badgeName: {
-    fontSize: typography.sizes.md,
-    fontWeight: '700',
-    color: colors.primary,
-    textDecorationLine: 'underline',
-  },
   footer: { padding: spacing.lg },
 });

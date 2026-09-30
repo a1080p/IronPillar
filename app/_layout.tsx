@@ -5,11 +5,16 @@ import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
+import { AnimatedSplash } from '../components/AnimatedSplash';
 import { BugReportButton } from '../components/BugReportButton';
 import { ReminderSync } from '../components/ReminderSync';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { PurchasesProvider } from '../contexts/PurchasesContext';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
+import { endWorkoutActivity } from '../lib/liveActivity';
+import { LOCATION_TASK_NAME } from '../lib/outdoorTracking';
+import { stopOutdoorWatchdog, stopStrengthWatchdog } from '../lib/workoutWatchdog';
 
 function RootNavigation() {
   const { user, hasOnboarded, initializing } = useAuth();
@@ -38,6 +43,22 @@ function RootNavigation() {
     }
   }, [user, hasOnboarded, initializing, segments]);
 
+  // A fresh launch can't be mid-way through a strength workout (its state
+  // lives in memory), so clear any lock-screen activity or "still working
+  // out?" reminder a killed session left behind. An outdoor session survives
+  // a relaunch, so leave everything alone while one is running.
+  useEffect(() => {
+    Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME)
+      .catch(() => false)
+      .then((trackingOutdoors) => {
+        stopStrengthWatchdog();
+        if (!trackingOutdoors) {
+          endWorkoutActivity();
+          stopOutdoorWatchdog();
+        }
+      });
+  }, []);
+
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
@@ -48,6 +69,7 @@ function RootNavigation() {
           a report to, and won't hit real app screens yet anyway. */}
       {user && hasOnboarded ? <BugReportButton uid={user.uid} /> : null}
       {user && hasOnboarded ? <ReminderSync uid={user.uid} /> : null}
+      <AnimatedSplash ready={!initializing} />
     </>
   );
 }

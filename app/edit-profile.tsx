@@ -170,9 +170,13 @@ export default function EditProfileScreen() {
           keyboardType="number-pad"
           maxLength={10}
         />
-
-        <Button label="Save Changes" onPress={handleSave} loading={saving} />
       </ScrollView>
+      {/* Pinned above the keyboard, and only once there's something to save. */}
+      {isDirty && (
+        <View style={styles.footer}>
+          <Button label="Save Changes" onPress={handleSave} loading={saving} />
+        </View>
+      )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -190,4 +194,11 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   avatarWrap: { alignItems: 'center', gap: spacing.md },
   link: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.body },
   linkMuted: { color: colors.textMuted },
+  footer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.divider,
+    backgroundColor: colors.background,
+  },
 });

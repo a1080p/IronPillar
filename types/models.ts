@@ -126,11 +126,25 @@ export interface WorkoutLog {
   route?: RoutePoint[];
 }
 
+export type BadgeCategory =
+  | 'workouts'
+  | 'streaks'
+  | 'levels'
+  | 'records'
+  | 'strength'
+  | 'distance'
+  | 'time'
+  | 'habits';
+
+export type BadgeTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+
 export interface Badge {
   id: string;
   name: string;
   description: string;
-  iconKey: string;
+  iconKey: string; // an Ionicons glyph name
+  category: BadgeCategory;
+  tier: BadgeTier;
 }
 
 export interface EarnedBadge {

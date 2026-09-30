@@ -18,6 +18,8 @@ import { connectWhoop, disconnectWhoop, isWhoopConfigured, syncWhoop } from '../
 import { usePurchases } from '../../contexts/PurchasesContext';
 import { useAppleHealth } from '../../hooks/useAppleHealth';
 import { ProBadge, ProLockCard } from '../../components/ProLock';
+import { BadgeMedal } from '../../components/BadgeMedal';
+import { BADGE_LIST } from '../../data/badges';
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
@@ -77,20 +79,26 @@ export default function ProfileScreen() {
           <Stat icon={<GroupIcon size={16} color={colors.primary} />} value={profile.friendCount} />
         </View>
 
-        <Text style={styles.sectionHeading}>Collection</Text>
+        <View style={styles.collectionHeadingRow}>
+          <Text style={[styles.sectionHeading, { marginBottom: 0 }]}>Collection</Text>
+          <Pressable onPress={() => router.push('/badges')} hitSlop={8} accessibilityRole="button">
+            <Text style={styles.seeAll}>
+              {earned.length}/{BADGE_LIST.length} · See all
+            </Text>
+          </Pressable>
+        </View>
         {earned.length === 0 ? (
           <Text style={styles.note}>Complete a workout to earn your first badge.</Text>
         ) : (
           <View style={styles.badgeRow}>
-            {earned.map((badge) => (
-              <View key={badge.id} style={styles.badgeItem}>
-                <View style={styles.badgeCircle}>
-                  <Ionicons name="ribbon" size={28} color={colors.primary} />
-                </View>
+            {/* Newest first; the full set lives on the Collection screen. */}
+            {[...earned].reverse().slice(0, 8).map((badge) => (
+              <Pressable key={badge.id} style={styles.badgeItem} onPress={() => router.push('/badges')}>
+                <BadgeMedal badge={badge} size={64} />
                 <Text style={styles.badgeName} numberOfLines={2}>
                   {badge.name}
                 </Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         )}
@@ -377,18 +385,14 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   sectionHeading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, marginBottom: spacing.md },
   note: { color: colors.textMuted },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
-  badgeItem: { alignItems: 'center', width: 84 },
-  badgeCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: radii.pill,
-    backgroundColor: colors.background,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
+  badgeItem: { alignItems: 'center', width: 84, gap: spacing.xs },
+  collectionHeadingRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xs,
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
   },
+  seeAll: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.small },
   badgeName: { fontSize: typography.sizes.small, color: colors.text, textAlign: 'center' },
   connectedHeadingRow: {
     flexDirection: 'row',

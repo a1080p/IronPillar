@@ -52,6 +52,16 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // A user's own free-text notes per workout (seat heights, machine
+      // settings). Private to the owner; one short text field per workout.
+      match /workoutNotes/{workoutId} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['text', 'updatedAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 2000;
+      }
+
       // User-entered BMI / body-fat history — stays client-writable.
       match /metrics/{metricId} {
         allow read, write: if isOwner(uid);
@@ -140,6 +150,12 @@ service cloud.firestore {
     match /wearableSnapshots/{uid} {
       allow read: if isOwner(uid);
       allow write: if false;
+    }
+
+    // Lifetime totals and personal bests behind badges — read and written
+    // only by the completeWorkout/deleteWorkoutLog Cloud Functions.
+    match /userStats/{uid} {
+      allow read, write: if false;
     }
 
     // Everything else is denied until its collection is built (build steps 9+)

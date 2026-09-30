@@ -86,7 +86,8 @@
           "background": false
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-widgets"
     ],
     "experiments": {
       "typedRoutes": true

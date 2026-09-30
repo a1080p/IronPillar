@@ -5,6 +5,7 @@ import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { WorkoutHeader } from '../../../components/WorkoutHeader';
+import { WorkoutNotes } from '../../../components/WorkoutNotes';
 import { radii, spacing, typography } from '../../../constants/theme';
 import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { motivationalMessages } from '../../../constants/motivation';
@@ -12,6 +13,8 @@ import { useWorkout } from '../../../hooks/useWorkout';
 import { useAuth } from '../../../contexts/AuthContext';
 import { completeWorkout } from '../../../lib/workoutCompletion';
 import { noteWorkoutStarted } from '../../../lib/gymReminders';
+import { endWorkoutActivity, startWorkoutActivity, updateWorkoutActivity } from '../../../lib/liveActivity';
+import { startStrengthWatchdog, stopStrengthWatchdog } from '../../../lib/workoutWatchdog';
 import { summarizeExerciseLogs } from '../../../lib/workoutStats';
 import { lastPerformance } from '../../../lib/insights';
 import { displayToLb, lbToDisplay, weightUnit } from '../../../lib/units';
@@ -100,6 +103,43 @@ export default function WorkoutLogScreen() {
     setSets(Array.from({ length: exercise.targetSets }, () => ({})));
     setWeightText({});
   }, [exercise?.id]);
+
+  // Lock-screen Live Activity: the workout timer, the current exercise and
+  // set, and the rest countdown. The set shown is the first one not filled in.
+  const firstEmptySet = sets.findIndex((set) => set.reps == null && set.durationSeconds == null);
+  const currentSet = sets.length === 0 ? 1 : firstEmptySet === -1 ? sets.length : firstEmptySet + 1;
+  const activityStarted = useRef(false);
+  useEffect(() => {
+    if (!template || !exercise) return;
+    const props = {
+      title: template.name,
+      headline: exercise.name,
+      detail: `Exercise ${exerciseIndex + 1} of ${template.exercises.length} · Set ${currentSet} of ${exercise.targetSets}`,
+      icon: 'figure.strengthtraining.traditional',
+      timerStart: startTime.current,
+      ...(restEndsAt ? { restEndsAt } : {}),
+    };
+    if (activityStarted.current) {
+      updateWorkoutActivity(props);
+    } else {
+      activityStarted.current = true;
+      startWorkoutActivity(props);
+    }
+  }, [template?.id, exercise?.id, exerciseIndex, currentSet, restEndsAt]);
+
+  // A reminder in case the workout is left running, cancelled on the way out
+  // (finished or quit) along with the Live Activity.
+  useEffect(() => {
+    if (!template) return;
+    startStrengthWatchdog(template.name, template.durationMinutes);
+  }, [template?.id]);
+  useEffect(
+    () => () => {
+      endWorkoutActivity();
+      stopStrengthWatchdog();
+    },
+    []
+  );
 
   const totalSeconds = (template?.durationMinutes ?? 30) * 60;
   const progress = totalSeconds > 0 ? elapsedSeconds / totalSeconds : 0;
@@ -195,6 +235,9 @@ export default function WorkoutLogScreen() {
         </Text>
         {exercise.tips && <Text style={styles.tips}>{exercise.tips}</Text>}
         {last && <Text style={styles.lastTime}>Last time: {formatLastSets(last.sets, units)}</Text>}
+        <View style={styles.notesWrap}>
+          <WorkoutNotes uid={user?.uid} workoutId={template.id} />
+        </View>
 
         <View style={styles.restRow}>
           {restRemaining != null ? (
@@ -341,6 +384,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: typography.sizes.small,
     marginBottom: spacing.md,
   },
+  notesWrap: { alignItems: 'center', marginBottom: spacing.md },
   restRow: {
     flexDirection: 'row',
     alignItems: 'center',
