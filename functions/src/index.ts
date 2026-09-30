@@ -29,9 +29,9 @@ const db = getFirestore();
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
 
 // Set with: firebase functions:secrets:set RESEND_API_KEY
-// Get a free key at https://resend.com (no credit card needed). Sending from
-// "onboarding@resend.dev" works immediately with no domain setup — fine for
-// a demo; a verified custom domain is only needed before a real launch.
+// Get a free key at https://resend.com. Resend's shared "onboarding@resend.dev"
+// sender only delivers to the Resend account owner's own address; every other
+// address is rejected. Real users need a verified domain as the sender.
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 const VERIFICATION_EMAIL_FROM = 'Iron Pillar <onboarding@resend.dev>';
 
@@ -1191,7 +1191,13 @@ export const sendVerificationCode = onCall({ secrets: [RESEND_API_KEY] }, async 
     html: verificationCodeEmailHtml(code),
   });
   if (error) {
-    throw new HttpsError('internal', `Could not send verification email: ${error.message}`);
+    // The provider's message (e.g. a sender-domain problem) is for us, not
+    // the person signing up.
+    console.error('Resend rejected the verification email', error);
+    throw new HttpsError(
+      'unavailable',
+      "We couldn't send your verification email right now. Please try again in a few minutes."
+    );
   }
 
   await codeRef.set({
