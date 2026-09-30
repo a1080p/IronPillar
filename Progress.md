@@ -4,6 +4,17 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-01: Username changes, workout detail + delete, streak-day screen, At Home, offer codes
+
+- **Username changes** (`changeUsername`): 3-20 of a-z 0-9 . _, claimed in `usernames/{name}` in one transaction (taken -> "already-exists"), old claim released, friends' copies updated. Rules now block client writes to `username`. Verified against the live function: taken, invalid and unchanged names all behave; nothing changed.
+- **History detail** (`app/history/[id].tsx`, History moved to `app/history/index.tsx`): sets per exercise in the user's units, totals, XP, route map for outdoor, each exercise's notes, and Delete. `deleteWorkoutLog` now rebuilds `userStats` and `level` right away. Verified: deleting a log dropped XP by its amount, PR count 2 -> 1, and volume.
+- **Streak-day screen**: first step after the summary; the flame-orange bar fills from the day's minutes before the workout to after, then the streak counts up with confetti ("Streak Extended" / "Streak Started"), or shows minutes left with a motivating line, or "Today Already Counts". `completeWorkout` returns `dayMinutesBefore`. Verified the "already counts" case; the fill-and-extend case needs a fresh day.
+- **Browse: At Home (No Equipment)** section: 25 no-equipment workouts, excluding outdoor/trail/stairs/pool ones.
+- **Redeem Pro Code** in Settings (iOS, non-Pro): Apple's offer-code sheet via RevenueCat. A hidden in-app code that unlocks Pro was not built: App Store guideline 3.1.1 forbids unlocking features with your own codes, and 2.3.1 forbids hidden features. Free Pro for testers/friends: App Store Connect offer codes, or a RevenueCat promotional entitlement.
+- **Test data removed:** my three test workouts from 2026-09-30 were deleted through `deleteWorkoutLog` (XP now 878, level 2). The Barbell Deadlift test note is still there.
+
+---
+
 ## 2026-09-30 (night): Verification emails reach any address; friend profiles; badge details
 
 - **Verification codes only reached the owner's email.** Cause: `sendVerificationCode` sent from Resend's shared `onboarding@resend.dev`, which only delivers to the Resend account owner. The owner verified `ironpillar.app` in Resend; the sender is now `Iron Pillar <no-reply@ironpillar.app>` (deployed). A test send from that address to Resend's test inbox was accepted. Send failures now show a friendly message; the provider error is logged server-side. The Resend key is send-only, so domain status can't be read from the API.
