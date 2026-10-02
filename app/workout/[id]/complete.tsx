@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
@@ -14,6 +14,7 @@ import { Confetti } from '../../../components/Confetti';
 import { completionMessages, pickMessage } from '../../../constants/motivation';
 import { CelebrationFlow, PersonalRecordPopup, hasCelebrations } from '../../../components/Celebrations';
 import type { CompletionResult } from '../../../lib/workoutCompletion';
+import { usePendingCompletion } from '../../../lib/pendingCompletion';
 
 export default function WorkoutCompleteScreen() {
   const { colors } = useTheme();
@@ -29,9 +30,11 @@ export default function WorkoutCompleteScreen() {
     sets,
     durationSeconds,
     result: resultJson,
+    pending: pendingParam,
   } =
     useLocalSearchParams<{
       result?: string;
+      pending?: string;
       xpEarned: string;
       xpMultiplier?: string;
       streakBonus: string;
@@ -46,9 +49,13 @@ export default function WorkoutCompleteScreen() {
   const units = useUnits();
   const [celebrating, setCelebrating] = useState(false);
 
+  // While the workout is still saving, the server result isn't here yet.
+  const pending = usePendingCompletion(pendingParam ? Number(pendingParam) : undefined);
+  const savedResult = pending?.state.status === 'saved' ? pending.state.result : null;
+
   // Full server result (with the per-source XP breakdown). Older call sites
   // only pass the flat params, so rebuild a minimal result from those.
-  const result = useMemo<CompletionResult>(() => {
+  const paramResult = useMemo<CompletionResult>(() => {
     if (resultJson) {
       try {
         return JSON.parse(resultJson) as CompletionResult;
@@ -64,6 +71,9 @@ export default function WorkoutCompleteScreen() {
       xpMultiplier: Number(xpMultiplier) || 1,
     };
   }, [resultJson, xpEarned, streakBonus, streakCountAfter, badgeEarnedId, xpMultiplier]);
+  const result = savedResult ?? paramResult;
+  const saving = !!pendingParam && pending?.state.status !== 'saved';
+  const failed = pending?.state.status === 'failed' ? pending.state.message : null;
 
   const volumeNum = Number(volume) || 0;
   const repsNum = Number(reps) || 0;
@@ -107,17 +117,36 @@ export default function WorkoutCompleteScreen() {
           </View>
         )}
 
-        <XpBreakdown result={result} />
+        {saving ? (
+          <View style={styles.savingCard} accessibilityLiveRegion="polite">
+            {failed ? (
+              <>
+                <Text style={styles.savingTitle}>Couldn't save your workout</Text>
+                <Text style={styles.savingText}>{failed}</Text>
+                <Button label="Try Again" onPress={() => pending?.retry()} />
+              </>
+            ) : (
+              <>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={styles.savingText}>Tallying your XP…</Text>
+              </>
+            )}
+          </View>
+        ) : (
+          <XpBreakdown result={result} />
+        )}
 
-        <Text style={styles.streakLabel}>
-          Streak: <Text style={styles.streakValue}>{result.streakCountAfter}</Text>
-        </Text>
+        {!saving && (
+          <Text style={styles.streakLabel}>
+            Streak: <Text style={styles.streakValue}>{result.streakCountAfter}</Text>
+          </Text>
+        )}
       </ScrollView>
       <View style={styles.footer}>
-        <Button label={celebrations ? 'Next' : 'Done'} onPress={handleNext} />
+        <Button label={celebrations ? 'Next' : 'Done'} onPress={handleNext} disabled={saving} />
       </View>
       <Confetti />
-      <PersonalRecordPopup records={result.personalRecords} />
+      {!saving && <PersonalRecordPopup records={result.personalRecords} />}
       <CelebrationFlow result={result} visible={celebrating} onDone={() => router.replace('/')} />
     </SafeAreaView>
   );
@@ -153,5 +182,15 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   summaryChipText: { color: colors.text, fontSize: typography.sizes.small, fontWeight: '600' },
   more: { alignSelf: 'flex-end', marginBottom: -spacing.md },
+  savingCard: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.md,
+    padding: spacing.lg,
+  },
+  savingTitle: { color: colors.text, fontWeight: '700', fontSize: typography.sizes.body },
+  savingText: { color: colors.textMuted, textAlign: 'center' },
   footer: { padding: spacing.lg },
 });

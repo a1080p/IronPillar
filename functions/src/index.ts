@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
@@ -6,7 +6,6 @@ import { getStorage } from 'firebase-admin/storage';
 import { defineSecret } from 'firebase-functions/params';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { randomInt, randomUUID } from 'node:crypto';
-import { Resend } from 'resend';
 import {
   BADGE_NAMES,
   STATS_VERSION,
@@ -25,6 +24,18 @@ import { containsBlockedTerm } from './moderation';
 
 initializeApp();
 const db = getFirestore();
+
+// The Anthropic and Resend SDKs are only needed by a few functions, so they
+// load on first use instead of at startup. That keeps cold starts quick for
+// everything else (workout completion, social actions).
+async function newResend(key: string) {
+  const { Resend } = await import('resend');
+  return new Resend(key);
+}
+async function newAnthropic(apiKey: string) {
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+  return new Anthropic({ apiKey });
+}
 
 // Set with: firebase functions:secrets:set ANTHROPIC_API_KEY
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
@@ -248,15 +259,18 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
   // Checked against RevenueCat on the server, before (not inside) the
   // transaction since it's a network call. Any failure — no secret, outage,
   // lapsed subscription — just means normal XP; it never blocks finishing.
-  let xpMultiplier = 1;
+  // Started now and awaited inside the transaction, so the RevenueCat call
+  // overlaps with the database reads instead of running before them.
   const revenueCatSecret = REVENUECAT_SECRET_KEY.value();
-  if (revenueCatSecret) {
+  const proMultiplier = (async () => {
+    if (!revenueCatSecret) return 1;
     try {
-      if (await isProSubscriber(uid, revenueCatSecret)) xpMultiplier = PRO_XP_MULTIPLIER;
+      return (await isProSubscriber(uid, revenueCatSecret)) ? PRO_XP_MULTIPLIER : 1;
     } catch (e) {
       console.warn('Pro check failed during completeWorkout; awarding base XP', e);
+      return 1;
     }
-  }
+  })();
 
   const userRef = db.collection('users').doc(uid);
   const logRef = db.collection('workoutLogs').doc(uid).collection('logs').doc();
@@ -405,6 +419,7 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     const improvementXp = improvements.reduce((sum, i) => sum + i.xp, 0);
     const baseStreakBonus = dayQualifiesNow ? streakCountAfter * XP_PER_STREAK_DAY : 0;
     const baseXp = exerciseXp + setXp + distanceXp + prBonus + improvementXp;
+    const xpMultiplier = await proMultiplier;
     const xpEarned = (baseXp + baseStreakBonus) * xpMultiplier;
     const streakBonus = baseStreakBonus * xpMultiplier;
 
@@ -1318,7 +1333,7 @@ export const reportUser = onCall({ secrets: [RESEND_API_KEY] }, async (request) 
   const key = RESEND_API_KEY.value();
   if (key) {
     try {
-      await new Resend(key).emails.send({
+      await (await newResend(key)).emails.send({
         from: VERIFICATION_EMAIL_FROM,
         to: SUPPORT_EMAIL,
         subject: `Iron Pillar user report: @${reported.username ?? otherUid} (${reason})`,
@@ -1622,7 +1637,7 @@ export const generateWorkoutDetails = onCall(
       }
     }
 
-    const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+    const anthropic = await newAnthropic(ANTHROPIC_API_KEY.value());
 
     const exerciseLines = exercises
       .map(
@@ -1716,7 +1731,7 @@ export const sendVerificationCode = onCall({ secrets: [RESEND_API_KEY] }, async 
   const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
   const now = new Date();
 
-  const resend = new Resend(RESEND_API_KEY.value());
+  const resend = await newResend(RESEND_API_KEY.value());
   const { error } = await resend.emails.send({
     from: VERIFICATION_EMAIL_FROM,
     to: email,

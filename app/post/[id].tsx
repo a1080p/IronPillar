@@ -45,7 +45,8 @@ export default function PostScreen() {
   const { post, missing } = usePost(id);
   const comments = useComments(id);
   const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
+  // Comments shown right away while they're being saved.
+  const [sendingComments, setSendingComments] = useState<PostComment[]>([]);
   const [menuComment, setMenuComment] = useState<PostComment | null>(null);
   const [postMenu, setPostMenu] = useState(false);
   const [reportTarget, setReportTarget] = useState<{ uid: string; name: string; commentId?: string } | null>(null);
@@ -68,14 +69,22 @@ export default function PostScreen() {
       Alert.alert('Not allowed', 'That comment includes language that isn’t allowed.');
       return;
     }
-    setSending(true);
+    const temp: PostComment = {
+      id: `sending-${Date.now()}`,
+      uid: user?.uid ?? '',
+      name: 'You',
+      text: body,
+      createdAt: new Date().toISOString(),
+    };
+    setText('');
+    setSendingComments((list) => [...list, temp]);
     try {
       await addComment(post.id, body);
-      setText('');
     } catch (e) {
+      setText(body);
       Alert.alert('Could not comment', e instanceof Error ? e.message : 'Try again.');
     } finally {
-      setSending(false);
+      setSendingComments((list) => list.filter((c) => c.id !== temp.id));
     }
   };
 
@@ -130,7 +139,9 @@ export default function PostScreen() {
           <Text style={styles.message}>{post.caption || post.message}</Text>
 
           <Text style={styles.sectionHeading} accessibilityRole="header">
-            {comments.length === 0 ? 'No comments yet' : `Comments (${comments.length})`}
+            {comments.length + sendingComments.length === 0
+              ? 'No comments yet'
+              : `Comments (${comments.length + sendingComments.length})`}
           </Text>
           {comments.map((c) => (
             <Pressable
@@ -157,6 +168,16 @@ export default function PostScreen() {
               )}
             </Pressable>
           ))}
+          {sendingComments.map((c) => (
+            <View key={c.id} style={[styles.comment, { opacity: 0.6 }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.commentName}>
+                  You <Text style={styles.time}>· sending</Text>
+                </Text>
+                <Text style={styles.commentText}>{c.text}</Text>
+              </View>
+            </View>
+          ))}
         </ScrollView>
 
         <View style={styles.composer}>
@@ -171,7 +192,7 @@ export default function PostScreen() {
             accessibilityLabel="Add a comment"
           />
           <View style={styles.sendWrap}>
-            <Button label="Post" onPress={send} loading={sending} disabled={!text.trim()} />
+            <Button label="Post" onPress={send} disabled={!text.trim()} />
           </View>
         </View>
       </KeyboardAvoidingView>

@@ -12,6 +12,7 @@ import { motivationalMessages } from '../../../constants/motivation';
 import { useWorkout } from '../../../hooks/useWorkout';
 import { useAuth } from '../../../contexts/AuthContext';
 import { completeWorkout } from '../../../lib/workoutCompletion';
+import { startPendingCompletion } from '../../../lib/pendingCompletion';
 import { noteWorkoutStarted } from '../../../lib/gymReminders';
 import {
   endWorkoutActivity,
@@ -50,7 +51,6 @@ export default function WorkoutLogScreen() {
   // Raw text of each weight box, so a half-typed decimal like "22." isn't
   // parsed away mid-typing (kg users need decimals).
   const [weightText, setWeightText] = useState<Record<number, string>>({});
-  const [finishing, setFinishing] = useState(false);
   const startTime = useRef(Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   // Set right before navigating away because the workout finished, so the
@@ -183,35 +183,31 @@ export default function WorkoutLogScreen() {
     }
 
     if (!user) return;
-    setFinishing(true);
-    try {
+    // The summary opens right away; saving (and the XP the server works out)
+    // finishes behind it. See lib/pendingCompletion.
+    const finishedAt = new Date();
+    const pending = startPendingCompletion(async () => {
       const result = await completeWorkout(template, nextLogs, elapsedSeconds);
       // Fire-and-forget: Pro + opt-in only, and never blocks finishing.
       syncCompletedWorkoutToHealth(user.uid, isPro, {
         startDate: new Date(startTime.current),
-        endDate: new Date(),
+        endDate: finishedAt,
       });
-      const totals = summarizeExerciseLogs(nextLogs);
-      isCompletingRef.current = true;
-      router.replace({
-        pathname: '/workout/[id]/complete',
-        params: {
-          id: template.id,
-          xpEarned: String(result.xpEarned),
-          streakBonus: String(result.streakBonus),
-          streakCountAfter: String(result.streakCountAfter),
-          badgeEarnedId: result.badgeEarnedId ?? '',
-          xpMultiplier: String(result.xpMultiplier ?? 1),
-          result: JSON.stringify(result),
-          volume: String(totals.volume),
-          reps: String(totals.reps),
-          sets: String(totals.sets),
-          durationSeconds: String(elapsedSeconds),
-        },
-      });
-    } finally {
-      setFinishing(false);
-    }
+      return result;
+    });
+    const totals = summarizeExerciseLogs(nextLogs);
+    isCompletingRef.current = true;
+    router.replace({
+      pathname: '/workout/[id]/complete',
+      params: {
+        id: template.id,
+        pending: String(pending),
+        volume: String(totals.volume),
+        reps: String(totals.reps),
+        sets: String(totals.sets),
+        durationSeconds: String(elapsedSeconds),
+      },
+    });
   };
 
   return (
@@ -348,7 +344,6 @@ export default function WorkoutLogScreen() {
         <Button
           label={isLastExercise ? 'Finish' : 'Next Exercise'}
           onPress={handleNext}
-          loading={finishing}
         />
       </View>
       </KeyboardAvoidingView>

@@ -82,6 +82,8 @@ interface AuthContextValue {
   profile: UserProfile | null;
   initializing: boolean;
   hasOnboarded: boolean;
+  deletingAccount: boolean;
+  setDeletingAccount: (deleting: boolean) => void;
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -130,6 +132,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [initializing, setInitializing] = useState(true);
+  // True while an account deletion is in progress. The server deletes the
+  // profile before the sign-in, so for a moment there is a signed-in user
+  // with no profile, which would otherwise route to onboarding.
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -162,6 +168,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       initializing,
       hasOnboarded: !!profile,
+      deletingAccount,
+      setDeletingAccount,
       async signUp(email, password) {
         try {
           await createUserWithEmailAndPassword(auth, email.trim(), password);
@@ -351,7 +359,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await updateDoc(doc(db, 'users', user.uid), data);
       },
     }),
-    [user, profile, initializing]
+    [user, profile, initializing, deletingAccount]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

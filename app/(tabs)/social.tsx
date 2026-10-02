@@ -53,10 +53,16 @@ export default function SocialScreen() {
   const { incoming, outgoing } = useFriendRequests(user?.uid);
   const [checkInOpen, setCheckInOpen] = useState(false);
 
-  const respond = (uid: string, accept: boolean) =>
-    respondFriendRequest(uid, accept).catch((e) =>
-      Alert.alert('Something went wrong', e instanceof Error ? e.message : 'Try again.')
-    );
+  // Requests disappear the moment you answer; they come back if it fails.
+  const [answered, setAnswered] = useState<string[]>([]);
+  const respond = (uid: string, accept: boolean) => {
+    setAnswered((list) => [...list, uid]);
+    respondFriendRequest(uid, accept).catch((e) => {
+      setAnswered((list) => list.filter((id) => id !== uid));
+      Alert.alert('Something went wrong', e instanceof Error ? e.message : 'Try again.');
+    });
+  };
+  const openRequests = incoming.filter((r) => !answered.includes(r.uid));
 
   const [username, setUsername] = useState('');
   const [adding, setAdding] = useState(false);
@@ -122,10 +128,10 @@ export default function SocialScreen() {
           )}
         </View>
 
-        {incoming.length > 0 && (
+        {openRequests.length > 0 && (
           <>
             <Text style={styles.sectionHeading}>Friend Requests</Text>
-            {incoming.map((r) => (
+            {openRequests.map((r) => (
               <View key={r.uid} style={styles.friendRow}>
                 <Ionicons name="person-circle" size={36} color={colors.primary} />
                 <View style={{ flex: 1 }}>

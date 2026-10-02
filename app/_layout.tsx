@@ -17,12 +17,12 @@ import { LOCATION_TASK_NAME } from '../lib/outdoorTracking';
 import { stopOutdoorWatchdog, stopStrengthWatchdog } from '../lib/workoutWatchdog';
 
 function RootNavigation() {
-  const { user, hasOnboarded, initializing } = useAuth();
+  const { user, hasOnboarded, initializing, deletingAccount } = useAuth();
   const segments = useSegments() as unknown as string[];
   const router = useRouter();
 
   useEffect(() => {
-    if (initializing) return;
+    if (initializing || deletingAccount) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = inAuthGroup && segments[1] === 'onboarding';
@@ -41,7 +41,7 @@ function RootNavigation() {
     } else if (user && hasOnboarded && inAuthGroup) {
       router.replace('/');
     }
-  }, [user, hasOnboarded, initializing, segments]);
+  }, [user, hasOnboarded, initializing, deletingAccount, segments]);
 
   // A fresh launch can't be mid-way through a strength workout (its state
   // lives in memory), so clear any lock-screen activity or "still working

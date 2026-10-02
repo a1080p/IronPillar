@@ -9,13 +9,14 @@ import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { GOAL_OPTIONS, EXPERIENCE_OPTIONS } from '../constants/options';
 import { useAuth } from '../contexts/AuthContext';
+import { router } from 'expo-router';
 import { deleteAccount } from '../lib/account';
 import type { ExperienceLevel, FitnessGoal } from '../types/models';
 
 export default function AccountDetailsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const { user, profile, updateProfile, signOut } = useAuth();
+  const { user, profile, updateProfile, signOut, setDeletingAccount } = useAuth();
   const [name, setName] = useState(profile?.name ?? '');
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [goals, setGoals] = useState<FitnessGoal[]>(profile?.goals ?? []);
@@ -61,12 +62,16 @@ export default function AccountDetailsScreen() {
           style: 'destructive',
           onPress: async () => {
             setDeleting(true);
+            setDeletingAccount(true);
             try {
               await deleteAccount();
-              await signOut();
+              await signOut().catch(() => {});
+              router.replace('/welcome');
             } catch (e) {
               Alert.alert('Could not delete account', e instanceof Error ? e.message : 'Try again.');
               setDeleting(false);
+            } finally {
+              setDeletingAccount(false);
             }
           },
         },
