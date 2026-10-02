@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import type { PurchasesPackage } from 'react-native-purchases';
 import { Button } from '../components/Button';
 import { WorkoutHeader } from '../components/WorkoutHeader';
@@ -55,11 +55,7 @@ export default function PaywallScreen() {
     return (
       <RevenueCatPaywall
         options={{ displayCloseButton: true }}
-        onPurchaseCompleted={() => {
-          Alert.alert('Welcome to Pro', 'Your subscription is active.', [
-            { text: 'Done', onPress: () => router.back() },
-          ]);
-        }}
+        onPurchaseCompleted={() => router.replace('/pro-welcome' as Href)}
         onRestoreCompleted={() => router.back()}
         onPurchaseError={({ error }) =>
           Alert.alert('Purchase failed', error.message ?? 'Try again.')
@@ -104,9 +100,7 @@ function BuiltInPaywall() {
     setPurchasing(true);
     try {
       await purchasePackage(selectedPackage);
-      Alert.alert('Welcome to Pro', 'Your subscription is active.', [
-        { text: 'Done', onPress: () => router.back() },
-      ]);
+      router.replace('/pro-welcome' as Href);
     } catch (e) {
       const code = (e as { userCancelled?: boolean } | undefined)?.userCancelled;
       if (!code) {

@@ -64,6 +64,7 @@ function RootNavigation() {
       <Stack screenOptions={{ headerShown: false }}>
         {/* Slides up as a sheet over whatever screen opened it. */}
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="pro-welcome" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
       </Stack>
       {/* Only once fully onboarded — a pre-account user has no uid to attach
           a report to, and won't hit real app screens yet anyway. */}
