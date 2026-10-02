@@ -4,6 +4,15 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-02: Bug triage — yoga flows now list their poses ([IP-62](https://studiogreatt.atlassian.net/browse/IP-62))
+
+One new report (`aNUo53ogfP6hbJTzaaTH`, `/workout/power-vinyasa-yoga`, confusing_ui): the Vinyasa flow says to go through a sequence but never lists the poses.
+- **Fixed:** in `data/browseWorkoutTemplates.ts` the tips for Vinyasa Flow Sequence, Sun Salutation A, Sun Salutation Flow, Warrior I-II-III, Standing Balance Series and Floor & Seated Series now name every pose in order. Re-seeded `workoutTemplates` (75 docs) and read the live `power-vinyasa-yoga` doc back to confirm. Data only, so no EAS Update was needed.
+- **Commit note:** a parallel session's commit (`f017261`, friend requests) picked up most of the tip edits while this was in progress. `ee308f2` holds the rest and explains it.
+- **Left for later:** the report also asked that *all* workouts be explained thoroughly. Other vague drill/combo exercises (step, Zumba, ball-handling, etc.) need a broader content pass, noted on IP-62.
+
+---
+
 ## 2026-10-02 (later): Friend requests, comments, check-in photos
 
 - **Friend requests:** `addFriend` now sends a request (`friendRequests/{to}/incoming/{from}` + the sender's `outgoing`); `respondFriendRequest` accepts/declines, `cancelFriendRequest` withdraws; asking someone who already asked you makes you friends. Social shows Friend Requests (Accept/Decline) and Sent Requests (Cancel).
