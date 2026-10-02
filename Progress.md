@@ -4,6 +4,17 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-02 (later): Friend requests, comments, check-in photos
+
+- **Friend requests:** `addFriend` now sends a request (`friendRequests/{to}/incoming/{from}` + the sender's `outgoing`); `respondFriendRequest` accepts/declines, `cancelFriendRequest` withdraws; asking someone who already asked you makes you friends. Social shows Friend Requests (Accept/Decline) and Sent Requests (Cancel).
+- **Comments:** completed workouts are now posts (`posts/{log id}`) that also appear in your own feed; check-ins are posts too. `addComment` (500 chars, word filter, notifies the author), `deleteComment` (writer or post author), `deletePost` (removes the post, comments, photo and every feed copy). Rules: posts and comments readable by the author and the author's friends only. New `app/post/[id].tsx` with the ••• menu for Report/Delete.
+- **Check-in photos:** camera button at the top right of Social opens an optional sheet (take a front-camera selfie or pick a photo, optional caption). Photo uploads to `checkins/{uid}/…` (storage rule: owner, images, < 8 MB); `createCheckIn` shares it with friends.
+- **Safety and cleanup:** report sheet takes a post/comment; blocking clears pending requests; account deletion removes posts, comments, photos and requests. Collection-group indexes for `comments.uid` and `items.postId` (`firestore.indexes.json`). Specific camera/photo permission strings in `app.json`.
+- **Verified end to end with two test accounts:** request, rules (outsider reading someone's requests = 403), accept, check-in with photo, friend reading the post and comments (200), comment + author notification, filtered comment refused, delete post (post, feed copies and photo gone), unfriend. Test data removed.
+- Terms, privacy policy and `docs/app-review-reply.md` updated for comments and check-in photos. Needs a new build (camera permission string).
+
+---
+
 ## 2026-10-02: App Review 2.1 "Information Needed" — safety features, reply drafted
 
 Apple asked (new developer account) for a device screen recording plus purpose, setup, external services, regional and regulatory answers. Audited with the app-store-review skill; the real gap was guideline 1.2 (user-generated content: names, usernames, profile photos shared with friends) had no report/block.
