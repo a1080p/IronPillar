@@ -1,4 +1,4 @@
-import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, type Href } from 'expo-router';
@@ -51,8 +51,10 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <WorkoutHeader />
-      <View style={styles.content}>
-        <Text style={styles.heading}>Settings</Text>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.heading} accessibilityRole="header">
+          Settings
+        </Text>
 
         <View style={styles.unitsRow}>
           <View style={{ flex: 1 }}>
@@ -155,14 +157,14 @@ export default function SettingsScreen() {
             <Text style={styles.rowLabel}>Sign Out</Text>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { flex: 1, padding: spacing.lg, gap: spacing.lg },
+  content: { padding: spacing.lg, paddingBottom: 60, gap: spacing.lg },
   heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary },
   rowGroup: { gap: spacing.lg },
   row: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.surfaceMuted },

@@ -4,6 +4,16 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-02: App Review 2.1 "Information Needed" — safety features, reply drafted
+
+Apple asked (new developer account) for a device screen recording plus purpose, setup, external services, regional and regulatory answers. Audited with the app-store-review skill; the real gap was guideline 1.2 (user-generated content: names, usernames, profile photos shared with friends) had no report/block.
+- **Added:** `blockUser` / `unblockUser` / `removeFriend` / `reportUser` functions (reports saved to `userReports` and emailed to the developer); blocked users can't find or re-add you, and their feed items are cleared both ways. Friend profile has Remove Friend / Report / Block; Settings has Blocked Users, Contact Support, Terms of Use, Privacy Policy (and now scrolls; Sign Out was off-screen). Blocked-word filter on names and usernames (`constants/moderation.ts`, `functions/src/moderation.ts`). Sign-up shows agreement to the Terms; onboarding requires age 13+ and a real birthday. Terms page gained "Community rules, reporting & blocking" (zero tolerance, 24-hour review).
+- **Verified against the live functions** with two test accounts: report saved (a test report email went to the owner's inbox), block, add-while-blocked refused, unblock, blocked username refused. Test report deleted.
+- **Reply to Apple + recording shot list:** `docs/app-review-reply.md`.
+- **Still the owner's:** record the video on a physical iPhone, fill in the demo login in the reply, answer the age-rating social media questions, new build + resubmit.
+
+---
+
 ## 2026-10-01: Username changes, workout detail + delete, streak-day screen, At Home, offer codes
 
 - **Username changes** (`changeUsername`): 3-20 of a-z 0-9 . _, claimed in `usernames/{name}` in one transaction (taken -> "already-exists"), old claim released, friends' copies updated. Rules now block client writes to `username`. Verified against the live function: taken, invalid and unchanged names all behave; nothing changed.
