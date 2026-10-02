@@ -437,6 +437,8 @@ export const browseWorkoutTemplates: WorkoutTemplate[] = [
   ),
 
   // ------------------------------------------------------------------- Yoga
+  // Flow exercises spell out every pose in order, so "go through the
+  // sequence" never leaves someone guessing what the sequence is.
   browse(
     'morning-sun-salutation-flow',
     'Morning Sun Salutation Flow',
