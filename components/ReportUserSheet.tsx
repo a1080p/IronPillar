@@ -22,11 +22,15 @@ export function ReportUserSheet({
   visible,
   userUid,
   userName,
+  postId,
+  commentId,
   onClose,
 }: {
   visible: boolean;
   userUid: string;
   userName: string;
+  postId?: string; // reporting a post (or a comment on it) rather than the profile
+  commentId?: string;
   onClose: () => void;
 }) {
   const { colors } = useTheme();
@@ -45,7 +49,7 @@ export function ReportUserSheet({
     if (!reason) return;
     setSending(true);
     try {
-      await reportUser(userUid, reason, details);
+      await reportUser(userUid, reason, details, { postId, commentId });
       close();
       Alert.alert(
         'Report sent',
@@ -63,7 +67,7 @@ export function ReportUserSheet({
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.backdrop}>
         <Pressable style={styles.card} accessible={false} onPress={Keyboard.dismiss}>
           <Text style={styles.title} accessibilityRole="header">
-            Report {userName}
+            {commentId ? 'Report Comment' : postId ? 'Report Post' : `Report ${userName}`}
           </Text>
           <Text style={styles.subtitle}>What's wrong?</Text>
           {REPORT_REASONS.map((r) => {

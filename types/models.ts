@@ -195,12 +195,51 @@ export interface ProgressMetric {
 
 export interface ActivityFeedItem {
   id: string;
-  type: 'badge_earned' | 'streak_milestone' | 'friend_workout' | 'reaction';
+  type:
+    | 'badge_earned'
+    | 'streak_milestone'
+    | 'friend_workout'
+    | 'reaction'
+    | 'check_in'
+    | 'comment'
+    | 'friend_request_accepted';
   actorUid: string;
   actorName: string;
   message: string;
   subject?: string; // e.g. "Core Crusher" or "the Journey Begins badge"
   myReactions?: { heart?: boolean; congrats?: boolean }; // reactions you've sent
+  postId?: string; // the post this item is a copy of (workouts, check-ins), for comments
+  photoUrl?: string; // check-in photo
+  caption?: string; // check-in caption
+  createdAt: string;
+}
+
+// A workout or check-in photo friends can comment on (posts/{id}).
+export interface Post {
+  id: string;
+  authorUid: string;
+  authorName: string;
+  type: 'friend_workout' | 'check_in';
+  message: string;
+  subject?: string;
+  caption?: string;
+  photoUrl?: string;
+  commentCount: number;
+  createdAt: string;
+}
+
+export interface PostComment {
+  id: string;
+  uid: string;
+  name: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface FriendRequest {
+  uid: string;
+  name: string;
+  username: string;
   createdAt: string;
 }
 

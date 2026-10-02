@@ -5,7 +5,7 @@ import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { defineSecret } from 'firebase-functions/params';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import { randomInt } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { Resend } from 'resend';
 import {
   BADGE_NAMES,
@@ -195,12 +195,22 @@ function isValidCompleteWorkoutRequest(data: unknown): data is CompleteWorkoutRe
   return true;
 }
 
+type FeedItemType =
+  | 'badge_earned'
+  | 'streak_milestone'
+  | 'friend_workout'
+  | 'reaction'
+  | 'check_in'
+  | 'comment'
+  | 'friend_request_accepted';
+
 function newFeedItem(
-  type: 'badge_earned' | 'streak_milestone' | 'friend_workout' | 'reaction',
+  type: FeedItemType,
   actorUid: string,
   actorName: string,
   message: string,
-  subject?: string // what the item is about (workout/badge name), for reactions
+  subject?: string, // what the item is about (workout/badge name), for reactions
+  extra: { postId?: string; photoUrl?: string; caption?: string } = {}
 ) {
   return {
     type,
@@ -208,6 +218,7 @@ function newFeedItem(
     actorName,
     message,
     ...(subject ? { subject } : {}),
+    ...extra,
     createdAt: new Date().toISOString(),
   };
 }
@@ -447,6 +458,25 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     // Fan out to friends' activity feeds. Small friend counts expected for
     // an MVP, so writing directly into this transaction (rather than a
     // separate trigger) keeps it simple and atomic with everything else.
+    // The workout is also a post friends can comment on (posts/{log id}),
+    // and it appears in the person's own feed so they can see the comments.
+    const postId = logRef.id;
+    tx.set(db.collection('posts').doc(postId), {
+      authorUid: uid,
+      authorName: profile.name,
+      type: 'friend_workout',
+      message: `${profile.name} completed ${workout.name}!`,
+      subject: workout.name,
+      commentCount: 0,
+      createdAt: now.toISOString(),
+    });
+    tx.set(
+      db.collection('activityFeed').doc(uid).collection('items').doc(),
+      newFeedItem('friend_workout', uid, profile.name, `You completed ${workout.name}!`, workout.name, {
+        postId,
+      })
+    );
+
     for (const friendDoc of friendsSnap.docs) {
       const friendUid = friendDoc.id;
       const feedCol = db.collection('activityFeed').doc(friendUid).collection('items');
@@ -458,7 +488,8 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
           uid,
           profile.name,
           `${profile.name} completed ${workout.name}!`,
-          workout.name
+          workout.name,
+          { postId }
         )
       );
       // One feed item however many badges were earned at once.
@@ -836,6 +867,42 @@ export const reactToActivity = onCall(async (request) => {
 // Friend relationships are mutual (both sides need to be written at once),
 // which a single user's own auth can't do under normal ownership rules — so
 // this runs as the Cloud Function's own Admin SDK write instead.
+const requestRef = (toUid: string, fromUid: string) =>
+  db.collection('friendRequests').doc(toUid).collection('incoming').doc(fromUid);
+const outgoingRef = (fromUid: string, toUid: string) =>
+  db.collection('friendRequests').doc(fromUid).collection('outgoing').doc(toUid);
+
+// Makes two people friends (both sides at once) and clears any requests
+// between them. Runs inside a transaction that has already read both users.
+function writeFriendship(
+  tx: FirebaseFirestore.Transaction,
+  a: { uid: string; name: string; username: string },
+  b: { uid: string; name: string; username: string }
+) {
+  const now = new Date().toISOString();
+  tx.set(db.collection('friendships').doc(a.uid).collection('friends').doc(b.uid), {
+    uid: b.uid,
+    name: b.name,
+    username: b.username,
+    since: now,
+  });
+  tx.set(db.collection('friendships').doc(b.uid).collection('friends').doc(a.uid), {
+    uid: a.uid,
+    name: a.name,
+    username: a.username,
+    since: now,
+  });
+  tx.update(db.collection('users').doc(a.uid), { friendCount: FieldValue.increment(1) });
+  tx.update(db.collection('users').doc(b.uid), { friendCount: FieldValue.increment(1) });
+  tx.delete(requestRef(a.uid, b.uid));
+  tx.delete(requestRef(b.uid, a.uid));
+  tx.delete(outgoingRef(a.uid, b.uid));
+  tx.delete(outgoingRef(b.uid, a.uid));
+}
+
+// Sends a friend request by username. The other person sees it under Friend
+// Requests and can accept or decline. If they had already sent you one, this
+// accepts it instead. (Named addFriend for older app builds.)
 export const addFriend = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
@@ -845,14 +912,13 @@ export const addFriend = onCall(async (request) => {
   if (typeof rawUsername !== 'string' || !rawUsername.trim()) {
     throw new HttpsError('invalid-argument', 'A username is required.');
   }
-  const username = rawUsername.trim().toLowerCase();
+  const username = rawUsername.trim().toLowerCase().replace(/^@/, '');
 
   const usernameSnap = await db.collection('usernames').doc(username).get();
   if (!usernameSnap.exists) {
     throw new HttpsError('not-found', `No user found with username "${username}".`);
   }
   const targetUid = usernameSnap.data()!.uid as string;
-
   if (targetUid === uid) {
     throw new HttpsError('invalid-argument', "You can't add yourself as a friend.");
   }
@@ -867,45 +933,262 @@ export const addFriend = onCall(async (request) => {
 
   const selfRef = db.collection('users').doc(uid);
   const targetRef = db.collection('users').doc(targetUid);
-  const selfFriendRef = db.collection('friendships').doc(uid).collection('friends').doc(targetUid);
-  const targetFriendRef = db.collection('friendships').doc(targetUid).collection('friends').doc(uid);
 
-  const result = await db.runTransaction(async (tx) => {
-    const [selfSnap, targetSnap, existingFriendSnap] = await Promise.all([
+  return db.runTransaction(async (tx) => {
+    const [selfSnap, targetSnap, friendSnap, theirRequestSnap] = await Promise.all([
       tx.get(selfRef),
       tx.get(targetRef),
-      tx.get(selfFriendRef),
+      tx.get(db.collection('friendships').doc(uid).collection('friends').doc(targetUid)),
+      tx.get(requestRef(uid, targetUid)),
     ]);
     if (!selfSnap.exists || !targetSnap.exists) {
       throw new HttpsError('failed-precondition', 'Profile not found.');
     }
-    if (existingFriendSnap.exists) {
+    if (friendSnap.exists) {
       throw new HttpsError('already-exists', 'You are already friends.');
     }
+    const self = selfSnap.data() as { name: string; username: string };
+    const target = targetSnap.data() as { name: string; username: string };
+    const me = { uid, name: self.name, username: self.username };
+    const them = { uid: targetUid, name: target.name, username: target.username };
 
-    const selfData = selfSnap.data() as { name: string; username: string };
-    const targetData = targetSnap.data() as { name: string; username: string };
+    if (theirRequestSnap.exists) {
+      writeFriendship(tx, me, them);
+      return { status: 'friends', uid: targetUid, name: target.name, username: target.username };
+    }
+
     const now = new Date().toISOString();
-
-    tx.set(selfFriendRef, {
-      uid: targetUid,
-      name: targetData.name,
-      username: targetData.username,
-      since: now,
-    });
-    tx.set(targetFriendRef, {
-      uid,
-      name: selfData.name,
-      username: selfData.username,
-      since: now,
-    });
-    tx.update(selfRef, { friendCount: FieldValue.increment(1) });
-    tx.update(targetRef, { friendCount: FieldValue.increment(1) });
-
-    return { uid: targetUid, name: targetData.name, username: targetData.username };
+    tx.set(requestRef(targetUid, uid), { ...me, createdAt: now });
+    tx.set(outgoingRef(uid, targetUid), { ...them, createdAt: now });
+    return { status: 'requested', uid: targetUid, name: target.name, username: target.username };
   });
+});
 
-  return result;
+// Accepts or declines a friend request someone sent you.
+export const respondFriendRequest = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+  const fromUid = readOtherUid(request.data, uid);
+  const accept = (request.data as { accept?: unknown }).accept === true;
+
+  return db.runTransaction(async (tx) => {
+    const [reqSnap, selfSnap, fromSnap] = await Promise.all([
+      tx.get(requestRef(uid, fromUid)),
+      tx.get(db.collection('users').doc(uid)),
+      tx.get(db.collection('users').doc(fromUid)),
+    ]);
+    if (!reqSnap.exists) {
+      throw new HttpsError('not-found', 'That request is no longer available.');
+    }
+    if (!accept || !fromSnap.exists || !selfSnap.exists) {
+      tx.delete(requestRef(uid, fromUid));
+      tx.delete(outgoingRef(fromUid, uid));
+      return { status: 'declined' };
+    }
+    const self = selfSnap.data() as { name: string; username: string };
+    const from = fromSnap.data() as { name: string; username: string };
+    writeFriendship(
+      tx,
+      { uid, name: self.name, username: self.username },
+      { uid: fromUid, name: from.name, username: from.username }
+    );
+    tx.set(
+      db.collection('activityFeed').doc(fromUid).collection('items').doc(),
+      newFeedItem('friend_request_accepted', uid, self.name, `${self.name} accepted your friend request.`)
+    );
+    return { status: 'friends' };
+  });
+});
+
+// Withdraws a friend request you sent.
+export const cancelFriendRequest = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+  const toUid = readOtherUid(request.data, uid);
+  const batch = db.batch();
+  batch.delete(requestRef(toUid, uid));
+  batch.delete(outgoingRef(uid, toUid));
+  await batch.commit();
+  return { cancelled: true };
+});
+
+// ---------------------------------------------------------------------------
+// Posts and comments
+//
+// A post is a completed workout or a check-in photo. It lives at
+// posts/{postId}; each friend's feed holds a copy pointing at it. Comments
+// live at posts/{postId}/comments and can be read by the author and the
+// author's friends (see firestore.rules); only these functions write them.
+// ---------------------------------------------------------------------------
+
+const MAX_COMMENT_LENGTH = 500;
+const MAX_CAPTION_LENGTH = 200;
+
+async function isFriend(a: string, b: string) {
+  return (await db.collection('friendships').doc(a).collection('friends').doc(b).get()).exists;
+}
+
+export const addComment = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in to comment.');
+  const { postId, text } = (request.data ?? {}) as { postId?: unknown; text?: unknown };
+  if (typeof postId !== 'string' || !/^[A-Za-z0-9]{1,64}$/.test(postId)) {
+    throw new HttpsError('invalid-argument', 'Missing or malformed postId.');
+  }
+  const body = typeof text === 'string' ? text.trim() : '';
+  if (!body || body.length > MAX_COMMENT_LENGTH) {
+    throw new HttpsError('invalid-argument', `Comments are 1 to ${MAX_COMMENT_LENGTH} characters.`);
+  }
+  if (containsBlockedTerm(body)) {
+    throw new HttpsError('invalid-argument', 'That comment includes language that isn’t allowed.');
+  }
+
+  const postRef = db.collection('posts').doc(postId);
+  const postSnap = await postRef.get();
+  if (!postSnap.exists) throw new HttpsError('not-found', 'That post is no longer available.');
+  const post = postSnap.data() as { authorUid: string; subject?: string; type: string };
+  if (post.authorUid !== uid && !(await isFriend(post.authorUid, uid))) {
+    throw new HttpsError('permission-denied', 'You can only comment on friends’ posts.');
+  }
+  const user = ((await db.collection('users').doc(uid).get()).data() ?? {}) as { name?: string };
+  const name = user.name ?? 'A friend';
+
+  const commentRef = postRef.collection('comments').doc();
+  const batch = db.batch();
+  batch.set(commentRef, { id: commentRef.id, uid, name, text: body, createdAt: new Date().toISOString() });
+  batch.update(postRef, { commentCount: FieldValue.increment(1) });
+  if (post.authorUid !== uid) {
+    batch.set(
+      db.collection('activityFeed').doc(post.authorUid).collection('items').doc(),
+      newFeedItem(
+        'comment',
+        uid,
+        name,
+        `${name} commented: “${body.length > 80 ? `${body.slice(0, 80)}…` : body}”`,
+        post.type === 'check_in' ? 'your check-in' : post.subject,
+        { postId }
+      )
+    );
+  }
+  await batch.commit();
+  return { id: commentRef.id };
+});
+
+// The comment's writer or the post's author can delete a comment.
+export const deleteComment = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+  const { postId, commentId } = (request.data ?? {}) as { postId?: unknown; commentId?: unknown };
+  if (typeof postId !== 'string' || typeof commentId !== 'string') {
+    throw new HttpsError('invalid-argument', 'Missing postId or commentId.');
+  }
+  const postRef = db.collection('posts').doc(postId);
+  const commentRef = postRef.collection('comments').doc(commentId);
+  return db.runTransaction(async (tx) => {
+    const [postSnap, commentSnap] = await Promise.all([tx.get(postRef), tx.get(commentRef)]);
+    if (!commentSnap.exists) return { deleted: true };
+    const isAuthor = postSnap.get('authorUid') === uid;
+    if (!isAuthor && commentSnap.get('uid') !== uid) {
+      throw new HttpsError('permission-denied', 'You can only delete your own comments.');
+    }
+    tx.delete(commentRef);
+    if (postSnap.exists) tx.update(postRef, { commentCount: FieldValue.increment(-1) });
+    return { deleted: true };
+  });
+});
+
+// Removes a post everywhere: the post, its comments, its photo, and every
+// feed copy of it.
+async function removePost(postId: string) {
+  const postRef = db.collection('posts').doc(postId);
+  const postSnap = await postRef.get();
+  const photoPath = postSnap.get('photoPath');
+  await deleteCollection(postRef.collection('comments'));
+  const copies = await db.collectionGroup('items').where('postId', '==', postId).get();
+  const batch = db.batch();
+  copies.docs.forEach((d) => batch.delete(d.ref));
+  batch.delete(postRef);
+  await batch.commit();
+  if (typeof photoPath === 'string') {
+    await getStorage().bucket().file(photoPath).delete({ ignoreNotFound: true });
+  }
+}
+
+export const deletePost = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+  const postId = (request.data as { postId?: unknown } | undefined)?.postId;
+  if (typeof postId !== 'string' || !/^[A-Za-z0-9]{1,64}$/.test(postId)) {
+    throw new HttpsError('invalid-argument', 'Missing or malformed postId.');
+  }
+  const postSnap = await db.collection('posts').doc(postId).get();
+  if (!postSnap.exists) return { deleted: true };
+  if (postSnap.get('authorUid') !== uid) {
+    throw new HttpsError('permission-denied', 'You can only delete your own posts.');
+  }
+  await removePost(postId);
+  return { deleted: true };
+});
+
+// Shares a workout check-in photo with friends. The app uploads the photo to
+// checkins/{uid}/{name} first, then calls this with its path.
+export const createCheckIn = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+  const { photoPath, caption } = (request.data ?? {}) as { photoPath?: unknown; caption?: unknown };
+  if (typeof photoPath !== 'string' || !new RegExp(`^checkins/${uid}/[A-Za-z0-9_-]{1,64}\\.jpg$`).test(photoPath)) {
+    throw new HttpsError('invalid-argument', 'Missing or malformed photo.');
+  }
+  const text = typeof caption === 'string' ? caption.trim().slice(0, MAX_CAPTION_LENGTH) : '';
+  if (text && containsBlockedTerm(text)) {
+    throw new HttpsError('invalid-argument', 'That caption includes language that isn’t allowed.');
+  }
+  const file = getStorage().bucket().file(photoPath);
+  const [exists] = await file.exists();
+  if (!exists) throw new HttpsError('failed-precondition', 'The photo didn’t finish uploading. Try again.');
+
+  // A download URL (with a token) the app can show. Only friends are ever
+  // given it, through their feed.
+  const [metadata] = await file.getMetadata();
+  let token = (metadata.metadata?.firebaseStorageDownloadTokens as string | undefined)?.split(',')[0];
+  if (!token) {
+    token = randomUUID();
+    await file.setMetadata({ metadata: { firebaseStorageDownloadTokens: token } });
+  }
+  const bucket = getStorage().bucket().name;
+  const photoUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(photoPath)}?alt=media&token=${token}`;
+
+  const user = ((await db.collection('users').doc(uid).get()).data() ?? {}) as { name?: string };
+  const name = user.name ?? 'A friend';
+  const friends = await db.collection('friendships').doc(uid).collection('friends').get();
+
+  const postRef = db.collection('posts').doc();
+  const now = new Date().toISOString();
+  const batch = db.batch();
+  batch.set(postRef, {
+    authorUid: uid,
+    authorName: name,
+    type: 'check_in',
+    message: `${name} checked in after a workout.`,
+    caption: text,
+    photoUrl,
+    photoPath,
+    commentCount: 0,
+    createdAt: now,
+  });
+  const extra = { postId: postRef.id, photoUrl, ...(text ? { caption: text } : {}) };
+  batch.set(
+    db.collection('activityFeed').doc(uid).collection('items').doc(),
+    newFeedItem('check_in', uid, name, 'You checked in after a workout.', 'your check-in', extra)
+  );
+  for (const friend of friends.docs) {
+    batch.set(
+      db.collection('activityFeed').doc(friend.id).collection('items').doc(),
+      newFeedItem('check_in', uid, name, `${name} checked in after a workout.`, 'your check-in', extra)
+    );
+  }
+  await batch.commit();
+  return { postId: postRef.id };
 });
 
 const blockRef = (uid: string, otherUid: string) =>
@@ -973,6 +1256,12 @@ export const blockUser = onCall(async (request) => {
     since: new Date().toISOString(),
   });
   await unfriend(uid, otherUid);
+  const requests = db.batch();
+  requests.delete(requestRef(uid, otherUid));
+  requests.delete(requestRef(otherUid, uid));
+  requests.delete(outgoingRef(uid, otherUid));
+  requests.delete(outgoingRef(otherUid, uid));
+  await requests.commit();
   await Promise.all([clearFeedItems(uid, otherUid), clearFeedItems(otherUid, uid)]);
   return { blocked: true };
 });
@@ -999,6 +1288,11 @@ export const reportUser = onCall({ secrets: [RESEND_API_KEY] }, async (request) 
     throw new HttpsError('invalid-argument', 'Pick a reason for the report.');
   }
   const note = typeof details === 'string' ? details.trim().slice(0, 1000) : '';
+  const { postId, commentId } = (request.data ?? {}) as { postId?: unknown; commentId?: unknown };
+  const target = {
+    ...(typeof postId === 'string' && /^[A-Za-z0-9]{1,64}$/.test(postId) ? { postId } : {}),
+    ...(typeof commentId === 'string' && /^[A-Za-z0-9]{1,64}$/.test(commentId) ? { commentId } : {}),
+  };
 
   const [reporterSnap, reportedSnap] = await Promise.all([
     db.collection('users').doc(uid).get(),
@@ -1015,6 +1309,7 @@ export const reportUser = onCall({ secrets: [RESEND_API_KEY] }, async (request) 
     reportedAvatarUrl: reported.avatarUrl ?? null,
     reason,
     details: note,
+    ...target,
     status: 'new',
     createdAt: new Date().toISOString(),
   });
@@ -1032,6 +1327,7 @@ export const reportUser = onCall({ secrets: [RESEND_API_KEY] }, async (request) 
           `Reported: ${reported.name ?? ''} @${reported.username ?? ''} (uid ${otherUid})`,
           reported.avatarUrl ? `Photo: ${reported.avatarUrl}` : 'Photo: none',
           `Reason: ${reason}`,
+          target.postId ? `Post: posts/${target.postId}${target.commentId ? ` comment ${target.commentId}` : ''}` : 'Post: (profile report)',
           `Details: ${note || '(none)'}`,
           `Reporter: @${reporter.username ?? ''} (uid ${uid})`,
           '',
@@ -1044,6 +1340,20 @@ export const reportUser = onCall({ secrets: [RESEND_API_KEY] }, async (request) 
   }
   return { reported: true };
 });
+
+// A deleted account's posts (with their photos and comments) and the
+// comments it left on other people's posts.
+async function deletePostsAndComments(uid: string) {
+  const posts = await db.collection('posts').where('authorUid', '==', uid).get();
+  for (const post of posts.docs) await removePost(post.id);
+  const comments = await db.collectionGroup('comments').where('uid', '==', uid).get();
+  for (const comment of comments.docs) {
+    const postRef = comment.ref.parent.parent;
+    await comment.ref.delete();
+    if (postRef) await postRef.update({ commentCount: FieldValue.increment(-1) }).catch(() => {});
+  }
+  await getStorage().bucket().deleteFiles({ prefix: `checkins/${uid}/` }).catch(() => {});
+}
 
 async function deleteCollection(colRef: FirebaseFirestore.CollectionReference) {
   const snap = await colRef.get();
@@ -1108,6 +1418,9 @@ export const deleteAccount = onCall(async (request) => {
     deleteCollection(db.collection('friendships').doc(uid).collection('friends')),
     deleteCollection(db.collection('activityFeed').doc(uid).collection('items')),
     deleteCollection(db.collection('blocks').doc(uid).collection('blocked')),
+    deleteCollection(db.collection('friendRequests').doc(uid).collection('incoming')),
+    deleteCollection(db.collection('friendRequests').doc(uid).collection('outgoing')),
+    deletePostsAndComments(uid),
     db.collection('wearableTokens').doc(uid).delete(),
     db.collection('wearableSnapshots').doc(uid).delete(),
     deleteAvatar(uid),

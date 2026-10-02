@@ -175,6 +175,31 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Friend requests: incoming (sent to you) and outgoing (you sent).
+    // Owner reads; only the addFriend/respondFriendRequest/cancelFriendRequest
+    // Cloud Functions write.
+    match /friendRequests/{uid}/{box}/{otherUid} {
+      allow read: if isOwner(uid) && (box == 'incoming' || box == 'outgoing');
+      allow write: if false;
+    }
+
+    // Posts (workouts and check-in photos) and their comments. Visible to the
+    // author and the author's friends; written only by Cloud Functions.
+    function canSeePostBy(authorUid) {
+      return request.auth != null
+        && (request.auth.uid == authorUid
+            || exists(/databases/$(database)/documents/friendships/$(authorUid)/friends/$(request.auth.uid)));
+    }
+    match /posts/{postId} {
+      allow read: if canSeePostBy(resource.data.authorUid);
+      allow write: if false;
+
+      match /comments/{commentId} {
+        allow read: if canSeePostBy(get(/databases/$(database)/documents/posts/$(postId)).data.authorUid);
+        allow write: if false;
+      }
+    }
+
     // Everything else is denied until its collection is built (build steps 9+)
     // and gets its own explicit rule here.
   }

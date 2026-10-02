@@ -17,6 +17,9 @@ export const BROWSE_CATEGORIES = [
   'Stretching & Recovery',
 ] as const;
 
+const SUN_SALUTATION_A_STEPS =
+  'One round, one breath per movement: stand in Mountain Pose → inhale, arms overhead → exhale, fold forward → inhale, halfway lift → exhale, step back to Plank and lower through Chaturanga → inhale, Upward-Facing Dog → exhale, Downward-Facing Dog and hold 5 breaths → step forward, inhale halfway lift → exhale, fold → inhale, rise with arms overhead → exhale, hands to heart.';
+
 function ex(
   id: string,
   name: string,
@@ -443,7 +446,7 @@ export const browseWorkoutTemplates: WorkoutTemplate[] = [
     false,
     ['build_endurance'],
     [
-      ex('sun-salutation-a', 'Sun Salutation A', 'duration', 5, '1 round through the sequence', { tips: 'Move through each pose with control, linking one breath to one movement.' }),
+      ex('sun-salutation-a', 'Sun Salutation A', 'duration', 5, '1 round through the sequence', { tips: SUN_SALUTATION_A_STEPS }),
       ex('standing-forward-fold', 'Standing Forward Fold', 'duration', 1, '1 minute hold', { tips: 'Hinge from your hips and let your upper body hang, keeping a soft bend in your knees.' }),
       ex('seated-twist', 'Seated Spinal Twist', 'duration', 2, '30 seconds each side', { tips: 'Sit tall and rotate your torso from your spine, using your arm for gentle leverage, not force.' }),
     ],
@@ -459,8 +462,8 @@ export const browseWorkoutTemplates: WorkoutTemplate[] = [
     false,
     ['build_strength', 'build_endurance'],
     [
-      ex('vinyasa-flow-sequence', 'Vinyasa Flow Sequence', 'duration', 1, '25 minutes continuous flow', { tips: 'Move through each pose with control, linking one breath to one movement.' }),
-      ex('warrior-series', 'Warrior I-II-III Series', 'duration', 2, '1 minute each side', { tips: 'Keep your front knee tracking over your ankle and your back leg strong and straight.' }),
+      ex('vinyasa-flow-sequence', 'Vinyasa Flow Sequence', 'duration', 1, '25 minutes continuous flow', { tips: 'Warm up with 3 rounds of Sun Salutation A: Mountain Pose → Forward Fold → Halfway Lift → Plank → Chaturanga → Upward-Facing Dog → Downward-Facing Dog → step forward and rise to standing. Then repeat this flow, alternating sides: from Downward-Facing Dog, step your right foot forward into Low Lunge → Warrior I → open to Warrior II → Reverse Warrior → hands down, step back to Plank → Chaturanga → Upward-Facing Dog → Downward-Facing Dog, then the left side. One breath per movement; rest in Child’s Pose whenever you need.' }),
+      ex('warrior-series', 'Warrior I-II-III Series', 'duration', 2, '1 minute each side', { tips: 'Each side, about 20 seconds per pose: Warrior I (back heel down, hips facing forward, arms overhead) → open your hips and arms to Warrior II → shift onto your front leg and lift your back leg into Warrior III. Keep your front knee over your ankle.' }),
       ex('crow-pose', 'Crow Pose Practice', 'duration', 3, '15-20 second holds', { tips: 'Place your hands shoulder-width apart, shift your weight forward, and lean into your triceps to lift your feet.' }),
     ],
     [info('Intensity', ['Move with your breath - one movement per inhale or exhale', 'Modify to Warrior II if balance poses feel unstable'])],
@@ -540,9 +543,9 @@ export const browseWorkoutTemplates: WorkoutTemplate[] = [
     false,
     ['lose_weight', 'build_endurance'],
     [
-      ex('hot-yoga-sun-salutations', 'Sun Salutation Flow', 'duration', 8, '1 round through the sequence', { tips: 'Move through each pose with control, linking one breath to one movement.' }),
-      ex('hot-yoga-standing-series', 'Standing Balance Series', 'duration', 4, '1 minute each side', { tips: 'Find a steady focal point, engage your core, and move between positions with slow control.' }),
-      ex('hot-yoga-floor-series', 'Floor & Seated Series', 'duration', 1, '10 minutes', { tips: 'Keep movements controlled and in rhythm, focusing on form over speed.' }),
+      ex('hot-yoga-sun-salutations', 'Sun Salutation Flow', 'duration', 8, '1 round through the sequence', { tips: SUN_SALUTATION_A_STEPS }),
+      ex('hot-yoga-standing-series', 'Standing Balance Series', 'duration', 4, '1 minute each side', { tips: 'Each side, about 20 seconds per pose: Tree Pose → Standing Hand-to-Big-Toe (hold your knee if your toe is out of reach) → Dancer’s Pose. Find a steady focal point and engage your core.' }),
+      ex('hot-yoga-floor-series', 'Floor & Seated Series', 'duration', 1, '10 minutes', { tips: 'About 1-2 minutes each: Cobra → Locust → Bow Pose → Seated Forward Fold → Seated Spinal Twist (both sides) → Bridge → Supine Twist (both sides). Move slowly and keep your breath steady.' }),
     ],
     [info('Safety Essentials', ['Hydrate well before and during class', 'Take a seated rest anytime you feel lightheaded'])],
     [info('Essential Equipment', ['Yoga mat', 'Towel', 'Water bottle'])]

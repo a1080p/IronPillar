@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, type Href } from 'expo-router';
@@ -11,7 +11,15 @@ import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFriends } from '../../hooks/useFriends';
 import { useActivityFeed } from '../../hooks/useActivityFeed';
-import { addFriend, reactToActivity, type Reaction } from '../../lib/friends';
+import {
+  addFriend,
+  cancelFriendRequest,
+  reactToActivity,
+  respondFriendRequest,
+  type Reaction,
+} from '../../lib/friends';
+import { useFriendRequests, usePost } from '../../hooks/useSocial';
+import { CheckInSheet } from '../../components/CheckInSheet';
 import type { ActivityFeedItem } from '../../types/models';
 
 const getIconForType = (colors: ThemeColors): Record<ActivityFeedItem['type'], ReactNode> => ({
@@ -19,6 +27,9 @@ const getIconForType = (colors: ThemeColors): Record<ActivityFeedItem['type'], R
   streak_milestone: <FlameIcon size={22} color={colors.accentFlame} />,
   friend_workout: <GymIcon size={22} color={colors.primary} />,
   reaction: <Ionicons name="heart" size={22} color={colors.danger} />,
+  check_in: <Ionicons name="camera" size={22} color={colors.primary} />,
+  comment: <Ionicons name="chatbubble" size={22} color={colors.primary} />,
+  friend_request_accepted: <Ionicons name="person-add" size={22} color={colors.primary} />,
 });
 
 function timeAgo(iso: string) {
@@ -39,6 +50,13 @@ export default function SocialScreen() {
   const { user, profile } = useAuth();
   const { friends } = useFriends(user?.uid);
   const { items } = useActivityFeed(user?.uid);
+  const { incoming, outgoing } = useFriendRequests(user?.uid);
+  const [checkInOpen, setCheckInOpen] = useState(false);
+
+  const respond = (uid: string, accept: boolean) =>
+    respondFriendRequest(uid, accept).catch((e) =>
+      Alert.alert('Something went wrong', e instanceof Error ? e.message : 'Try again.')
+    );
 
   const [username, setUsername] = useState('');
   const [adding, setAdding] = useState(false);
@@ -49,7 +67,11 @@ export default function SocialScreen() {
     try {
       const friend = await addFriend(username.trim());
       setUsername('');
-      Alert.alert('Friend added', `You and ${friend.name} are now friends.`);
+      if (friend.status === 'requested') {
+        Alert.alert('Request sent', `${friend.name} will see your friend request and can accept it.`);
+      } else {
+        Alert.alert('Friend added', `You and ${friend.name} are now friends.`);
+      }
     } catch (e) {
       Alert.alert('Could not add friend', e instanceof Error ? e.message : 'Try again.');
     } finally {
@@ -61,10 +83,23 @@ export default function SocialScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <TopBar />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.heading}>Social</Text>
+        <View style={styles.headingRow}>
+          <Text style={[styles.heading, { marginBottom: 0 }]} accessibilityRole="header">
+            Social
+          </Text>
+          <Pressable
+            style={styles.checkInButton}
+            onPress={() => setCheckInOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Post a workout check-in photo"
+          >
+            <Ionicons name="camera" size={22} color={colors.textOnDark} />
+          </Pressable>
+        </View>
 
         <View style={styles.addCard}>
           <Text style={styles.addTitle}>Add a Friend</Text>
+          <Text style={styles.addHint}>Send a request by username. They'll need to accept it.</Text>
           {profile?.username && (
             <Text style={styles.yourUsername}>Your username: @{profile.username}</Text>
           )}
@@ -78,7 +113,7 @@ export default function SocialScreen() {
               value={username}
               onChangeText={setUsername}
             />
-            <Button label="Add" onPress={handleAddFriend} loading={adding} />
+            <Button label="Send" onPress={handleAddFriend} loading={adding} />
           </View>
           {friends.length > 0 && (
             <Text style={styles.friendCount}>
@@ -86,6 +121,66 @@ export default function SocialScreen() {
             </Text>
           )}
         </View>
+
+        {incoming.length > 0 && (
+          <>
+            <Text style={styles.sectionHeading}>Friend Requests</Text>
+            {incoming.map((r) => (
+              <View key={r.uid} style={styles.friendRow}>
+                <Ionicons name="person-circle" size={36} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.friendName}>{r.name}</Text>
+                  <Text style={styles.friendHandle}>@{r.username}</Text>
+                </View>
+                <Pressable
+                  style={styles.acceptButton}
+                  onPress={() => respond(r.uid, true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Accept ${r.name}'s request`}
+                >
+                  <Text style={styles.acceptText}>Accept</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.declineButton}
+                  onPress={() => respond(r.uid, false)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Decline ${r.name}'s request`}
+                >
+                  <Text style={styles.declineText}>Decline</Text>
+                </Pressable>
+              </View>
+            ))}
+            <View style={{ height: spacing.lg }} />
+          </>
+        )}
+
+        {outgoing.length > 0 && (
+          <>
+            <Text style={styles.sectionHeading}>Sent Requests</Text>
+            {outgoing.map((r) => (
+              <View key={r.uid} style={styles.friendRow}>
+                <Ionicons name="time-outline" size={28} color={colors.textMuted} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.friendName}>{r.name}</Text>
+                  <Text style={styles.friendHandle}>@{r.username} · waiting</Text>
+                </View>
+                <Pressable
+                  onPress={() =>
+                    cancelFriendRequest(r.uid).catch((e) =>
+                      Alert.alert('Could not cancel', e instanceof Error ? e.message : 'Try again.')
+                    )
+                  }
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Cancel request to ${r.name}`}
+                >
+                  <Text style={styles.declineText}>Cancel</Text>
+                </Pressable>
+              </View>
+            ))}
+            <View style={{ height: spacing.lg }} />
+          </>
+        )}
 
         {friends.length > 0 && (
           <>
@@ -131,16 +226,51 @@ export default function SocialScreen() {
                 >
                   {item.message}
                 </Text>
+                {item.photoUrl ? (
+                  <Pressable
+                    onPress={() => item.postId && router.push(`/post/${item.postId}` as Href)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.actorName}'s check-in photo. Opens comments`}
+                  >
+                    <Image source={{ uri: item.photoUrl }} style={styles.feedPhoto} />
+                  </Pressable>
+                ) : null}
+                {item.caption ? <Text style={styles.feedCaption}>{item.caption}</Text> : null}
                 <Text style={styles.feedTime}>{timeAgo(item.createdAt)}</Text>
-                {item.type !== 'reaction' && item.actorUid !== user?.uid && (
-                  <ReactionButtons item={item} />
-                )}
+                <View style={styles.itemActions}>
+                  {item.type !== 'reaction' &&
+                    item.type !== 'comment' &&
+                    item.type !== 'friend_request_accepted' &&
+                    item.actorUid !== user?.uid && <ReactionButtons item={item} />}
+                  {item.postId && <CommentsButton postId={item.postId} />}
+                </View>
               </View>
             </View>
           ))
         )}
       </ScrollView>
+      {user && <CheckInSheet visible={checkInOpen} uid={user.uid} onClose={() => setCheckInOpen(false)} />}
     </SafeAreaView>
+  );
+}
+
+// "Comment" link with the live count, under any feed item that's a post.
+function CommentsButton({ postId }: { postId: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  const { post, missing } = usePost(postId);
+  if (missing) return null;
+  const count = post?.commentCount ?? 0;
+  return (
+    <Pressable
+      style={styles.reactionButton}
+      onPress={() => router.push(`/post/${postId}` as Href)}
+      accessibilityRole="button"
+      accessibilityLabel={count > 0 ? `${count} comments. Open comments` : 'Comment'}
+    >
+      <Ionicons name="chatbubble-outline" size={15} color={colors.textMuted} />
+      <Text style={styles.reactionText}>{count > 0 ? count : 'Comment'}</Text>
+    </Pressable>
   );
 }
 
@@ -194,6 +324,34 @@ function ReactionButtons({ item }: { item: ActivityFeedItem }) {
 }
 
 const getStyles = (colors: ThemeColors) => StyleSheet.create({
+  headingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg },
+  checkInButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addHint: { color: colors.textMuted, fontSize: typography.sizes.small, marginBottom: spacing.sm },
+  acceptButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+  },
+  acceptText: { color: colors.textOnDark, fontWeight: '700', fontSize: typography.sizes.small },
+  declineButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs + 2 },
+  declineText: { color: colors.textMuted, fontWeight: '700', fontSize: typography.sizes.small },
+  feedPhoto: {
+    width: '100%',
+    aspectRatio: 4 / 5,
+    borderRadius: radii.md,
+    marginTop: spacing.sm,
+    backgroundColor: colors.surfaceMuted,
+  },
+  feedCaption: { color: colors.text, marginTop: spacing.xs },
+  itemActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap', marginTop: spacing.sm },
   friendList: { marginBottom: spacing.lg },
   friendRow: {
     flexDirection: 'row',
@@ -243,10 +401,11 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   feedMessage: { color: colors.text, fontWeight: '600' },
   feedTime: { color: colors.textMuted, fontSize: typography.sizes.small, marginTop: 2 },
-  reactionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  reactionRow: { flexDirection: 'row', gap: spacing.sm },
   reactionButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
     borderWidth: 1,
     borderColor: colors.divider,
     borderRadius: radii.pill,

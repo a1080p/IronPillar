@@ -1,8 +1,11 @@
 import type { FriendProfile } from '../types/models';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from './firebase/config';
+import { functions, storage } from './firebase/config';
+import { ref, uploadBytes } from 'firebase/storage';
 
 interface AddFriendResult {
+  // 'requested' sends a request; 'friends' when they had already asked you.
+  status?: 'requested' | 'friends';
   uid: string;
   name: string;
   username: string;
@@ -40,7 +43,10 @@ export async function getFriendProfile(uid: string): Promise<FriendProfile> {
 const removeFriendFn = httpsCallable<{ uid: string }, { removed: boolean }>(functions, 'removeFriend');
 const blockUserFn = httpsCallable<{ uid: string }, { blocked: boolean }>(functions, 'blockUser');
 const unblockUserFn = httpsCallable<{ uid: string }, { unblocked: boolean }>(functions, 'unblockUser');
-const reportUserFn = httpsCallable<{ uid: string; reason: ReportReason; details: string }, { reported: boolean }>(
+const reportUserFn = httpsCallable<
+  { uid: string; reason: ReportReason; details: string; postId?: string; commentId?: string },
+  { reported: boolean }
+>(
   functions,
   'reportUser'
 );
@@ -48,7 +54,7 @@ const reportUserFn = httpsCallable<{ uid: string; reason: ReportReason; details:
 export type ReportReason = 'offensive_profile' | 'harassment' | 'impersonation' | 'spam' | 'other';
 
 export const REPORT_REASONS: { value: ReportReason; label: string }[] = [
-  { value: 'offensive_profile', label: 'Offensive name or photo' },
+  { value: 'offensive_profile', label: 'Offensive name, photo or comment' },
   { value: 'harassment', label: 'Harassment or bullying' },
   { value: 'impersonation', label: 'Pretending to be someone else' },
   { value: 'spam', label: 'Spam' },
@@ -69,6 +75,56 @@ export async function unblockUser(uid: string) {
   await unblockUserFn({ uid });
 }
 
-export async function reportUser(uid: string, reason: ReportReason, details: string) {
-  await reportUserFn({ uid, reason, details });
+// Reports a user, or something they posted when postId (and commentId) is given.
+export async function reportUser(
+  uid: string,
+  reason: ReportReason,
+  details: string,
+  target: { postId?: string; commentId?: string } = {}
+) {
+  await reportUserFn({ uid, reason, details, ...target });
+}
+
+const respondFn = httpsCallable<{ uid: string; accept: boolean }, { status: string }>(functions, 'respondFriendRequest');
+const cancelRequestFn = httpsCallable<{ uid: string }, { cancelled: boolean }>(functions, 'cancelFriendRequest');
+
+export async function respondFriendRequest(uid: string, accept: boolean) {
+  await respondFn({ uid, accept });
+}
+
+export async function cancelFriendRequest(uid: string) {
+  await cancelRequestFn({ uid });
+}
+
+const addCommentFn = httpsCallable<{ postId: string; text: string }, { id: string }>(functions, 'addComment');
+const deleteCommentFn = httpsCallable<{ postId: string; commentId: string }, { deleted: boolean }>(
+  functions,
+  'deleteComment'
+);
+const deletePostFn = httpsCallable<{ postId: string }, { deleted: boolean }>(functions, 'deletePost');
+const createCheckInFn = httpsCallable<{ photoPath: string; caption: string }, { postId: string }>(
+  functions,
+  'createCheckIn'
+);
+
+export async function addComment(postId: string, text: string) {
+  await addCommentFn({ postId, text });
+}
+
+export async function deleteComment(postId: string, commentId: string) {
+  await deleteCommentFn({ postId, commentId });
+}
+
+export async function deletePost(postId: string) {
+  await deletePostFn({ postId });
+}
+
+// Uploads a check-in photo, then shares it with friends.
+export async function createCheckIn(uid: string, localUri: string, caption: string) {
+  const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const photoPath = `checkins/${uid}/${name}.jpg`;
+  const blob = await (await fetch(localUri)).blob();
+  await uploadBytes(ref(storage, photoPath), blob, { contentType: 'image/jpeg' });
+  const { data } = await createCheckInFn({ photoPath, caption });
+  return data.postId;
 }

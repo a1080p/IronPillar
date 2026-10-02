@@ -47,7 +47,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Iron Pillar to access your photos so you can set a profile picture."
+          "photosPermission": "Allow Iron Pillar to access your photos so you can set a profile picture or share a workout check-in photo.",
+          "cameraPermission": "Iron Pillar uses the camera when you take a profile photo or a workout check-in photo to share with friends.",
+          "microphonePermission": false
         }
       ],
       [
