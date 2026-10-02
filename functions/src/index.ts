@@ -21,6 +21,7 @@ import {
   type StatsWorkout,
   type UserStats,
 } from './achievements';
+import { containsBlockedTerm } from './moderation';
 
 initializeApp();
 const db = getFirestore();
@@ -643,6 +644,9 @@ export const changeUsername = onCall(async (request) => {
   }
   const raw = (request.data as { username?: unknown } | undefined)?.username;
   const username = typeof raw === 'string' ? raw.trim().toLowerCase().replace(/^@/, '') : '';
+  if (containsBlockedTerm(username)) {
+    throw new HttpsError('invalid-argument', 'That username isn’t allowed. Try another.');
+  }
   if (!USERNAME_PATTERN.test(username)) {
     throw new HttpsError(
       'invalid-argument',
@@ -852,6 +856,14 @@ export const addFriend = onCall(async (request) => {
   if (targetUid === uid) {
     throw new HttpsError('invalid-argument', "You can't add yourself as a friend.");
   }
+  // Either side having blocked the other looks the same as no such user.
+  const [blockedByMe, blockedMe] = await Promise.all([
+    blockRef(uid, targetUid).get(),
+    blockRef(targetUid, uid).get(),
+  ]);
+  if (blockedByMe.exists || blockedMe.exists) {
+    throw new HttpsError('not-found', `No user found with username "${username}".`);
+  }
 
   const selfRef = db.collection('users').doc(uid);
   const targetRef = db.collection('users').doc(targetUid);
@@ -894,6 +906,143 @@ export const addFriend = onCall(async (request) => {
   });
 
   return result;
+});
+
+const blockRef = (uid: string, otherUid: string) =>
+  db.collection('blocks').doc(uid).collection('blocked').doc(otherUid);
+
+function readOtherUid(data: unknown, uid: string) {
+  const other = (data as { uid?: unknown } | undefined)?.uid;
+  if (typeof other !== 'string' || !/^[A-Za-z0-9]{1,128}$/.test(other) || other === uid) {
+    throw new HttpsError('invalid-argument', 'Missing or malformed uid.');
+  }
+  return other;
+}
+
+// Removes a friendship from both sides, if there is one.
+async function unfriend(uid: string, otherUid: string) {
+  const mine = db.collection('friendships').doc(uid).collection('friends').doc(otherUid);
+  const theirs = db.collection('friendships').doc(otherUid).collection('friends').doc(uid);
+  await db.runTransaction(async (tx) => {
+    const [mineSnap, theirsSnap] = await Promise.all([tx.get(mine), tx.get(theirs)]);
+    if (mineSnap.exists) {
+      tx.delete(mine);
+      tx.update(db.collection('users').doc(uid), { friendCount: FieldValue.increment(-1) });
+    }
+    if (theirsSnap.exists) {
+      tx.delete(theirs);
+      tx.update(db.collection('users').doc(otherUid), { friendCount: FieldValue.increment(-1) });
+    }
+  });
+}
+
+// Deletes the activity-feed items one user generated in another's feed.
+async function clearFeedItems(feedOwnerUid: string, actorUid: string) {
+  const snap = await db
+    .collection('activityFeed')
+    .doc(feedOwnerUid)
+    .collection('items')
+    .where('actorUid', '==', actorUid)
+    .get();
+  if (snap.empty) return;
+  const batch = db.batch();
+  snap.docs.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+}
+
+export const removeFriend = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+  const otherUid = readOtherUid(request.data, uid);
+  await unfriend(uid, otherUid);
+  return { removed: true };
+});
+
+// Blocking removes the friendship, clears each person's activity from the
+// other's feed, and stops the blocked person finding or re-adding you.
+export const blockUser = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+  const otherUid = readOtherUid(request.data, uid);
+  const otherSnap = await db.collection('users').doc(otherUid).get();
+  const other = (otherSnap.data() ?? {}) as { name?: string; username?: string };
+  await blockRef(uid, otherUid).set({
+    uid: otherUid,
+    name: other.name ?? 'User',
+    username: other.username ?? '',
+    since: new Date().toISOString(),
+  });
+  await unfriend(uid, otherUid);
+  await Promise.all([clearFeedItems(uid, otherUid), clearFeedItems(otherUid, uid)]);
+  return { blocked: true };
+});
+
+export const unblockUser = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+  const otherUid = readOtherUid(request.data, uid);
+  await blockRef(uid, otherUid).delete();
+  return { unblocked: true };
+});
+
+const REPORT_REASONS = ['offensive_profile', 'harassment', 'impersonation', 'spam', 'other'] as const;
+const SUPPORT_EMAIL = 'aidand510@gmail.com';
+
+// Files a report about another user and emails it to the developer, so it
+// can be reviewed and acted on within 24 hours (see the Terms of Use).
+export const reportUser = onCall({ secrets: [RESEND_API_KEY] }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+  const otherUid = readOtherUid(request.data, uid);
+  const { reason, details } = (request.data ?? {}) as { reason?: unknown; details?: unknown };
+  if (typeof reason !== 'string' || !(REPORT_REASONS as readonly string[]).includes(reason)) {
+    throw new HttpsError('invalid-argument', 'Pick a reason for the report.');
+  }
+  const note = typeof details === 'string' ? details.trim().slice(0, 1000) : '';
+
+  const [reporterSnap, reportedSnap] = await Promise.all([
+    db.collection('users').doc(uid).get(),
+    db.collection('users').doc(otherUid).get(),
+  ]);
+  const reporter = (reporterSnap.data() ?? {}) as { username?: string };
+  const reported = (reportedSnap.data() ?? {}) as { name?: string; username?: string; avatarUrl?: string | null };
+  const reportRef = db.collection('userReports').doc();
+  await reportRef.set({
+    reporterUid: uid,
+    reportedUid: otherUid,
+    reportedName: reported.name ?? '',
+    reportedUsername: reported.username ?? '',
+    reportedAvatarUrl: reported.avatarUrl ?? null,
+    reason,
+    details: note,
+    status: 'new',
+    createdAt: new Date().toISOString(),
+  });
+
+  // Best effort: the report is saved either way.
+  const key = RESEND_API_KEY.value();
+  if (key) {
+    try {
+      await new Resend(key).emails.send({
+        from: VERIFICATION_EMAIL_FROM,
+        to: SUPPORT_EMAIL,
+        subject: `Iron Pillar user report: @${reported.username ?? otherUid} (${reason})`,
+        text: [
+          `Report ${reportRef.id}`,
+          `Reported: ${reported.name ?? ''} @${reported.username ?? ''} (uid ${otherUid})`,
+          reported.avatarUrl ? `Photo: ${reported.avatarUrl}` : 'Photo: none',
+          `Reason: ${reason}`,
+          `Details: ${note || '(none)'}`,
+          `Reporter: @${reporter.username ?? ''} (uid ${uid})`,
+          '',
+          'Act within 24 hours: remove the content or the account in the Firebase console, then set the report status.',
+        ].join('\n'),
+      });
+    } catch (e) {
+      console.error('Report email failed', e);
+    }
+  }
+  return { reported: true };
 });
 
 async function deleteCollection(colRef: FirebaseFirestore.CollectionReference) {
@@ -958,6 +1107,7 @@ export const deleteAccount = onCall(async (request) => {
     deleteCollection(db.collection('userWorkouts').doc(uid).collection('customWorkouts')),
     deleteCollection(db.collection('friendships').doc(uid).collection('friends')),
     deleteCollection(db.collection('activityFeed').doc(uid).collection('items')),
+    deleteCollection(db.collection('blocks').doc(uid).collection('blocked')),
     db.collection('wearableTokens').doc(uid).delete(),
     db.collection('wearableSnapshots').doc(uid).delete(),
     deleteAvatar(uid),

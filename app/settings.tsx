@@ -1,4 +1,4 @@
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, type Href } from 'expo-router';
@@ -134,6 +134,22 @@ export default function SettingsScreen() {
           </Pressable>
           <Pressable style={styles.row} accessibilityRole="button" onPress={() => router.push('/reminders' as Href)}>
             <Text style={styles.rowLabel}>Reminders</Text>
+          </Pressable>
+          <Pressable style={styles.row} accessibilityRole="button" onPress={() => router.push('/blocked-users' as Href)}>
+            <Text style={styles.rowLabel}>Blocked Users</Text>
+          </Pressable>
+          <Pressable
+            style={styles.row}
+            accessibilityRole="link"
+            onPress={() => Linking.openURL('mailto:aidand510@gmail.com?subject=Iron%20Pillar%20support')}
+          >
+            <Text style={styles.rowLabel}>Contact Support</Text>
+          </Pressable>
+          <Pressable style={styles.row} accessibilityRole="link" onPress={() => Linking.openURL('https://www.ironpillar.app/terms')}>
+            <Text style={styles.rowLabel}>Terms of Use</Text>
+          </Pressable>
+          <Pressable style={styles.row} accessibilityRole="link" onPress={() => Linking.openURL('https://www.ironpillar.app/privacy')}>
+            <Text style={styles.rowLabel}>Privacy Policy</Text>
           </Pressable>
           <Pressable style={styles.row} accessibilityRole="button" onPress={signOut}>
             <Text style={styles.rowLabel}>Sign Out</Text>

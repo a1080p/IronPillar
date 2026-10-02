@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Button } from '../../components/Button';
+import { ReportUserSheet } from '../../components/ReportUserSheet';
 import { Avatar } from '../../components/Avatar';
 import { BadgeList } from '../../components/BadgeList';
 import { ProgressBar } from '../../components/ProgressBar';
@@ -12,7 +14,7 @@ import { spacing, typography } from '../../constants/theme';
 import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { BADGE_LIST } from '../../data/badges';
 import { useUnits } from '../../hooks/useUnits';
-import { getFriendProfile } from '../../lib/friends';
+import { blockUser, getFriendProfile, removeFriend } from '../../lib/friends';
 import { formatDistance, formatVolume } from '../../lib/units';
 import type { FriendProfile } from '../../types/models';
 
@@ -24,6 +26,8 @@ export default function FriendProfileScreen() {
   const units = useUnits();
   const [friend, setFriend] = useState<FriendProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!uid) return;
@@ -46,6 +50,17 @@ export default function FriendProfileScreen() {
     () => Object.fromEntries((friend?.badges ?? []).map((b) => [b.badgeId, b.earnedAt])),
     [friend]
   );
+
+  const runAndLeave = async (action: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await action();
+      router.back();
+    } catch (e) {
+      setBusy(false);
+      Alert.alert('Something went wrong', e instanceof Error ? e.message : 'Try again.');
+    }
+  };
 
   if (!friend) {
     return (
@@ -111,7 +126,47 @@ export default function FriendProfileScreen() {
           {friend.badges.length} of {BADGE_LIST.length} earned · Tap a badge for details
         </Text>
         <BadgeList earnedAt={earnedAt} stats={stats} ownerName={firstName} />
+
+        <View style={styles.actions}>
+          <Button
+            label="Remove Friend"
+            variant="outline"
+            disabled={busy}
+            onPress={() =>
+              Alert.alert(`Remove ${friend.name}?`, 'You will stop seeing each other’s activity.', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Remove',
+                  style: 'destructive',
+                  onPress: () => runAndLeave(() => removeFriend(friend.uid)),
+                },
+              ])
+            }
+          />
+          <Button label={`Report ${firstName}`} variant="outline" onPress={() => setReporting(true)} />
+          <Button
+            label={`Block ${firstName}`}
+            variant="ghost"
+            disabled={busy}
+            onPress={() =>
+              Alert.alert(
+                `Block ${friend.name}?`,
+                'They’ll be removed from your friends, their activity will disappear from your feed, and they won’t be able to find or add you. You can unblock them in Settings.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Block', style: 'destructive', onPress: () => runAndLeave(() => blockUser(friend.uid)) },
+                ]
+              )
+            }
+          />
+        </View>
       </ScrollView>
+      <ReportUserSheet
+        visible={reporting}
+        userUid={friend.uid}
+        userName={friend.name}
+        onClose={() => setReporting(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -135,5 +190,6 @@ const getStyles = (colors: ThemeColors) =>
       marginBottom: spacing.md,
     },
     tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+    actions: { marginTop: spacing.lg, gap: spacing.md },
     count: { color: colors.textMuted, marginTop: -spacing.sm, marginBottom: spacing.lg },
   });

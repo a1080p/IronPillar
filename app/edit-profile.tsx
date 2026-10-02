@@ -11,6 +11,7 @@ import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { deleteAvatar, uploadAvatar } from '../lib/avatar';
 import { changeUsername } from '../lib/account';
+import { containsBlockedTerm } from '../constants/moderation';
 import { formatBirthdayInput } from '../lib/dates';
 
 const BIRTHDAY_RE = /^\d{2}-\d{2}-\d{4}$/;
@@ -103,6 +104,10 @@ export default function EditProfileScreen() {
   const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert('Missing name', 'Enter a name to display on your profile.');
+      return;
+    }
+    if (containsBlockedTerm(name) || containsBlockedTerm(username)) {
+      Alert.alert('Not allowed', 'Please choose a different name or username.');
       return;
     }
     if (birthday && !BIRTHDAY_RE.test(birthday)) {

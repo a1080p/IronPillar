@@ -163,6 +163,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // People a user has blocked: the owner can list them (to unblock);
+    // only the blockUser/unblockUser Cloud Functions write them.
+    match /blocks/{uid}/blocked/{otherUid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // Reports about other users. Filed and read only by Cloud Functions.
+    match /userReports/{reportId} {
+      allow read, write: if false;
+    }
+
     // Everything else is denied until its collection is built (build steps 9+)
     // and gets its own explicit rule here.
   }

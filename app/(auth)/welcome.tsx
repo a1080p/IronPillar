@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -150,6 +151,26 @@ export default function WelcomeScreen() {
 
           <Button label="Log in" variant="primary" onPress={() => openForm('log_in')} />
 
+          <Text style={styles.legal}>
+            By continuing, you agree to our{' '}
+            <Text
+              style={styles.legalLink}
+              accessibilityRole="link"
+              onPress={() => Linking.openURL('https://www.ironpillar.app/terms')}
+            >
+              Terms of Use
+            </Text>
+            , including our community rules, and our{' '}
+            <Text
+              style={styles.legalLink}
+              accessibilityRole="link"
+              onPress={() => Linking.openURL('https://www.ironpillar.app/privacy')}
+            >
+              Privacy Policy
+            </Text>
+            .
+          </Text>
+
           {showForm && (
             <>
               <Text style={styles.backLink} accessibilityRole="button" onPress={() => setShowForm(false)}>
@@ -272,6 +293,14 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   submitGroup: {
     gap: spacing.lg,
   },
+  legal: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.small,
+    textAlign: 'center',
+    marginTop: spacing.md,
+    lineHeight: 18,
+  },
+  legalLink: { color: colors.primary, fontWeight: '700' },
   switchModeLink: {
     textAlign: 'center',
     color: colors.primary,
