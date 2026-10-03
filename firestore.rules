@@ -92,11 +92,18 @@ service cloud.firestore {
     }
 
     // Username -> uid lookup, claimed once at profile creation (client-side,
-    // since profile creation itself is a client write) and never touched
-    // again. Used by the addFriend Cloud Function to resolve a username.
+    // since profile creation itself is a client write). Every later change
+    // goes through the changeUsername Cloud Function, which keeps this in
+    // step with users/{uid}.username — so once a profile exists, a direct
+    // client create here would only squat an extra, orphaned name, never
+    // become the user's actual username. Blocked by denying create once
+    // users/{uid} already exists.
     match /usernames/{username} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid'])
+        && !exists(/databases/$(database)/documents/users/$(request.auth.uid));
       allow update, delete: if false;
     }
 
