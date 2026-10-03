@@ -4,6 +4,15 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-03: Pulse check — fixed the tsconfig false-positive (IP-60), verified + PR'd the username-squatting rule fix (IP-61)
+
+- **`tsconfig.json` exclude for `functions/`** ([IP-60](https://studiogreatt.atlassian.net/browse/IP-60)): this was previously diagnosed and ready to go, but blocked on read-only GitHub access. GitHub write access worked this session — merged [#1](https://github.com/a1080p/IronPillar/pull/1). Both `npx tsc --noEmit` at root and `cd functions && npx tsc --noEmit` confirmed clean after.
+- **`usernames/{username}` squatting** ([IP-61](https://studiogreatt.atlassian.net/browse/IP-61)): resolved the open question blocking this fix last time — whether denying `create` once `users/{uid}` exists would break the real signup transaction in `contexts/AuthContext.tsx` (which writes `users/{uid}` and `usernames/{name}` in the same transaction). Spun up the Firestore emulator with `@firebase/rules-unit-testing` and checked empirically: a transaction's own earlier writes are **not** visible to a later write's rule evaluation in the same transaction (true in either write order), so the fix cannot break signup. Also confirmed the exploit is real against the current rules (an existing-profile user can squat an unrelated name) and is denied under the fix. Opened [#2](https://github.com/a1080p/IronPillar/pull/2) as a **draft, not merged** — security-rules change, needs human review + deploy.
+- **Read through the latest unlogged commits** (`19f246d` Welcome-to-Pro screen, `d676fbf` account-deletion redirect fix + optimistic social actions + lazy-loaded Resend/Anthropic SDKs) line by line against their stated intent. No bugs found; the `deletingAccount` redirect-guard logic, the `pendingCompletion` optimistic-UI module, and the RevenueCat-check-overlaps-reads change in `completeWorkout` all check out. Both commits were missing from this log — noted here since Progress.md's own "verified" claims are only as good as this log staying current.
+- **Everything else already has an open ticket**: no ESLint config (IP-36), theme colors approximated from a screenshot (IP-37), no VoiceOver/TalkBack audit (IP-35) — left alone rather than duplicating.
+
+---
+
 ## 2026-10-02: Bug triage — yoga flows now list their poses ([IP-62](https://studiogreatt.atlassian.net/browse/IP-62))
 
 One new report (`aNUo53ogfP6hbJTzaaTH`, `/workout/power-vinyasa-yoga`, confusing_ui): the Vinyasa flow says to go through a sequence but never lists the poses.
