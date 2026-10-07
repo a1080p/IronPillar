@@ -144,12 +144,14 @@ a:hover { text-decoration-thickness: 2px; }
 
 /* ---------- type ---------- */
 h1, h2, h3 { text-wrap: balance; margin: 0; }
+/* keep anchored sections clear of the sticky header */
+section[id], [id] > h2 { scroll-margin-top: 84px; }
 .display {
   font-family: var(--display);
   font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: 0.005em;
-  line-height: 0.92;
+  letter-spacing: 0.01em;
+  line-height: 1.06;
 }
 .eyebrow {
   font-family: var(--mono);
@@ -232,7 +234,7 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
   font-weight: 800;
   text-transform: uppercase;
   font-size: var(--step-3);
-  line-height: 1;
+  line-height: 1.1;
   margin: 48px 0 14px;
   scroll-margin-top: 90px;
 }
