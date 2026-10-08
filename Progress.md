@@ -4,6 +4,17 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-08: Pulse check — soccer-drill tip copy-paste fix; verified IP-60/IP-61/IP-63/IP-64 status; this log was missing two sessions' Jira tickets
+
+- **Fixed:** `data/browseWorkoutTemplates.ts:1063` — the Soccer Skills & Conditioning dribbling drill carried the Basketball Ball-Handling Drills tip verbatim ("use your fingertips, not your palm"), which makes no sense for soccer. Replaced with a soccer-appropriate cue (inside/outside-of-foot touches, stay light on your feet). Data-only string literal, no logic/type/auth impact; `npx tsc --noEmit` clean after. PR opened and auto-merged per policy (doesn't touch any excluded path).
+- **Re-verified IP-60 (tsconfig exclude):** installed dependencies fresh (this sandbox had no `node_modules`) and confirmed both root and `functions/` `tsc --noEmit` are clean. Worth noting for whoever reads this log next: a clean typecheck in this routine depends on `npm install` having been run first — an empty `node_modules` produces dozens of misleading `Cannot find module`/`Cannot find name 'process'` errors that look like real bugs but aren't.
+- **IP-61 (username squatting rules fix, PR #2):** still open, still draft, correctly un-merged — waiting on human review as intended.
+- **Found this log was stale:** Jira already had two tickets — [IP-63](https://studiogreatt.atlassian.net/browse/IP-63) (friends list shows a stale cached display name after a friend renames, filed 2026-10-04) and [IP-64](https://studiogreatt.atlassian.net/browse/IP-64) (check-in photo Storage rule allows any signed-in user to read them, not just friends as the code comment claims, filed 2026-10-07) — that were never written up here even though Jira access was clearly working both days. Both checked against current code: still unresolved, still correctly left for a human design decision (neither is a scoped one-function fix). No duplicate tickets filed.
+- **Broader low-risk-bug sweep** (constants/*.ts, data/*.ts, lib/*.ts, components/*.tsx, website/) found nothing else clearly wrong — the codebase is unusually internally consistent (XP/level math, unit conversions, streak-day bucketing all check out both client and server side).
+- **Jira MCP tools were available this session** (`mcp__Atlassian_Rovo__*`), contrary to this routine's own assumption that they're "likely unavailable until connected" — worth the next session checking first rather than assuming GitHub Issues is the fallback.
+
+---
+
 ## 2026-10-03: Pulse check — fixed the tsconfig false-positive (IP-60), verified + PR'd the username-squatting rule fix (IP-61)
 
 - **`tsconfig.json` exclude for `functions/`** ([IP-60](https://studiogreatt.atlassian.net/browse/IP-60)): this was previously diagnosed and ready to go, but blocked on read-only GitHub access. GitHub write access worked this session — merged [#1](https://github.com/a1080p/IronPillar/pull/1). Both `npx tsc --noEmit` at root and `cd functions && npx tsc --noEmit` confirmed clean after.

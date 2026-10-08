@@ -1060,7 +1060,7 @@ export const browseWorkoutTemplates: WorkoutTemplate[] = [
     true,
     ['build_endurance', 'lose_weight'],
     [
-      ex('soccer-dribbling-drills', 'Dribbling Cone Drills', 'duration', 1, '10 minutes', { tips: 'Keep your eyes up, use your fingertips (not your palm), and stay low in an athletic stance.' }),
+      ex('soccer-dribbling-drills', 'Dribbling Cone Drills', 'duration', 1, '10 minutes', { tips: 'Keep your eyes up, touch the ball with the inside and outside of your foot, and stay light on your feet.' }),
       ex('soccer-passing-drills', 'Passing Drills', 'duration', 1, '10 minutes', { tips: 'Focus on clean technique and follow-through, prioritizing form over speed.' }),
       ex('soccer-shuttle-runs', 'Shuttle Runs', 'duration', 6, '30 sec sprint / 30 sec rest', { tips: 'Sprint to each cone or line under control, touch it, and change direction quickly and low to the ground.' }),
       ex('soccer-scrimmage', 'Small-Sided Scrimmage', 'duration', 1, '15 minutes', { tips: 'Apply your skills at game speed, focusing on decision-making and footwork under pressure.' }),
