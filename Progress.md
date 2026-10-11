@@ -4,6 +4,21 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-11: Apple rejection (Sign in with Apple) root-caused; next-build features
+
+- **Rejection, guideline 2.1(a), iPad Air, build 1.0 (11):** "failed to create an account" with Sign in with Apple. **Root cause:** the Firebase project has no iOS app registered and the Apple provider has no bundle IDs (`appleSignInConfig: {}`), so Firebase rejects every native Apple identity token (audience `com.aidand510.ironpillar`). Zero Apple users have ever been created. **Owner fix, no build needed:** Firebase Console → Project settings → Add app → iOS, bundle ID `com.aidand510.ironpillar`. Must be tested on a real device before resubmitting.
+- **Auth hardening** (c8369b2): Apple/Google failures no longer say "Incorrect email or password" and show the auth code; only email/password sign-ups go through the email-code screen; Apple's first-sign-in name prefills onboarding.
+- **Onboarding** (c8369b2): 5 steps. Strength/endurance picker replaced by an open-response goal (goal tags derived by keyword, `goalsFromText`) + experience; new "what's holding you back" step (7 choices + Other text). New profile fields `goalText`, `barrier`, `barrierOther`.
+- **Workout log** (c8369b2): Skip for Now (exercise to the back of the queue, typed sets kept), unfinished-sets warning with a skip option, and a ~2s randomized cheer after each exercise (`lib/cheers.ts`, uses goal/barrier sometimes).
+- **Streak** (79d00d0): shows 0 from local midnight after a day without a qualifying workout (`activeStreak`, `useActiveStreak`); server no longer carries a lapsed streak into a short workout or into friend profiles.
+- **Recommended workout** (79d00d0): reseeds daily and after each workout, never yesterday's pick or anything done in the past 7 days, boosted by words in the user's own goal. Cold start no longer always returns the same first match.
+- **Friends list** (79d00d0): new `/friends`, from the Profile friend stat and the Social tab friend count.
+- **In-app notifications** (59e9aec): bell + unread count in the top bar, `/notifications` inbox, slide-down banner; friend requests, reactions, comments, accepted requests, friends' badges/streak milestones, evening streak-at-risk. Native closed-app reminders kept (owner's choice).
+- **Pro calorie tracking** (12ce17b): `/calories` from Insights; daily goal (Mifflin-St Jeor, goal-adjusted, overridable via `calorieGoal`), food entries by meal with optional protein, workout calories (MET estimate) added back. New rule for `users/{uid}/foodEntries`; account deletion removes them. Website Pro list not updated yet (ship first).
+- **Not deployed:** Firestore rules and functions (streak + food-entry cleanup) still need `npm run deploy:rules` and a functions deploy. **Not run on a device or simulator yet.** Root `tsc` clean except stale typed-routes entries for the new routes (regenerate on next `expo start`); functions `tsc` clean.
+
+---
+
 ## 2026-10-08: Pulse check — soccer-drill tip copy-paste fix; verified IP-60/IP-61/IP-63/IP-64 status; this log was missing two sessions' Jira tickets
 
 - **Fixed:** `data/browseWorkoutTemplates.ts:1063` — the Soccer Skills & Conditioning dribbling drill carried the Basketball Ball-Handling Drills tip verbatim ("use your fingertips, not your palm"), which makes no sense for soccer. Replaced with a soccer-appropriate cue (inside/outside-of-foot touches, stay light on your feet). Data-only string literal, no logic/type/auth impact; `npx tsc --noEmit` clean after. PR opened and auto-merged per policy (doesn't touch any excluded path).
