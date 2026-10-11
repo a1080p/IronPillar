@@ -122,9 +122,17 @@ export default function SocialScreen() {
             <Button label="Send" onPress={handleAddFriend} loading={adding} />
           </View>
           {friends.length > 0 && (
-            <Text style={styles.friendCount}>
-              {friends.length} friend{friends.length === 1 ? '' : 's'}
-            </Text>
+            <Pressable
+              onPress={() => router.push('/friends' as Href)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`View your ${friends.length} friends`}
+            >
+              <Text style={styles.friendCount}>
+                <Ionicons name="people" size={14} /> {friends.length} friend
+                {friends.length === 1 ? '' : 's'} ›
+              </Text>
+            </Pressable>
           )}
         </View>
 

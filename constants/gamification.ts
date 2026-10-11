@@ -41,6 +41,19 @@ export function yesterdayDateString(date = new Date()) {
   return todayDateString(d);
 }
 
+// The streak as of right now. The server only rewrites streakCount when a
+// workout is logged, so a streak whose last counted day is before yesterday
+// has already ended at local midnight and shows as 0.
+export function activeStreak(
+  profile: { streakCount?: number; lastWorkoutDate?: string | null } | null | undefined,
+  now = new Date()
+): number {
+  const count = profile?.streakCount ?? 0;
+  const last = profile?.lastWorkoutDate;
+  if (!last || count <= 0) return 0;
+  return last >= yesterdayDateString(now) ? count : 0;
+}
+
 // The device's IANA time zone (e.g. "America/New_York"), sent with each
 // workout completion so the server counts streak days on local midnight.
 export function deviceTimeZone(): string | undefined {

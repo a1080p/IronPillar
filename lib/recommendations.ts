@@ -4,7 +4,7 @@
 // the memory. Because useWorkoutLogs/useWorkoutTemplates are live Firestore
 // listeners, recomputing this from `logs` on every render means picks update
 // the instant a workout is completed, with no extra plumbing.
-import { todayDateString } from '../constants/gamification';
+import { todayDateString, yesterdayDateString } from '../constants/gamification';
 import { BROWSE_CATEGORIES } from '../data/browseWorkoutTemplates';
 import type { ExperienceLevel, FitnessGoal, UserProfile, WorkoutLog, WorkoutTemplate } from '../types/models';
 
@@ -130,8 +130,11 @@ function hashSeed(input: string): number {
 }
 
 function dailyRand(uid: string | undefined, salt: string): () => number {
-  const seed = hashSeed(`${uid ?? 'anon'}-${salt}-${todayDateString()}`);
-  let state = seed | 0;
+  return seededRand(`${uid ?? 'anon'}-${salt}-${todayDateString()}`);
+}
+
+function seededRand(seedText: string): () => number {
+  let state = hashSeed(seedText) | 0;
   return () => {
     state = (state + 0x6d2b79f5) | 0;
     let t = Math.imul(state ^ (state >>> 15), 1 | state);
@@ -163,53 +166,118 @@ function scoreTemplate(
   return affinityScore + skillMatchBonus(template, experienceLevel) + rand() * 0.01;
 }
 
+type RecommendationProfile = Pick<UserProfile, 'goals' | 'experienceLevel'> &
+  Partial<Pick<UserProfile, 'goalText'>>;
+
+// The Recommended card changes every day and after every finished workout,
+// and never shows yesterday's pick or anything done in the past week (when
+// there's anything else to show).
 export function pickRecommendedWorkout(
   templates: WorkoutTemplate[],
   logs: WorkoutLog[],
-  profile: Pick<UserProfile, 'goals' | 'experienceLevel'> | null | undefined,
+  profile: RecommendationProfile | null | undefined,
   uid: string | undefined
+): WorkoutTemplate | undefined {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const logsBeforeToday = logs.filter((l) => new Date(l.completedAt) < startOfToday);
+  const yesterdaysPick = pickForDay(
+    templates,
+    logsBeforeToday,
+    profile,
+    uid,
+    yesterdayDateString(),
+    undefined
+  );
+  return pickForDay(templates, logs, profile, uid, todayDateString(), yesterdaysPick?.id);
+}
+
+// Words from the user's own goal ("get better at yoga", "run a 5K") that
+// boost workouts whose name or category mentions them.
+const GOAL_STOPWORDS = new Set([
+  'want', 'with', 'more', 'than', 'that', 'this', 'have', 'from', 'into', 'some',
+  'able', 'like', 'just', 'better', 'before', 'after', 'without', 'stopping', 'body',
+  'weight', 'feel', 'look', 'good', 'great', 'every', 'again', 'still', 'make', 'year',
+]);
+const GOAL_TEXT_MATCH_BONUS = 1.5;
+
+function goalWords(goalText: string | undefined): string[] {
+  if (!goalText) return [];
+  return goalText
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 4 && !GOAL_STOPWORDS.has(w));
+}
+
+function goalTextBonus(template: WorkoutTemplate, words: string[]): number {
+  if (words.length === 0) return 0;
+  const haystack = `${template.name} ${template.browseCategory ?? ''}`.toLowerCase();
+  return words.some((w) => haystack.includes(w)) ? GOAL_TEXT_MATCH_BONUS : 0;
+}
+
+const NO_REPEAT_DAYS = 7;
+
+function pickForDay(
+  templates: WorkoutTemplate[],
+  logs: WorkoutLog[],
+  profile: RecommendationProfile | null | undefined,
+  uid: string | undefined,
+  day: string,
+  excludeId: string | undefined
 ): WorkoutTemplate | undefined {
   // `templates` here is only presets/quick-starts/browse (custom workouts are
   // a separate type, already front-and-center under "My Workouts").
   const discoverable = templates.filter((t) => !isSportSpecific(t));
   if (discoverable.length === 0) return undefined;
 
+  // Reseeded each day and after each finished workout.
+  const rand = seededRand(`${uid ?? 'anon'}-recommended-${day}-${logs.length}`);
+  const words = goalWords(profile?.goalText);
+  const doneThisWeek = new Set(
+    logs
+      .filter(
+        (l) => Date.now() - new Date(l.completedAt).getTime() < NO_REPEAT_DAYS * 24 * 60 * 60 * 1000
+      )
+      .map((l) => l.workoutId)
+  );
+  const fresh = (pool: WorkoutTemplate[]) => {
+    const notRepeated = pool.filter((t) => t.id !== excludeId && !doneThisWeek.has(t.id));
+    if (notRepeated.length > 0) return notRepeated;
+    const notYesterday = pool.filter((t) => t.id !== excludeId);
+    return notYesterday.length > 0 ? notYesterday : pool;
+  };
+
   if (logs.length === 0) {
-    // Cold start: no history yet, so lean on the goals picked at onboarding,
-    // preferring one that also matches the user's skill level.
+    // Cold start: no history yet, so lean on the goals picked at onboarding
+    // and the user's skill level, drawing a different one each day.
     const goalMatches = discoverable.filter((t) => profile?.goals?.some((g) => t.tags.includes(g)));
-    const pool = goalMatches.length > 0 ? goalMatches : discoverable;
-    const skillMatch = pool.find(
-      (t) => estimateDifficulty(t) === (profile?.experienceLevel ? EXPERIENCE_TO_DIFFICULTY[profile.experienceLevel] : undefined)
+    const pool = fresh(goalMatches.length > 0 ? goalMatches : discoverable);
+    const weights = pool.map(
+      (t) =>
+        1 + skillMatchBonus(t, profile?.experienceLevel) + goalTextBonus(t, words)
     );
-    return skillMatch ?? pool[0];
+    return weightedPick(pool, weights, rand);
   }
 
   const templatesById = new Map(templates.map((t) => [t.id, t]));
   const affinity = computeAffinity(logs, templatesById);
-  const rand = dailyRand(uid, 'recommended');
 
   const keyWeights = ALL_KEYS.map((k) => (affinity.get(k) ?? 0) + EXPLORE_EPSILON);
   const chosenKey = weightedPick(ALL_KEYS, keyWeights, rand);
 
-  const recentlyDoneIds = recentlyDoneWorkoutIds(logs);
   const matching = discoverable.filter((t) => templateKeys(t).includes(chosenKey));
-  const pool = matching.filter((t) => !recentlyDoneIds.has(t.id));
-  const candidates = pool.length > 0 ? pool : matching.length > 0 ? matching : discoverable;
+  const candidates = fresh(matching.length > 0 ? matching : discoverable);
 
-  // Within the chosen category, prefer whichever workout best matches the
-  // user's overall affinities and skill level (not just the one key branched
-  // into) so the pick still feels coherent with everything else they do.
-  let best = candidates[0];
-  let bestScore = -Infinity;
-  for (const template of candidates) {
-    const score = scoreTemplate(template, affinity, profile?.experienceLevel, rand);
-    if (score > bestScore) {
-      bestScore = score;
-      best = template;
-    }
-  }
-  return best;
+  // Within the chosen category, draw weighted by how well each workout fits
+  // the user's overall affinities, skill level and own goal, so it feels
+  // coherent but isn't the same top scorer every time.
+  const weights = candidates.map(
+    (t) =>
+      Math.max(scoreTemplate(t, affinity, profile?.experienceLevel, rand), 0) +
+      goalTextBonus(t, words) +
+      EXPLORE_EPSILON
+  );
+  return weightedPick(candidates, weights, rand);
 }
 
 // Picks `count` short workouts for the Quick Start row, weighted by the same

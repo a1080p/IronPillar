@@ -174,6 +174,15 @@ function previousDateString(dateString: string) {
   return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
 }
 
+// The streak as of right now: the stored count only moves when a workout is
+// logged, so a streak whose last day is before yesterday (in the user's own
+// zone) has already ended at their local midnight.
+function activeStreak(streakCount: number, lastWorkoutDate: string | null, timeZone?: string) {
+  if (!lastWorkoutDate || streakCount <= 0) return 0;
+  const today = localDateString(new Date(), timeZone ?? 'UTC');
+  return lastWorkoutDate >= previousDateString(today) ? streakCount : 0;
+}
+
 function isValidRoutePoint(p: unknown): p is RoutePoint {
   if (!p || typeof p !== 'object') return false;
   const r = p as Record<string, unknown>;
@@ -349,9 +358,15 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     // This workout is the one that pushes today over the threshold.
     const dayQualifiesNow = !dayAlreadyCounted && dayMinutes >= MIN_STREAK_DAY_MINUTES;
 
+    // A streak ends at local midnight after a day with no qualifying workout,
+    // even though nothing writes the zero until the next workout — so a short
+    // workout after a gap reports 0, not the old streak.
+    const streakAlive =
+      lastWorkoutDate !== null &&
+      (dayAlreadyCounted || lastWorkoutDate === previousDateString(today));
     let streakCountAfter: number;
     if (!dayQualifiesNow) {
-      streakCountAfter = profile.streakCount;
+      streakCountAfter = streakAlive ? profile.streakCount : 0;
     } else if (lastWorkoutDate === previousDateString(today)) {
       streakCountAfter = profile.streakCount + 1;
     } else {
@@ -766,9 +781,12 @@ export const getFriendProfile = onCall(async (request) => {
     xp?: number;
     streakCount?: number;
     longestStreak?: number;
+    lastWorkoutDate?: string | null;
+    timeZone?: string;
     friendCount?: number;
   };
   const xp = profile.xp ?? 0;
+  const currentStreak = activeStreak(profile.streakCount ?? 0, profile.lastWorkoutDate ?? null, profile.timeZone);
   const stored = statsSnap.data() as UserStats | undefined;
   // Totals exist once the friend has finished a workout on a recent build;
   // before that only the workout count is known.
@@ -783,7 +801,7 @@ export const getFriendProfile = onCall(async (request) => {
     avatarUrl: profile.avatarUrl ?? null,
     avatarKey: profile.avatarKey ?? null,
     xp,
-    streakCount: profile.streakCount ?? 0,
+    streakCount: currentStreak,
     friendCount: profile.friendCount ?? 0,
     badges: badgesSnap.docs.map((d) => {
       const earnedAt = d.get('earnedAt');

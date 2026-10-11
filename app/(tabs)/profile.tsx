@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { TopBar } from '../../components/TopBar';
 import { ProgressBar } from '../../components/ProgressBar';
 import { Avatar } from '../../components/Avatar';
@@ -21,6 +21,7 @@ import { ProBadge, ProLockCard } from '../../components/ProLock';
 import { BadgeMedal } from '../../components/BadgeMedal';
 import { BadgeDetail } from '../../components/BadgeList';
 import { useAchievementStats } from '../../hooks/useAchievementStats';
+import { useActiveStreak } from '../../hooks/useActiveStreak';
 import type { Badge } from '../../types/models';
 import { BADGE_LIST } from '../../data/badges';
 
@@ -31,6 +32,7 @@ export default function ProfileScreen() {
   const { logs } = useWorkoutLogs(user?.uid);
   const { earned, earnedAt } = useEarnedBadges(user?.uid);
   const stats = useAchievementStats(user?.uid, profile, logs.length);
+  const streak = useActiveStreak();
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
 
   if (!profile || !user) {
@@ -78,10 +80,15 @@ export default function ProfileScreen() {
         </Text>
 
         <View style={styles.statsRow}>
-          <Stat icon={<FlameIcon size={16} color={colors.accentFlame} />} value={profile.streakCount} />
+          <Stat icon={<FlameIcon size={16} color={colors.accentFlame} />} value={streak} />
           <Stat icon={<GymIcon size={16} color={colors.primary} />} value={logs.length} />
           <Stat label="xp" value={profile.xp} />
-          <Stat icon={<GroupIcon size={16} color={colors.primary} />} value={profile.friendCount} />
+          <Stat
+            icon={<GroupIcon size={16} color={colors.primary} />}
+            value={profile.friendCount}
+            onPress={() => router.push('/friends' as Href)}
+            accessibilityLabel={`${profile.friendCount} friends. View friends`}
+          />
         </View>
 
         <View style={styles.collectionHeadingRow}>
@@ -350,18 +357,34 @@ function Stat({
   icon,
   label,
   value,
+  onPress,
+  accessibilityLabel,
 }: {
   icon?: ReactNode;
   label?: string;
   value: number;
+  onPress?: () => void;
+  accessibilityLabel?: string;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  return (
-    <View style={styles.stat}>
+  const content = (
+    <>
       <Text style={styles.statValue}>{value}</Text>
       {icon ?? <Text style={styles.statUnit}>{label}</Text>}
-    </View>
+    </>
+  );
+  if (!onPress) return <View style={styles.stat}>{content}</View>;
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.stat, pressed && { opacity: 0.6 }]}
+      onPress={onPress}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      {content}
+    </Pressable>
   );
 }
 

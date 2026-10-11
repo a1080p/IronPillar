@@ -9,6 +9,7 @@ import { MoreMenu } from './MoreMenu';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useActiveStreak } from '../hooks/useActiveStreak';
 
 const MENU_ITEMS = [
   { label: 'Settings', route: '/settings' as const },
@@ -19,7 +20,8 @@ const MENU_ITEMS = [
 export function TopBar() {
   const { colors, isDark, toggleTheme } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const { profile, signOut } = useAuth();
+  const { signOut } = useAuth();
+  const streak = useActiveStreak();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const close = () => setMenuOpen(false);
@@ -41,9 +43,9 @@ export function TopBar() {
         <View
           style={styles.streak}
           accessible
-          accessibilityLabel={`${profile?.streakCount ?? 0} day streak`}
+          accessibilityLabel={`${streak} day streak`}
         >
-          <Text style={styles.streakCount}>{profile?.streakCount ?? 0}</Text>
+          <Text style={styles.streakCount}>{streak}</Text>
           <FlameIcon size={20} color={colors.accentFlame} />
         </View>
         <MoreMenu color={colors.text} />
