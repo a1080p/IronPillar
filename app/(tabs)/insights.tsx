@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { TopBar } from '../../components/TopBar';
 import { BarChart } from '../../components/BarChart';
 import { LineChart } from '../../components/LineChart';
@@ -78,6 +78,10 @@ export default function InsightsScreen() {
             title="Training load, mix & timing"
             description="12-week training minutes, strength vs. conditioning balance, and when you train best."
           />
+          <ProLockCard
+            title="Calorie tracking"
+            description="Log meals against a daily target built from your body and goal, with workout calories added back."
+          />
         </ScrollView>
       </SafeAreaView>
     );
@@ -97,6 +101,20 @@ export default function InsightsScreen() {
           <Text style={styles.heading}>Insights</Text>
           <ProBadge />
         </View>
+
+        <Pressable
+          style={({ pressed }) => [styles.caloriesCard, pressed && { opacity: 0.7 }]}
+          onPress={() => router.push('/calories' as Href)}
+          accessibilityRole="button"
+          accessibilityLabel="Open calorie tracking"
+        >
+          <Ionicons name="restaurant" size={22} color={colors.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.caloriesTitle}>Calories</Text>
+            <Text style={styles.caloriesSub}>Log meals and see what's left for today</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Pressable>
 
         <View style={styles.readinessCard}>
           <View style={styles.readinessTop}>
@@ -269,6 +287,17 @@ const getStyles = (colors: ThemeColors) =>
     container: { flex: 1, backgroundColor: colors.background },
     scroll: { padding: spacing.lg, paddingBottom: 120 },
     titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
+    caloriesCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      padding: spacing.md,
+      borderRadius: radii.md,
+      backgroundColor: colors.surfaceMuted,
+      marginBottom: spacing.lg,
+    },
+    caloriesTitle: { fontWeight: '700', color: colors.text, fontSize: typography.sizes.md },
+    caloriesSub: { color: colors.textMuted, fontSize: typography.sizes.small },
     heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary },
     subtitle: { color: colors.textMuted, marginBottom: spacing.lg, marginTop: spacing.xs },
     note: { color: colors.textMuted, fontSize: typography.sizes.small },

@@ -69,6 +69,27 @@ service cloud.firestore {
       match /metrics/{metricId} {
         allow read, write: if isOwner(uid);
       }
+
+      // Pro calorie tracking: the owner's own food log entries.
+      match /foodEntries/{entryId} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['date', 'meal', 'name', 'calories', 'proteinG', 'createdAt'])
+          && request.resource.data.date is string
+          && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.meal in ['breakfast', 'lunch', 'dinner', 'snack']
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 80
+          && request.resource.data.calories is number
+          && request.resource.data.calories >= 0
+          && request.resource.data.calories <= 5000
+          && (!('proteinG' in request.resource.data)
+            || (request.resource.data.proteinG is number
+              && request.resource.data.proteinG >= 0
+              && request.resource.data.proteinG <= 500))
+          && request.resource.data.createdAt is string;
+      }
     }
 
     // Preset/quick-start workouts are seeded by an admin script (bypasses

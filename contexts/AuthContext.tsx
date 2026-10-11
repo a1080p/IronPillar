@@ -137,6 +137,7 @@ interface AuthContextValue {
         | 'heightInches'
         | 'startingWeightLb'
         | 'units'
+        | 'calorieGoal'
       >
     >
   ) => Promise<void>;

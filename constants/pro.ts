@@ -37,6 +37,12 @@ export const PRO_FEATURES: PlanFeature[] = [
     description: 'Per-exercise 1RM trends, next-session weight and rep targets, and plateau alerts.',
   },
   {
+    icon: 'restaurant',
+    title: 'Calorie tracking',
+    description:
+      'Log meals against a daily target built from your body and goal, with workout calories added back.',
+  },
+  {
     icon: 'sparkles',
     title: 'AI workout details',
     description:

@@ -29,6 +29,7 @@ export interface UserProfile {
   heightInches: number; // total height in inches
   startingWeightLb: number; // weight captured at onboarding
   units?: UnitSystem; // display units; data is always stored in meters + lb. Default imperial.
+  calorieGoal?: number | null; // Pro calorie tracking: the user's own daily target, if they set one
   level: number;
   xp: number;
   streakCount: number;
@@ -197,6 +198,19 @@ export interface Badge {
 export interface EarnedBadge {
   badgeId: string;
   earnedAt: string;
+}
+
+export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+
+// One food log entry (users/{uid}/foodEntries/{id}), Pro calorie tracking.
+export interface FoodEntry {
+  id: string;
+  date: string; // yyyy-mm-dd, the user's local day it was eaten
+  meal: Meal;
+  name: string;
+  calories: number;
+  proteinG?: number;
+  createdAt: string; // ISO timestamp
 }
 
 export interface ProgressMetric {
