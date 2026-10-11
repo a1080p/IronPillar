@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
-import type { ExperienceLevel, FitnessGoal, Sex, UnitSystem } from '../types/models';
+import type { Barrier, ExperienceLevel, Sex, UnitSystem } from '../types/models';
 import { defaultUnitsForDevice } from '../lib/units';
+import { useAuth } from './AuthContext';
 
 interface OnboardingData {
   name: string;
@@ -9,8 +10,10 @@ interface OnboardingData {
   heightInches: number | null;
   startingWeightLb: number | null;
   units: UnitSystem;
-  goals: FitnessGoal[];
+  goalText: string;
   experienceLevel: ExperienceLevel | null;
+  barrier: Barrier | null;
+  barrierOther: string;
   avatarKey: string | null;
   avatarPhotoUri: string | null;
 }
@@ -19,8 +22,8 @@ interface OnboardingContextValue {
   data: OnboardingData;
   setNameBirthday: (name: string, birthday: string) => void;
   setBody: (sex: Sex, heightInches: number, startingWeightLb: number, units: UnitSystem) => void;
-  toggleGoal: (goal: FitnessGoal) => void;
-  setExperienceLevel: (level: ExperienceLevel) => void;
+  setGoal: (goalText: string, experienceLevel: ExperienceLevel) => void;
+  setBarrier: (barrier: Barrier, barrierOther: string) => void;
   // A picked photo and a preset icon/color key are mutually exclusive —
   // setting one clears the other.
   setAvatarKey: (avatarKey: string) => void;
@@ -31,15 +34,19 @@ interface OnboardingContextValue {
 const OnboardingContext = createContext<OnboardingContextValue | undefined>(undefined);
 
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [data, setData] = useState<OnboardingData>({
-    name: '',
+    // Apple and Google sign-ups usually come with a name; start from it.
+    name: user?.displayName ?? '',
     birthday: '',
     sex: null,
     heightInches: null,
     startingWeightLb: null,
     units: defaultUnitsForDevice(),
-    goals: [],
+    goalText: '',
     experienceLevel: null,
+    barrier: null,
+    barrierOther: '',
     avatarKey: null,
     avatarPhotoUri: null,
   });
@@ -49,12 +56,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setNameBirthday: (name, birthday) => setData((d) => ({ ...d, name, birthday })),
     setBody: (sex, heightInches, startingWeightLb, units) =>
       setData((d) => ({ ...d, sex, heightInches, startingWeightLb, units })),
-    toggleGoal: (goal) =>
-      setData((d) => ({
-        ...d,
-        goals: d.goals.includes(goal) ? d.goals.filter((g) => g !== goal) : [...d.goals, goal],
-      })),
-    setExperienceLevel: (experienceLevel) => setData((d) => ({ ...d, experienceLevel })),
+    setGoal: (goalText, experienceLevel) =>
+      setData((d) => ({ ...d, goalText, experienceLevel })),
+    setBarrier: (barrier, barrierOther) => setData((d) => ({ ...d, barrier, barrierOther })),
     setAvatarKey: (avatarKey) => setData((d) => ({ ...d, avatarKey, avatarPhotoUri: null })),
     setAvatarPhotoUri: (avatarPhotoUri) => setData((d) => ({ ...d, avatarPhotoUri, avatarKey: null })),
     clearAvatarPhoto: () => setData((d) => ({ ...d, avatarPhotoUri: null })),

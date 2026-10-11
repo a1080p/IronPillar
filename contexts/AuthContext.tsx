@@ -13,6 +13,7 @@ import {
   signInWithCredential,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
+  updateProfile as updateAuthProfile,
   type User,
 } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, runTransaction, setDoc, updateDoc } from 'firebase/firestore';
@@ -57,8 +58,21 @@ async function ensureGoogleSignInConfigured() {
 
 // Maps common Firebase Auth error codes to copy a user can actually act on,
 // instead of surfacing "Firebase: Error (auth/email-already-in-use)." raw.
-function friendlyAuthError(error: unknown): string {
+// `provider` is set for Apple/Google sign-in, where "incorrect email or
+// password" would be the wrong thing to tell someone.
+function friendlyAuthError(error: unknown, provider?: 'Apple' | 'Google'): string {
   const code = (error as { code?: string } | undefined)?.code;
+  if (provider) {
+    switch (code) {
+      case 'auth/account-exists-with-different-credential':
+        return `An account with this email already exists. Log in with the method you used before, then you can keep using ${provider}.`;
+      case AuthErrorCodes.NETWORK_REQUEST_FAILED:
+        return 'Network error — check your connection and try again.';
+      default:
+        // Keep the code visible so a report of this message can be traced.
+        return `We couldn't finish signing you in with ${provider}. Please try again.${code ? ` (${code})` : ''}`;
+    }
+  }
   switch (code) {
     case AuthErrorCodes.EMAIL_EXISTS:
       return 'An account already exists with that email. Try logging in instead.';
@@ -105,7 +119,9 @@ interface AuthContextValue {
       | 'heightInches'
       | 'startingWeightLb'
     > &
-      Partial<Pick<UserProfile, 'avatarKey' | 'avatarUrl' | 'units'>>
+      Partial<
+        Pick<UserProfile, 'avatarKey' | 'avatarUrl' | 'units' | 'goalText' | 'barrier' | 'barrierOther'>
+      >
   ) => Promise<void>;
   updateProfile: (
     data: Partial<
@@ -264,9 +280,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             idToken: appleCredential.identityToken,
             rawNonce,
           });
-          await signInWithCredential(auth, firebaseCredential);
+          const { user: appleUser } = await signInWithCredential(auth, firebaseCredential);
+          // Apple shares the name only on the very first sign-in, and never
+          // through the identity token, so keep it for onboarding to prefill.
+          const fullName = [appleCredential.fullName?.givenName, appleCredential.fullName?.familyName]
+            .filter(Boolean)
+            .join(' ');
+          if (fullName && !appleUser.displayName) {
+            await updateAuthProfile(appleUser, { displayName: fullName }).catch(() => {});
+          }
         } catch (e) {
-          throw new Error(friendlyAuthError(e));
+          throw new Error(friendlyAuthError(e, 'Apple'));
         }
       },
       async isGoogleSignInAvailable() {
@@ -295,7 +319,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (isErrorWithCode(e) && e.code === statusCodes.SIGN_IN_CANCELLED) {
             return;
           }
-          throw new Error(friendlyAuthError(e));
+          throw new Error(friendlyAuthError(e, 'Google'));
         }
       },
       async createProfile({
@@ -309,6 +333,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         avatarKey,
         avatarUrl,
         units,
+        goalText,
+        barrier,
+        barrierOther,
       }) {
         if (!user) throw new Error('Must be signed in to create a profile');
         const ref = doc(db, 'users', user.uid);
@@ -348,6 +375,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             createdAt: new Date().toISOString(),
           };
           if (units) newProfile.units = units;
+          if (goalText) newProfile.goalText = goalText;
+          if (barrier) newProfile.barrier = barrier;
+          if (barrierOther) newProfile.barrierOther = barrierOther;
           if (avatarUrl) newProfile.avatarUrl = avatarUrl;
           else if (avatarKey) newProfile.avatarKey = avatarKey;
           tx.set(ref, newProfile);

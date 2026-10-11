@@ -1,4 +1,13 @@
 export type FitnessGoal = 'lose_weight' | 'build_strength' | 'build_endurance';
+// What the user said is holding them back most, asked at onboarding.
+export type Barrier =
+  | 'time'
+  | 'motivation'
+  | 'knowledge'
+  | 'confidence'
+  | 'injury'
+  | 'consistency'
+  | 'other';
 export type ExperienceLevel = 'new' | 'some' | 'experienced';
 export type Sex = 'male' | 'female';
 
@@ -11,7 +20,10 @@ export interface UserProfile {
   avatarUrl?: string | null; // uploaded profile photo (Firebase Storage download URL)
   avatarKey?: string | null; // key of a built-in preset avatar (see constants/avatars)
   birthday: string; // MM-DD-YYYY
-  goals: FitnessGoal[];
+  goals: FitnessGoal[]; // derived from goalText at onboarding (see goalsFromText)
+  goalText?: string; // the user's goal in their own words
+  barrier?: Barrier;
+  barrierOther?: string; // their own words when barrier is 'other'
   experienceLevel: ExperienceLevel;
   sex: Sex;
   heightInches: number; // total height in inches

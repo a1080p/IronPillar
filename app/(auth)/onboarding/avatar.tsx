@@ -8,6 +8,7 @@ import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
 import { uploadAvatar } from '../../../lib/avatar';
+import { goalsFromText } from '../../../constants/options';
 
 export default function AvatarScreen() {
   const { colors } = useTheme();
@@ -19,6 +20,7 @@ export default function AvatarScreen() {
   const handleFinish = async () => {
     if (
       !data.experienceLevel ||
+      !data.barrier ||
       !data.sex ||
       data.heightInches == null ||
       data.startingWeightLb == null ||
@@ -34,7 +36,10 @@ export default function AvatarScreen() {
       await createProfile({
         name: data.name,
         birthday: data.birthday,
-        goals: data.goals,
+        goals: goalsFromText(data.goalText),
+        goalText: data.goalText,
+        barrier: data.barrier,
+        ...(data.barrierOther ? { barrierOther: data.barrierOther } : {}),
         experienceLevel: data.experienceLevel,
         sex: data.sex,
         heightInches: data.heightInches,
@@ -58,8 +63,8 @@ export default function AvatarScreen() {
       onNext={handleFinish}
       nextLabel={saving ? 'Saving...' : 'Finish'}
       nextDisabled={saving}
-      step={4}
-      totalSteps={4}
+      step={5}
+      totalSteps={5}
     >
       <AvatarPicker
         photoUrl={data.avatarPhotoUri}

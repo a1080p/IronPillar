@@ -76,7 +76,7 @@ export default function BodyScreen() {
       onNext={handleNext}
       nextDisabled={!canContinue}
       step={2}
-      totalSteps={4}
+      totalSteps={5}
     >
       <Text style={styles.groupLabel}>Units</Text>
       <View style={styles.segment} accessibilityRole="radiogroup">

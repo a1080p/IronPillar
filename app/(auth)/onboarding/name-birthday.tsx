@@ -52,7 +52,7 @@ export default function NameBirthdayScreen() {
       onNext={handleNext}
       nextDisabled={!canContinue}
       step={1}
-      totalSteps={4}
+      totalSteps={5}
     >
       <TextField
         label="What Should We Call You?"

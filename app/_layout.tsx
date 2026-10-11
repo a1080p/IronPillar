@@ -30,7 +30,12 @@ function RootNavigation() {
     // Only new (not-yet-onboarded) sign-ups are gated on a verified email —
     // this is a one-time step in the sign-up flow, not something retroactively
     // enforced on accounts that already exist and completed onboarding.
-    const needsEmailVerification = !!user && !user.emailVerified && !hasOnboarded;
+    // Apple and Google vouch for their own emails (an Apple "Hide My Email"
+    // relay address can't sensibly receive a code), so only email/password
+    // sign-ups go through it.
+    const isPasswordAccount = !!user?.providerData.some((p) => p.providerId === 'password');
+    const needsEmailVerification =
+      !!user && isPasswordAccount && !user.emailVerified && !hasOnboarded;
 
     if (!user && !inAuthGroup) {
       router.replace('/welcome');

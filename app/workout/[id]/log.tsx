@@ -6,6 +6,8 @@ import { Button } from '../../../components/Button';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { WorkoutHeader } from '../../../components/WorkoutHeader';
 import { ExerciseNotes } from '../../../components/ExerciseNotes';
+import { ExerciseCheer } from '../../../components/ExerciseCheer';
+import { makeCheer, type Cheer } from '../../../lib/cheers';
 import { radii, spacing, typography } from '../../../constants/theme';
 import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { motivationalMessages } from '../../../constants/motivation';
@@ -37,7 +39,7 @@ export default function WorkoutLogScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { workout: template } = useWorkout(id, user?.uid);
   const navigation = useNavigation();
   const { isPro } = usePurchases();
@@ -45,12 +47,26 @@ export default function WorkoutLogScreen() {
   const { logs: history } = useWorkoutLogs(user?.uid);
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
 
-  const [exerciseIndex, setExerciseIndex] = useState(0);
-  const [logs, setLogs] = useState<ExerciseLog[]>([]);
+  // The order exercises are done in, as indexes into the template. "Skip for
+  // now" moves the current one to the back, so `position` is where we are in
+  // this queue rather than in the template.
+  const [order, setOrder] = useState<number[] | null>(null);
+  const [position, setPosition] = useState(0);
+  // Finished exercises by id; reassembled in template order at the end.
+  const [completed, setCompleted] = useState<Record<string, ExerciseLog>>({});
+  // Whatever was typed into a skipped exercise, restored when it comes back.
+  const drafts = useRef<Record<string, { sets: LoggedSet[]; weightText: Record<number, string> }>>({});
+  const [skippedIds, setSkippedIds] = useState<string[]>([]);
+  const [cheer, setCheer] = useState<Cheer | null>(null);
   const [sets, setSets] = useState<LoggedSet[]>([]);
   // Raw text of each weight box, so a half-typed decimal like "22." isn't
   // parsed away mid-typing (kg users need decimals).
   const [weightText, setWeightText] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    if (template && !order) setOrder(template.exercises.map((_, i) => i));
+  }, [template?.id]);
+  const exerciseIndex = order?.[position] ?? 0;
   const startTime = useRef(Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   // Set right before navigating away because the workout finished, so the
@@ -105,8 +121,9 @@ export default function WorkoutLogScreen() {
 
   useEffect(() => {
     if (!exercise) return;
-    setSets(Array.from({ length: exercise.targetSets }, () => ({})));
-    setWeightText({});
+    const draft = drafts.current[exercise.id];
+    setSets(draft?.sets ?? Array.from({ length: exercise.targetSets }, () => ({})));
+    setWeightText(draft?.weightText ?? {});
   }, [exercise?.id]);
 
   // Lock-screen Live Activity: the workout timer, the current exercise and
@@ -118,14 +135,14 @@ export default function WorkoutLogScreen() {
     const props = {
       title: template.name,
       headline: exercise.name,
-      detail: `Exercise ${exerciseIndex + 1} of ${template.exercises.length} · Set ${currentSet} of ${exercise.targetSets}`,
+      detail: `Exercise ${position + 1} of ${template.exercises.length} · Set ${currentSet} of ${exercise.targetSets}`,
       icon: 'figure.strengthtraining.traditional',
       timerStart: startTime.current,
       ...(restEndsAt ? { restEndsAt } : {}),
     };
     if (hasWorkoutActivity()) updateWorkoutActivity(props);
     else startWorkoutActivity(props);
-  }, [template?.id, exercise?.id, exerciseIndex, currentSet, restEndsAt]);
+  }, [template?.id, exercise?.id, position, currentSet, restEndsAt]);
 
   // A reminder in case the workout is left running, cancelled on the way out
   // (finished or quit) along with the Live Activity.
@@ -145,11 +162,11 @@ export default function WorkoutLogScreen() {
   const progress = totalSeconds > 0 ? elapsedSeconds / totalSeconds : 0;
 
   const message = useMemo(
-    () => motivationalMessages[exerciseIndex % motivationalMessages.length],
-    [exerciseIndex]
+    () => motivationalMessages[position % motivationalMessages.length],
+    [position]
   );
 
-  if (!template || !exercise) {
+  if (!template || !exercise || !order) {
     return (
       <SafeAreaView style={styles.container}>
         <WorkoutHeader />
@@ -158,13 +175,52 @@ export default function WorkoutLogScreen() {
     );
   }
 
-  const isLastExercise = exerciseIndex === template.exercises.length - 1;
+  const isLastExercise = position === order.length - 1;
+  const nextExercise = isLastExercise ? null : template.exercises[order[position + 1]];
+  const wasSkipped = skippedIds.includes(exercise.id);
+  const filledSets = sets.filter((s) => s.reps != null || s.durationSeconds != null).length;
 
   const updateSet = (setIndex: number, patch: Partial<LoggedSet>) => {
     setSets((prev) => prev.map((s, i) => (i === setIndex ? { ...s, ...patch } : s)));
   };
 
-  const handleNext = async () => {
+  // Machine taken, or just want a different order: send this exercise to the
+  // back of the queue, keeping anything already typed, and go to the next.
+  const handleSkip = () => {
+    if (isLastExercise) return;
+    drafts.current[exercise.id] = { sets, weightText };
+    setSkippedIds((prev) => (prev.includes(exercise.id) ? prev : [...prev, exercise.id]));
+    setRestEndsAt(null);
+    setOrder((prev) => {
+      if (!prev) return prev;
+      const next = [...prev];
+      const [current] = next.splice(position, 1);
+      next.push(current);
+      return next;
+    });
+  };
+
+  const handleNext = () => {
+    if (filledSets >= sets.length) {
+      advance();
+      return;
+    }
+    Alert.alert(
+      filledSets === 0 ? 'No sets logged yet' : `${filledSets} of ${sets.length} sets logged`,
+      isLastExercise
+        ? 'Finish the workout anyway?'
+        : `Are you sure you want to move on to ${nextExercise?.name ?? 'the next exercise'}?`,
+      [
+        { text: 'Keep Going', style: 'cancel' },
+        ...(!isLastExercise
+          ? [{ text: 'Skip for Now, Come Back Later', onPress: handleSkip }]
+          : []),
+        { text: isLastExercise ? 'Finish Anyway' : 'Move On', onPress: advance },
+      ]
+    );
+  };
+
+  const advance = async () => {
     const finishedExerciseLog: ExerciseLog = {
       exerciseId: exercise.id,
       exerciseName: exercise.name,
@@ -174,13 +230,27 @@ export default function WorkoutLogScreen() {
         set.weight != null ? { ...set, weight: displayToLb(set.weight, units) } : set
       ),
     };
-    const nextLogs = [...logs, finishedExerciseLog];
+    const nextCompleted = { ...completed, [exercise.id]: finishedExerciseLog };
+    delete drafts.current[exercise.id];
 
     if (!isLastExercise) {
-      setLogs(nextLogs);
-      setExerciseIndex((i) => i + 1);
+      setCompleted(nextCompleted);
+      setRestEndsAt(null);
+      setPosition((p) => p + 1);
+      setCheer(
+        makeCheer({
+          exercise: exercise.name,
+          next: nextExercise?.name,
+          barrier: profile?.barrier,
+          goalText: profile?.goalText,
+        })
+      );
       return;
     }
+
+    const nextLogs = template.exercises
+      .map((e) => nextCompleted[e.id])
+      .filter((log): log is ExerciseLog => !!log);
 
     if (!user) return;
     // The summary opens right away; saving (and the XP the server works out)
@@ -225,6 +295,9 @@ export default function WorkoutLogScreen() {
         style={{ flex: 1 }}
       >
       <ScrollView contentContainerStyle={styles.scroll}>
+        {wasSkipped && (
+          <Text style={styles.backTo}>Back to this one. You skipped it earlier.</Text>
+        )}
         <Text style={styles.exerciseName} accessibilityRole="header">
           {exercise.name}
         </Text>
@@ -337,16 +410,29 @@ export default function WorkoutLogScreen() {
           </View>
         ))}
 
-        {exerciseIndex > 0 && <Text style={styles.motivation}>{message}</Text>}
+        {position > 0 && <Text style={styles.motivation}>{message}</Text>}
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button
-          label={isLastExercise ? 'Finish' : 'Next Exercise'}
-          onPress={handleNext}
-        />
+        {nextExercise && (
+          <Text style={styles.upNext} numberOfLines={1}>
+            Up next: {nextExercise.name}
+          </Text>
+        )}
+        <View style={styles.footerButtons}>
+          {!isLastExercise && (
+            <Button label="Skip for Now" variant="outline" onPress={handleSkip} />
+          )}
+          <View style={styles.footerPrimary}>
+            <Button
+              label={isLastExercise ? 'Finish' : 'Next Exercise'}
+              onPress={handleNext}
+            />
+          </View>
+        </View>
       </View>
       </KeyboardAvoidingView>
+      <ExerciseCheer cheer={cheer} onDone={() => setCheer(null)} />
     </SafeAreaView>
   );
 }
@@ -444,5 +530,15 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: typography.sizes.md,
     marginTop: spacing.lg,
   },
-  footer: { padding: spacing.lg },
+  footer: { padding: spacing.lg, gap: spacing.sm },
+  footerButtons: { flexDirection: 'row', gap: spacing.sm },
+  footerPrimary: { flex: 1 },
+  upNext: { textAlign: 'center', color: colors.textMuted, fontSize: typography.sizes.small },
+  backTo: {
+    textAlign: 'center',
+    color: colors.accentFlameText,
+    fontWeight: '700',
+    fontSize: typography.sizes.small,
+    marginBottom: spacing.xs,
+  },
 });
