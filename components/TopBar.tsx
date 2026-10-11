@@ -3,13 +3,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { FlameIcon } from './icons/BrandIcons';
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Logo } from './Logo';
 import { MoreMenu } from './MoreMenu';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useActiveStreak } from '../hooks/useActiveStreak';
+import { useNotifications } from '../contexts/NotificationsContext';
 
 const MENU_ITEMS = [
   { label: 'Settings', route: '/settings' as const },
@@ -22,6 +23,7 @@ export function TopBar() {
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { signOut } = useAuth();
   const streak = useActiveStreak();
+  const { unreadCount } = useNotifications();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const close = () => setMenuOpen(false);
@@ -40,6 +42,21 @@ export function TopBar() {
       </View>
       <Logo />
       <View style={styles.right}>
+        <Pressable
+          onPress={() => router.push('/notifications' as Href)}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={
+            unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'
+          }
+        >
+          <Ionicons name="notifications-outline" size={24} color={colors.text} />
+          {unreadCount > 0 && (
+            <View style={styles.bellBadge}>
+              <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+            </View>
+          )}
+        </Pressable>
         <View
           style={styles.streak}
           accessible
@@ -140,6 +157,19 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '700',
     color: colors.primary,
   },
+  bellBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   backdrop: {
     flex: 1,
     flexDirection: 'row',

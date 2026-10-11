@@ -9,6 +9,8 @@ import * as Location from 'expo-location';
 import { AnimatedSplash } from '../components/AnimatedSplash';
 import { BugReportButton } from '../components/BugReportButton';
 import { ReminderSync } from '../components/ReminderSync';
+import { NotificationBanner } from '../components/NotificationBanner';
+import { NotificationsProvider } from '../contexts/NotificationsContext';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { PurchasesProvider } from '../contexts/PurchasesContext';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
@@ -75,6 +77,7 @@ function RootNavigation() {
           a report to, and won't hit real app screens yet anyway. */}
       {user && hasOnboarded ? <BugReportButton uid={user.uid} /> : null}
       {user && hasOnboarded ? <ReminderSync uid={user.uid} /> : null}
+      {user && hasOnboarded ? <NotificationBanner /> : null}
       <AnimatedSplash ready={!initializing} />
     </>
   );
@@ -91,8 +94,10 @@ export default function RootLayout() {
       <ThemeProvider>
         <AuthProvider>
           <PurchasesProvider>
-            <RootNavigation />
-            <RootStatusBar />
+            <NotificationsProvider>
+              <RootNavigation />
+              <RootStatusBar />
+            </NotificationsProvider>
           </PurchasesProvider>
         </AuthProvider>
       </ThemeProvider>
