@@ -101,6 +101,7 @@ interface AuthContextValue {
   hasOnboarded: boolean;
   deletingAccount: boolean;
   setDeletingAccount: (deleting: boolean) => void;
+  signInName: string | null; // name from Apple/Google sign-in, if any, for onboarding
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -160,6 +161,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // profile before the sign-in, so for a moment there is a signed-in user
   // with no profile, which would otherwise route to onboarding.
   const [deletingAccount, setDeletingAccount] = useState(false);
+  // The name a sign-in provider gave us (Apple's first sign-in), for
+  // onboarding to prefill.
+  const [signInName, setSignInName] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -194,6 +198,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hasOnboarded: !!profile,
       deletingAccount,
       setDeletingAccount,
+      signInName: signInName ?? user?.displayName ?? null,
       async signUp(email, password) {
         try {
           await createUserWithEmailAndPassword(auth, email.trim(), password);
@@ -311,6 +316,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw new Error('Apple sign-in did not return an identity token.');
         }
 
+        // Apple shares the name only on the very first sign-in, and never
+        // through the identity token. Hold it in state before signing in, so
+        // onboarding (which can mount as soon as the sign-in lands) has it.
+        const fullName = [appleCredential.fullName?.givenName, appleCredential.fullName?.familyName]
+          .filter(Boolean)
+          .join(' ');
+        if (fullName) setSignInName(fullName);
+
         try {
           const provider = new OAuthProvider('apple.com');
           const firebaseCredential = provider.credential({
@@ -318,11 +331,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             rawNonce,
           });
           const { user: appleUser } = await signInWithCredential(auth, firebaseCredential);
-          // Apple shares the name only on the very first sign-in, and never
-          // through the identity token, so keep it for onboarding to prefill.
-          const fullName = [appleCredential.fullName?.givenName, appleCredential.fullName?.familyName]
-            .filter(Boolean)
-            .join(' ');
           if (fullName && !appleUser.displayName) {
             await updateAuthProfile(appleUser, { displayName: fullName }).catch(() => {});
           }
@@ -426,7 +434,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await updateDoc(doc(db, 'users', user.uid), data);
       },
     }),
-    [user, profile, initializing, deletingAccount]
+    [user, profile, initializing, deletingAccount, signInName]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

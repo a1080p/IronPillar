@@ -21,7 +21,8 @@ import {
   useCustomWorkouts,
 } from '../../hooks/useCustomWorkouts';
 import { formatShortDate } from '../../lib/dates';
-import { pickQuickStartWorkouts, pickRecommendedWorkout } from '../../lib/recommendations';
+import { pickQuickStartWorkouts } from '../../lib/recommendations';
+import { useRecommendedWorkout } from '../../hooks/useRecommendedWorkout';
 import { dedupeRecentWorkouts, hideRecent, loadHiddenRecents } from '../../lib/recentWorkouts';
 import { deleteWorkoutLog } from '../../lib/workoutCompletion';
 import type { CustomWorkout, OutdoorActivityType, WorkoutLog, WorkoutTemplate } from '../../types/models';
@@ -113,9 +114,11 @@ export default function HomeScreen() {
 
   // Both re-derive from `logs` (a live Firestore listener) on every render,
   // so picks update the instant a workout is completed — see lib/recommendations.
-  const recommended = useMemo(
-    () => pickRecommendedWorkout(templates, logs, profile, user?.uid),
-    [templates, logs, profile, user?.uid]
+  const { recommended, ready: recommendationReady } = useRecommendedWorkout(
+    templates,
+    logs,
+    profile,
+    user?.uid
   );
   const quickStarts = useMemo(
     () =>
@@ -209,7 +212,7 @@ export default function HomeScreen() {
 
         {loading && <Text style={styles.note}>Loading workouts...</Text>}
 
-        {!loading && !recommended && (
+        {!loading && recommendationReady && !recommended && (
           <Text style={styles.note}>
             No workouts yet — seed workoutTemplates in Firestore to see them here.
           </Text>

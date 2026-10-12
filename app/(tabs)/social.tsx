@@ -58,10 +58,12 @@ export default function SocialScreen() {
   const [answered, setAnswered] = useState<string[]>([]);
   const respond = (uid: string, accept: boolean) => {
     setAnswered((list) => [...list, uid]);
-    const name = incoming.find((r) => r.uid === uid)?.name ?? 'They';
+    const name = incoming.find((r) => r.uid === uid)?.name;
     respondFriendRequest(uid, accept)
       .then(() => {
-        if (accept) appAlert('Friend added', `You and ${name} are now friends.`);
+        if (accept) {
+          appAlert('Friend added', name ? `You and ${name} are now friends.` : 'You have a new friend.');
+        }
       })
       .catch((e) => {
         setAnswered((list) => list.filter((id) => id !== uid));

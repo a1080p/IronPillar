@@ -47,7 +47,8 @@ export function AppAlertHost() {
   if (!current && !toast) return null;
   return (
     <Overlay>
-      <Toast alert={toast} onDone={() => setToast(null)} />
+      {/* Clears only the toast that finished, not one that arrived meanwhile. */}
+      <Toast alert={toast} onDone={(id) => setToast((t) => (t?.id === id ? null : t))} />
       <Dialog alert={current} onClose={close} />
     </Overlay>
   );
@@ -125,14 +126,18 @@ function Dialog({
   );
 }
 
-function Toast({ alert, onDone }: { alert: QueuedAlert | null; onDone: () => void }) {
+function Toast({ alert, onDone }: { alert: QueuedAlert | null; onDone: (id: number) => void }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(120)).current;
 
-  const hide = () =>
-    Animated.timing(translateY, { toValue: 160, duration: 180, useNativeDriver: true }).start(onDone);
+  const hide = () => {
+    const id = alert?.id;
+    Animated.timing(translateY, { toValue: 160, duration: 180, useNativeDriver: true }).start(
+      () => id != null && onDone(id)
+    );
+  };
 
   useEffect(() => {
     if (!alert) return;

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { Barrier, ExperienceLevel, Sex, UnitSystem } from '../types/models';
 import { defaultUnitsForDevice } from '../lib/units';
 import { useAuth } from './AuthContext';
@@ -34,10 +34,10 @@ interface OnboardingContextValue {
 const OnboardingContext = createContext<OnboardingContextValue | undefined>(undefined);
 
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { signInName } = useAuth();
   const [data, setData] = useState<OnboardingData>({
     // Apple and Google sign-ups usually come with a name; start from it.
-    name: user?.displayName ?? '',
+    name: signInName ?? '',
     birthday: '',
     sex: null,
     heightInches: null,
@@ -50,6 +50,12 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     avatarKey: null,
     avatarPhotoUri: null,
   });
+
+  // The name can land just after onboarding opens; fill it in if the field
+  // is still empty.
+  useEffect(() => {
+    if (signInName) setData((d) => (d.name ? d : { ...d, name: signInName }));
+  }, [signInName]);
 
   const value: OnboardingContextValue = {
     data,

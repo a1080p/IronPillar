@@ -4,7 +4,7 @@
 // the memory. Because useWorkoutLogs/useWorkoutTemplates are live Firestore
 // listeners, recomputing this from `logs` on every render means picks update
 // the instant a workout is completed, with no extra plumbing.
-import { todayDateString, yesterdayDateString } from '../constants/gamification';
+import { todayDateString } from '../constants/gamification';
 import { BROWSE_CATEGORIES } from '../data/browseWorkoutTemplates';
 import type { ExperienceLevel, FitnessGoal, UserProfile, WorkoutLog, WorkoutTemplate } from '../types/models';
 
@@ -170,26 +170,17 @@ type RecommendationProfile = Pick<UserProfile, 'goals' | 'experienceLevel'> &
   Partial<Pick<UserProfile, 'goalText'>>;
 
 // The Recommended card changes every day and after every finished workout,
-// and never shows yesterday's pick or anything done in the past week (when
-// there's anything else to show).
+// and never shows `excludeId` (the last day's pick, remembered on the device
+// by useRecommendedWorkout) or anything done in the past week, when there's
+// anything else to show.
 export function pickRecommendedWorkout(
   templates: WorkoutTemplate[],
   logs: WorkoutLog[],
   profile: RecommendationProfile | null | undefined,
-  uid: string | undefined
+  uid: string | undefined,
+  excludeId?: string
 ): WorkoutTemplate | undefined {
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const logsBeforeToday = logs.filter((l) => new Date(l.completedAt) < startOfToday);
-  const yesterdaysPick = pickForDay(
-    templates,
-    logsBeforeToday,
-    profile,
-    uid,
-    yesterdayDateString(),
-    undefined
-  );
-  return pickForDay(templates, logs, profile, uid, todayDateString(), yesterdaysPick?.id);
+  return pickForDay(templates, logs, profile, uid, todayDateString(), excludeId);
 }
 
 // Words from the user's own goal ("get better at yoga", "run a 5K") that

@@ -44,14 +44,38 @@ export function yesterdayDateString(date = new Date()) {
 // The streak as of right now. The server only rewrites streakCount when a
 // workout is logged, so a streak whose last counted day is before yesterday
 // has already ended at local midnight and shows as 0.
+// Days are counted in the zone the server stored (profile.timeZone), or UTC
+// for older profiles that never sent one, exactly as completeWorkout does.
 export function activeStreak(
-  profile: { streakCount?: number; lastWorkoutDate?: string | null } | null | undefined,
+  profile:
+    | { streakCount?: number; lastWorkoutDate?: string | null; timeZone?: string }
+    | null
+    | undefined,
   now = new Date()
 ): number {
   const count = profile?.streakCount ?? 0;
   const last = profile?.lastWorkoutDate;
   if (!last || count <= 0) return 0;
-  return last >= yesterdayDateString(now) ? count : 0;
+  const today = dateStringInZone(now, profile?.timeZone ?? 'UTC');
+  const [y, m, d] = today.split('-').map(Number);
+  const yesterday = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+  return last >= yesterday ? count : 0;
+}
+
+// yyyy-mm-dd of `date` in an IANA zone, falling back to the device's day.
+function dateStringInZone(date: Date, timeZone: string) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const part = (type: string) => parts.find((p) => p.type === type)?.value;
+    return `${part('year')}-${part('month')}-${part('day')}`;
+  } catch {
+    return todayDateString(date);
+  }
 }
 
 // The device's IANA time zone (e.g. "America/New_York"), sent with each

@@ -1,8 +1,9 @@
 // The in-app banner that slides down from the top when a notification
 // arrives while the app is open. Tap to open it, swipe up or wait to dismiss.
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useMemo, useRef } from 'react';
-import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Fragment, useEffect, useMemo, useRef } from 'react';
+import { Animated, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FullWindowOverlay } from 'react-native-screens';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { radii, spacing, typography } from '../constants/theme';
@@ -51,7 +52,10 @@ export function NotificationBanner() {
   }, [banner?.id]);
 
   if (!banner) return null;
+  // Full-window on iOS so it shows over the paywall and Modal sheets too.
+  const Overlay = Platform.OS === 'ios' ? FullWindowOverlay : Fragment;
   return (
+    <Overlay>
     <Animated.View
       style={[styles.wrap, { top: insets.top + spacing.xs, transform: [{ translateY }] }]}
       {...pan.panHandlers}
@@ -78,6 +82,7 @@ export function NotificationBanner() {
         </View>
       </Pressable>
     </Animated.View>
+    </Overlay>
   );
 }
 

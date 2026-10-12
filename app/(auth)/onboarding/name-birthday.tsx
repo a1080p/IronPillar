@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Text } from 'react-native';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { router } from 'expo-router';
@@ -13,6 +13,10 @@ export default function NameBirthdayScreen() {
   const { colors } = useTheme();
   const [name, setName] = useState(data.name);
   const [birthday, setBirthday] = useState(data.birthday);
+  // An Apple/Google name can arrive just after this screen opens.
+  useEffect(() => {
+    if (data.name) setName((current) => current || data.name);
+  }, [data.name]);
 
   const age = ageFrom(birthday);
   const nameBlocked = containsBlockedTerm(name);

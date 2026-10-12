@@ -29,7 +29,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
 import { deleteAccount } from '../lib/account';
 import { ageFromBirthday, formatBirthdayInput, MIN_AGE } from '../lib/dates';
-import type { Barrier, ExperienceLevel } from '../types/models';
+import type { Barrier, ExperienceLevel, FitnessGoal } from '../types/models';
+
+const LEGACY_GOAL_TEXT: Record<FitnessGoal, string> = {
+  lose_weight: 'Lose weight',
+  build_strength: 'Build strength',
+  build_endurance: 'Build endurance',
+};
 
 export default function AccountDetailsScreen() {
   const { colors } = useTheme();
@@ -39,7 +45,14 @@ export default function AccountDetailsScreen() {
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   // Same questions as onboarding: the goal in their own words, experience,
   // and what's holding them back.
-  const [goalText, setGoalText] = useState(profile?.goalText ?? '');
+  // Profiles from before the open-response goal only have goal tags; start
+  // from those so an unrelated edit (like a name fix) can still be saved.
+  const [goalText, setGoalText] = useState(
+    profile?.goalText ??
+      (profile?.goals ?? [])
+        .map((g) => LEGACY_GOAL_TEXT[g])
+        .join(', ')
+  );
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel | undefined>(
     profile?.experienceLevel
   );
