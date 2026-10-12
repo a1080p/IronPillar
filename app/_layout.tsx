@@ -9,6 +9,7 @@ import * as Location from 'expo-location';
 import { AnimatedSplash } from '../components/AnimatedSplash';
 import { BugReportButton } from '../components/BugReportButton';
 import { ReminderSync } from '../components/ReminderSync';
+import { WidgetSync } from '../components/WidgetSync';
 import { NotificationBanner } from '../components/NotificationBanner';
 import { AppAlertHost } from '../components/AppAlertHost';
 import { NotificationsProvider } from '../contexts/NotificationsContext';
@@ -78,6 +79,7 @@ function RootNavigation() {
           a report to, and won't hit real app screens yet anyway. */}
       {user && hasOnboarded ? <BugReportButton uid={user.uid} /> : null}
       {user && hasOnboarded ? <ReminderSync uid={user.uid} /> : null}
+      {user && hasOnboarded ? <WidgetSync uid={user.uid} /> : null}
       {user && hasOnboarded ? <NotificationBanner /> : null}
       <AppAlertHost />
       <AnimatedSplash ready={!initializing} />

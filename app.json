@@ -89,7 +89,36 @@
         }
       ],
       "expo-sharing",
-      "expo-widgets"
+      [
+        "expo-widgets",
+        {
+          "widgets": [
+            {
+              "name": "IronPillarToday",
+              "displayName": "Iron Pillar Today",
+              "description": "Your streak, steps and calories at a glance. Edit the widget to choose what it shows.",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium",
+                  "accessoryCircular",
+                  "accessoryRectangular",
+                  "accessoryInline"
+                ],
+                "configuration": {
+                  "title": "Show on widget",
+                  "description": "Pick what this widget shows.",
+                  "parameters": {
+                    "showWorkout": { "title": "Workout & streak", "type": "boolean", "default": true },
+                    "showSteps": { "title": "Steps", "type": "boolean", "default": true },
+                    "showCalories": { "title": "Calories", "type": "boolean", "default": true }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
