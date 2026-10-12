@@ -6,13 +6,16 @@ import * as Crypto from 'expo-crypto';
 import {
   AuthErrorCodes,
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   GoogleAuthProvider,
   OAuthProvider,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   sendPasswordResetEmail,
   signInWithCredential,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
+  updatePassword,
   updateProfile as updateAuthProfile,
   type User,
 } from 'firebase/auth';
@@ -102,6 +105,7 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   sendVerificationCode: () => Promise<void>;
   verifyEmailCode: (code: string) => Promise<void>;
   isAppleSignInAvailable: () => Promise<boolean>;
@@ -210,6 +214,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async sendPasswordReset(email) {
         try {
           await sendPasswordResetEmail(auth, email.trim());
+        } catch (e) {
+          // An unknown email gets the same "check your email" answer as a
+          // real one, so the form can't be used to find out who has an account.
+          if ((e as { code?: string } | undefined)?.code === AuthErrorCodes.USER_DELETED) return;
+          throw new Error(friendlyAuthError(e));
+        }
+      },
+      // Firebase only lets a recently signed-in user change their password, so
+      // confirm the current one first (which also proves it's really them).
+      async changePassword(currentPassword, newPassword) {
+        const current = auth.currentUser;
+        if (!current?.email) throw new Error('Sign in again, then try changing your password.');
+        try {
+          await reauthenticateWithCredential(
+            current,
+            EmailAuthProvider.credential(current.email, currentPassword)
+          );
+        } catch (e) {
+          const code = (e as { code?: string } | undefined)?.code;
+          if (code === 'auth/invalid-credential' || code === AuthErrorCodes.INVALID_PASSWORD) {
+            throw new Error('Your current password is incorrect.');
+          }
+          if (code === AuthErrorCodes.TOO_MANY_ATTEMPTS_TRY_LATER) {
+            throw new Error('Too many attempts. Wait a few minutes and try again.');
+          }
+          throw new Error(friendlyAuthError(e));
+        }
+        try {
+          await updatePassword(current, newPassword);
         } catch (e) {
           throw new Error(friendlyAuthError(e));
         }

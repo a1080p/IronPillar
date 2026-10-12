@@ -17,7 +17,7 @@ import type { ExperienceLevel, FitnessGoal } from '../types/models';
 export default function AccountDetailsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const { user, profile, updateProfile, signOut, setDeletingAccount } = useAuth();
+  const { user, profile, updateProfile, signOut, setDeletingAccount, changePassword } = useAuth();
   const [name, setName] = useState(profile?.name ?? '');
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [goals, setGoals] = useState<FitnessGoal[]>(profile?.goals ?? []);
@@ -47,6 +47,57 @@ export default function AccountDetailsScreen() {
       appAlert('Could not save', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Email/password accounts can change their password here; Apple and Google
+  // sign-ups have no Iron Pillar password at all.
+  const hasPassword = !!user?.providerData.some((p) => p.providerId === 'password');
+  const socialProvider = user?.providerData.some((p) => p.providerId === 'apple.com')
+    ? 'Apple'
+    : 'Google';
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  const resetPasswordForm = () => {
+    setChangingPassword(false);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError(null);
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    if (!currentPassword || !newPassword) {
+      setPasswordError('Enter your current password and a new one.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('Your new password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("The new passwords don't match.");
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPasswordError('Choose a password different from your current one.');
+      return;
+    }
+    setUpdatingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      resetPasswordForm();
+      appAlert('Password updated', 'Use your new password next time you log in.');
+    } catch (e) {
+      setPasswordError(e instanceof Error ? e.message : 'Could not change your password. Try again.');
+    } finally {
+      setUpdatingPassword(false);
     }
   };
 
@@ -99,6 +150,53 @@ export default function AccountDetailsScreen() {
             <Text style={styles.readOnlyLabel}>Username</Text>
             <Text style={styles.readOnlyValue}>@{profile?.username}</Text>
           </View>
+        </View>
+
+        <View style={styles.signInBlock}>
+          <Text style={styles.sectionLabel}>Sign-in</Text>
+          {!hasPassword ? (
+            <Text style={styles.signInNote}>
+              You sign in with {socialProvider}, so there's no Iron Pillar password to change.
+              {socialProvider === 'Apple'
+                ? ' Manage it in your iPhone Settings under your name → Sign in with Apple.'
+                : ' Manage it in your Google Account settings.'}
+            </Text>
+          ) : !changingPassword ? (
+            <Button
+              label="Change Password"
+              variant="outline"
+              onPress={() => setChangingPassword(true)}
+            />
+          ) : (
+            <View style={styles.passwordForm}>
+              <TextField
+                label="Current password"
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+                placeholder="Current password"
+              />
+              <TextField
+                label="New password"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                placeholder="At least 6 characters"
+              />
+              <TextField
+                label="Confirm new password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                placeholder="Re-enter your new password"
+              />
+              {passwordError && <Text style={styles.passwordError}>{passwordError}</Text>}
+              <View style={styles.dangerButtonRow}>
+                <Button label="Cancel" variant="outline" onPress={resetPasswordForm} />
+                <Button label="Update" onPress={handleChangePassword} loading={updatingPassword} />
+              </View>
+            </View>
+          )}
         </View>
 
         <TextField label="Name" value={name} onChangeText={setName} placeholder="Name" />
@@ -194,6 +292,10 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   readOnlyLabel: { color: colors.textMuted, fontSize: typography.sizes.small },
   readOnlyValue: { color: colors.text, fontWeight: '600' },
   optionBlock: { gap: spacing.md },
+  signInBlock: { gap: spacing.md },
+  signInNote: { color: colors.textMuted, fontSize: typography.sizes.small },
+  passwordForm: { gap: spacing.md },
+  passwordError: { color: colors.danger },
   sectionLabel: {
     fontWeight: '700',
     color: colors.primary,

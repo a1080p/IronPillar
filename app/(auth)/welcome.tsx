@@ -110,7 +110,11 @@ export default function WelcomeScreen() {
         onPress: async () => {
           try {
             await sendPasswordReset(email);
-            appAlert('Check your email', `A password reset link was sent to ${email}.`);
+            appAlert(
+              'Check your email',
+              `If there's an Iron Pillar account for ${email}, a reset link is on its way. It can take a few minutes, so check your spam folder too. Signed up with Apple or Google? Use that button instead; there's no password to reset.`,
+              [{ text: 'OK' }]
+            );
           } catch (e) {
             appAlert('Could not send reset email', e instanceof Error ? e.message : 'Try again.');
           }
