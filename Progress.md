@@ -4,6 +4,17 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-12: Widgets, two reminders a day, in-app pop-ups, review fixes
+
+- **Home + lock screen widget** "Iron Pillar Today" (`widgets/TodayWidget.tsx`, `components/WidgetSync.tsx`, `app.json` expo-widgets config): small, medium, lock screen circular/rectangular/inline. Edit Widget toggles Workout & streak (free), Steps (Pro + Apple Health), Calories (Pro). The app pushes a timeline (now, next midnight reset, streak drop the midnight after). Simulator Debug build with the extension **succeeded**; the extension is embedded (`com.aidand510.ironpillar.ExpoWidgetsTarget`). **Not yet seen on a home screen** (the Simulator's Add Widget menu can't be driven headlessly). Steps are only as fresh as the last time the app was open (no HealthKit background delivery); the widget shows "Updated h:mm".
+- **Reminders**: at most two a day, 12:30 PM and 7 PM (8 AM slot dropped, evening moved from 6:30). Habit reminders take over the nearer slot instead of adding a third. Planner simulated for a week with a Friday habit: exactly two per day.
+- **In-app pop-ups**: all 91 `Alert.alert` calls replaced by `appAlert()` (same arguments): dialogs for prompts, toasts for plain messages, drawn in a full-window overlay so they show over sheets and the paywall. Seen working in the Simulator (Reset password dialog).
+- **Change password** in Account Details (email accounts; Apple/Google accounts get a note), clearer reset copy. Account Details now asks the onboarding questions (open goal, holding-you-back, validated birthday).
+- **Review fixes** (d0fb393) and **IP-65** (b3055df). Jira: IP-15 and IP-65 Done; IP-13 and IP-56 annotated.
+- **Still open before submit**: TestFlight build + device pass, demo account check (IP-55), App Review reply. Recommended: IP-61 PR #2 (username squatting rule), IP-63 (stale friend names).
+
+---
+
 ## 2026-10-11: Apple rejection (Sign in with Apple) root-caused; next-build features
 
 - **Rejection, guideline 2.1(a), iPad Air, build 1.0 (11):** "failed to create an account" with Sign in with Apple. **Root cause:** the Firebase project has no iOS app registered and the Apple provider has no bundle IDs (`appleSignInConfig: {}`), so Firebase rejects every native Apple identity token (audience `com.aidand510.ironpillar`). Zero Apple users have ever been created. **Owner fix, no build needed:** Firebase Console → Project settings → Add app → iOS, bundle ID `com.aidand510.ironpillar`. Must be tested on a real device before resubmitting.
