@@ -43,6 +43,12 @@ export const PRO_FEATURES: PlanFeature[] = [
       'Log meals against a daily target built from your body and goal, with workout calories added back.',
   },
   {
+    icon: 'apps',
+    title: 'Steps and calories widgets',
+    description:
+      'Add steps and calories left to your Home Screen and Lock Screen widget, next to your streak.',
+  },
+  {
     icon: 'sparkles',
     title: 'AI workout details',
     description:
