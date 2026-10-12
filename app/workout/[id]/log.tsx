@@ -241,7 +241,6 @@ export default function WorkoutLogScreen() {
         makeCheer({
           exercise: exercise.name,
           next: nextExercise?.name,
-          barrier: profile?.barrier,
           goalText: profile?.goalText,
         })
       );

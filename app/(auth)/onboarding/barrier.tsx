@@ -37,7 +37,7 @@ export default function BarrierScreen() {
       totalSteps={5}
     >
       <Text style={styles.helper}>
-        Pick one. We'll shape your reminders and encouragement around it.
+        Pick the one that fits best. It helps us make Iron Pillar work better for you.
       </Text>
       {BARRIER_OPTIONS.map((option) => (
         <SelectableOption

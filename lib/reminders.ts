@@ -41,17 +41,17 @@ const PATTERN_REPLACES_SLOT_WITHIN = 3 * 60;
 const DAILY_MESSAGES: Record<DailySlot, { title: string; body: string }[]> = {
   morning: [
     { title: 'Good morning! ☀️', body: 'A quick workout is a great way to start the day. Ready when you are.' },
-    { title: 'Rise and grind 💪', body: "Today's workout is waiting — even 15 minutes counts." },
+    { title: 'Rise and grind 💪', body: "Today's workout is waiting. 30 minutes keeps your streak going." },
     { title: 'New day, new reps', body: 'Get a workout in early and own the rest of your day.' },
   ],
   midday: [
     { title: 'Midday check-in 🕛', body: "Haven't trained yet today? A lunchtime session could hit the spot." },
     { title: 'Halfway there', body: 'The day is half done — still plenty of time to get a workout in.' },
-    { title: 'Quick break?', body: 'Stretch, walk, or lift — any workout keeps your streak alive.' },
+    { title: 'Quick break?', body: 'Stretch, walk, or lift. Your minutes add up toward today’s 30.' },
   ],
   evening: [
     { title: 'Still time today 🌙', body: 'Squeeze in a workout before the day wraps up. Your streak will thank you.' },
-    { title: 'Evening reminder', body: 'No workout logged yet today — a short one still counts!' },
+    { title: 'Evening reminder', body: 'No workout logged yet today. There’s still time to get your 30 minutes in.' },
     { title: 'Finish strong 🔥', body: 'End the day with a win. Log a quick workout in Iron Pillar.' },
   ],
 };

@@ -1,8 +1,7 @@
 // Short, hopeful messages for the quick pop-up after each finished exercise.
-// Built from parts (opener + body, sometimes a personal line drawn from the
-// goal and "what's holding you back" answers from onboarding), so there are
-// thousands of combinations, and the last few are never repeated.
-import type { Barrier } from '../types/models';
+// Built from parts (opener + body, now and then a line quoting the user's own
+// goal from onboarding), so there are hundreds of combinations, and the last
+// few are never repeated.
 
 const OPENERS = [
   'Boom.',
@@ -56,43 +55,8 @@ const BODIES = [
   "You're building something real here.",
 ];
 
-const BARRIER_LINES: Record<Barrier, string[]> = {
-  time: [
-    'Short on time and still getting it done.',
-    'No wasted minutes here.',
-    'Busy people who train anyway are a different breed.',
-  ],
-  motivation: [
-    "Motivation follows action. You're proving it.",
-    "You didn't wait to feel like it. You just did it.",
-    'This is the spark. Keep it lit.',
-  ],
-  consistency: [
-    'Another rep of the habit, not just the exercise.',
-    'This is how routines are built: one finished exercise at a time.',
-    'Show up, finish, repeat. You are doing it.',
-  ],
-  knowledge: [
-    'You are learning this one rep at a time.',
-    'Look at you following the plan like a pro.',
-    'Every exercise you finish makes the next one easier to figure out.',
-  ],
-  confidence: [
-    'You belong here as much as anyone.',
-    'Head up. You are doing the work.',
-    'Confidence is built exactly like this.',
-  ],
-  injury: [
-    'Smart, steady work. Your body will thank you.',
-    'Moving well beats moving heavy. Nice job.',
-    'Listening to your body and still showing up. Respect.',
-  ],
-  other: [
-    "Whatever's in the way, you just moved past it.",
-    "You're bigger than what holds you back.",
-    'One more step around the obstacle.',
-  ],
-};
+// How often a cheer quotes the user's goal; rare, so it stays special.
+const GOAL_LINE_CHANCE = 0.07;
 
 const GOAL_LINES = [
   'One step closer to: {goal}',
@@ -116,22 +80,14 @@ export interface Cheer {
   body: string;
 }
 
-export function makeCheer(options: {
-  exercise: string;
-  next?: string;
-  barrier?: Barrier;
-  goalText?: string;
-}): Cheer {
-  const { exercise, next, barrier, goalText } = options;
+export function makeCheer(options: { exercise: string; next?: string; goalText?: string }): Cheer {
+  const { exercise, next, goalText } = options;
   const shortGoal =
     goalText && goalText.length <= 60 ? goalText.replace(/[.!]+$/, '') : undefined;
 
   for (let attempt = 0; attempt < 12; attempt++) {
     let bodies = BODIES.filter((b) => next || !b.includes('{next}'));
-    const roll = Math.random();
-    // About a third of the time, make it personal.
-    if (barrier && roll < 0.2) bodies = BARRIER_LINES[barrier];
-    else if (shortGoal && roll < 0.33) bodies = GOAL_LINES;
+    if (shortGoal && Math.random() < GOAL_LINE_CHANCE) bodies = GOAL_LINES;
 
     const body = pick(bodies)
       .replace('{exercise}', exercise)
