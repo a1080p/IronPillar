@@ -25,25 +25,17 @@ const PATTERN_PREFIX = 'ip-pattern-';
 const SCHEDULE_DAYS = 7;
 
 // Local wall-clock time each daily slot fires, in minutes after midnight.
+// These are the only two reminder times; habit reminders use them too.
 export const DAILY_SLOT_TIMES: Record<DailySlot, number> = {
-  morning: 8 * 60,
   midday: 12 * 60 + 30,
-  evening: 18 * 60 + 30,
+  evening: 19 * 60,
 };
 
-const EARLIEST_PATTERN_REMINDER = 6 * 60;
+// Habit reminders aim for an hour before the user's usual start time, then
+// take whichever of the two daily slots is closest to that.
 const PATTERN_LEAD_MINUTES = 60;
-// A pattern reminder stands in for whichever daily nudge lands within this
-// window of it, so a Friday doesn't get "leg day!" and "time to move!" back
-// to back.
-const PATTERN_REPLACES_SLOT_WITHIN = 3 * 60;
 
 const DAILY_MESSAGES: Record<DailySlot, { title: string; body: string }[]> = {
-  morning: [
-    { title: 'Good morning! ☀️', body: 'A quick workout is a great way to start the day. Ready when you are.' },
-    { title: 'Rise and grind 💪', body: "Today's workout is waiting. 30 minutes keeps your streak going." },
-    { title: 'New day, new reps', body: 'Get a workout in early and own the rest of your day.' },
-  ],
   midday: [
     { title: 'Midday check-in 🕛', body: "Haven't trained yet today? A lunchtime session could hit the spot." },
     { title: 'Halfway there', body: 'The day is half done — still plenty of time to get a workout in.' },
@@ -140,9 +132,17 @@ export function workedOutToday(logs: WorkoutLog[], now = new Date()) {
   return logs.some((l) => todayDateString(new Date(l.completedAt)) === today);
 }
 
+// The daily slot a habit reminder goes in for this pattern's weekday.
+export function patternReminderSlot(pattern: WorkoutPattern): DailySlot {
+  const target = pattern.typicalStartMinutes - PATTERN_LEAD_MINUTES;
+  const slots = Object.keys(DAILY_SLOT_TIMES) as DailySlot[];
+  return slots.reduce((best, slot) =>
+    Math.abs(DAILY_SLOT_TIMES[slot] - target) < Math.abs(DAILY_SLOT_TIMES[best] - target) ? slot : best
+  );
+}
+
 export function patternReminderMinutes(pattern: WorkoutPattern) {
-  const target = Math.max(EARLIEST_PATTERN_REMINDER, pattern.typicalStartMinutes - PATTERN_LEAD_MINUTES);
-  return Math.floor(target / 15) * 15;
+  return DAILY_SLOT_TIMES[patternReminderSlot(pattern)];
 }
 
 interface PlannedReminder {
@@ -172,28 +172,20 @@ export function planReminders(
     // Rotate copy by day so the same line doesn't show up every morning.
     const rotation = Math.floor(day.getTime() / (24 * 60 * 60 * 1000));
 
+    // On a habit day, the habit message takes over one of the two slots
+    // rather than adding a third notification.
     const pattern = patterns.find((p) => p.weekday === day.getDay());
-    let replacedSlot: DailySlot | null = null;
-    if (pattern) {
-      const minutes = patternReminderMinutes(pattern);
-      const date = atMinutes(day, minutes);
-      if (date > now) {
-        planned.push({ identifier: `${PATTERN_PREFIX}${dateKey}`, date, ...patternMessage(pattern) });
-        let closest = Infinity;
-        for (const slot of Object.keys(DAILY_SLOT_TIMES) as DailySlot[]) {
-          const gap = Math.abs(DAILY_SLOT_TIMES[slot] - minutes);
-          if (gap <= PATTERN_REPLACES_SLOT_WITHIN && gap < closest) {
-            closest = gap;
-            replacedSlot = slot;
-          }
-        }
-      }
-    }
+    const patternSlot = pattern ? patternReminderSlot(pattern) : null;
 
     for (const slot of Object.keys(DAILY_SLOT_TIMES) as DailySlot[]) {
-      if (!settings.dailySlots[slot] || slot === replacedSlot) continue;
+      const isPatternSlot = slot === patternSlot && !!pattern;
+      if (!settings.dailySlots[slot] && !isPatternSlot) continue;
       const date = atMinutes(day, DAILY_SLOT_TIMES[slot]);
       if (date <= now) continue;
+      if (isPatternSlot) {
+        planned.push({ identifier: `${PATTERN_PREFIX}${dateKey}`, date, ...patternMessage(pattern) });
+        continue;
+      }
       const messages = DAILY_MESSAGES[slot];
       planned.push({
         identifier: `${DAILY_PREFIX}${dateKey}-${slot}`,

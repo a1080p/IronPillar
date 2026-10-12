@@ -24,7 +24,6 @@ import {
 import { detectWorkoutPatterns } from '../lib/workoutPatterns';
 
 const SLOT_LABELS: Record<DailySlot, string> = {
-  morning: 'Morning',
   midday: 'Midday',
   evening: 'Evening',
 };
@@ -189,7 +188,7 @@ export default function RemindersScreen() {
             <View style={styles.rowText}>
               <Text style={styles.rowLabel}>Habit reminders</Text>
               <Text style={styles.rowSub}>
-                Learns your routine — like leg day on Fridays — and reminds you ahead of your usual time.
+                Learns your routine, like leg day on Fridays, and uses your 12:30 PM or 7 PM reminder that day to call it out. Never more than two a day.
               </Text>
             </View>
             <Switch

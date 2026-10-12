@@ -6,7 +6,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // no signed-in Firebase session or network — the OS can relaunch the app
 // headlessly just to hand it a "you arrived at the gym" event.
 
-export type DailySlot = 'morning' | 'midday' | 'evening';
+// Two reminders a day at most: 12:30 PM and 7 PM.
+export type DailySlot = 'midday' | 'evening';
 
 export interface GymLocation {
   id: string;
@@ -28,7 +29,7 @@ export interface ReminderSettings {
 }
 
 export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
-  dailySlots: { morning: true, midday: true, evening: true },
+  dailySlots: { midday: true, evening: true },
   patternReminders: true,
   gymReminders: false,
   gymDelayMinutes: 10,
@@ -56,7 +57,11 @@ export async function loadReminderSettings(): Promise<ReminderSettings> {
     return {
       ...DEFAULT_REMINDER_SETTINGS,
       ...parsed,
-      dailySlots: { ...DEFAULT_REMINDER_SETTINGS.dailySlots, ...parsed.dailySlots },
+      // Only the current slots; a saved 'morning' from older builds is dropped.
+      dailySlots: {
+        midday: parsed.dailySlots?.midday ?? DEFAULT_REMINDER_SETTINGS.dailySlots.midday,
+        evening: parsed.dailySlots?.evening ?? DEFAULT_REMINDER_SETTINGS.dailySlots.evening,
+      },
     };
   } catch {
     return DEFAULT_REMINDER_SETTINGS;
