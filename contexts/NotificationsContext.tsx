@@ -96,6 +96,18 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const openedAt = useRef(new Date().toISOString());
   const bannered = useRef(new Set<string>());
 
+  // Recompute at the streak-at-risk hour every day, even if the app stays
+  // open across it (useActiveStreak only ticks at midnight and on resume).
+  const [atRiskTick, setAtRiskTick] = useState(0);
+  useEffect(() => {
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(STREAK_AT_RISK_HOUR, 0, 1, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    const timer = setTimeout(() => setAtRiskTick((n) => n + 1), next.getTime() - now.getTime());
+    return () => clearTimeout(timer);
+  }, [atRiskTick]);
+
   useEffect(() => {
     if (!uid) return;
     setLastSeenLoaded(false);
@@ -142,7 +154,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       });
     }
     return list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [uid, items, incoming, streak, profile?.lastWorkoutDate]);
+  }, [uid, items, incoming, streak, profile?.lastWorkoutDate, atRiskTick]);
 
   const isUnread = (n: InAppNotification) => !lastSeenAt || n.createdAt > lastSeenAt;
   const unreadCount = lastSeenLoaded ? notifications.filter(isUnread).length : 0;
