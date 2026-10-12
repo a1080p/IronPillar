@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../lib/appAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -139,7 +140,7 @@ export default function HomeScreen() {
   );
 
   const confirmDeleteLog = (log: WorkoutLog) => {
-    Alert.alert(
+    appAlert(
       'Delete workout?',
       `This removes "${log.workoutName}" from ${formatShortDate(log.completedAt)} and takes back the ${log.xpEarned} XP it earned. Past streak days are kept.`,
       [
@@ -151,7 +152,7 @@ export default function HomeScreen() {
             try {
               await deleteWorkoutLog(log.id);
             } catch (e) {
-              Alert.alert('Could not delete', e instanceof Error ? e.message : 'Try again.');
+              appAlert('Could not delete', e instanceof Error ? e.message : 'Try again.');
             }
           },
         },
@@ -389,7 +390,7 @@ function QuickStartCard({
   const [menuOpen, setMenuOpen] = useState(false);
 
   const confirmDelete = () => {
-    Alert.alert('Delete workout', `Delete "${workout.name}"? This can't be undone.`, [
+    appAlert('Delete workout', `Delete "${workout.name}"? This can't be undone.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -399,7 +400,7 @@ function QuickStartCard({
           try {
             await deleteCustomWorkout(user.uid, workout.id);
           } catch (e) {
-            Alert.alert('Could not delete', e instanceof Error ? e.message : 'Try again.');
+            appAlert('Could not delete', e instanceof Error ? e.message : 'Try again.');
           }
         },
       },
@@ -409,7 +410,7 @@ function QuickStartCard({
   const handleDuplicate = async () => {
     if (!user) return;
     if (atCustomLimit) {
-      Alert.alert(
+      appAlert(
         'Custom workout limit reached',
         `Free accounts can save up to ${FREE_CUSTOM_WORKOUT_LIMIT} custom workouts. Upgrade to Pro for unlimited.`,
         [
@@ -422,7 +423,7 @@ function QuickStartCard({
     try {
       await duplicateCustomWorkout(user.uid, workout as CustomWorkout);
     } catch (e) {
-      Alert.alert('Could not duplicate', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not duplicate', e instanceof Error ? e.message : 'Try again.');
     }
   };
 

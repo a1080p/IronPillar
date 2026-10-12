@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, type Href } from 'expo-router';
@@ -58,7 +59,7 @@ export default function PaywallScreen() {
         onPurchaseCompleted={() => router.replace('/pro-welcome' as Href)}
         onRestoreCompleted={() => router.back()}
         onPurchaseError={({ error }) =>
-          Alert.alert('Purchase failed', error.message ?? 'Try again.')
+          appAlert('Purchase failed', error.message ?? 'Try again.')
         }
         onDismiss={() => router.back()}
       />
@@ -91,7 +92,7 @@ function BuiltInPaywall() {
 
   const handlePurchase = async () => {
     if (!selectedPackage) {
-      Alert.alert(
+      appAlert(
         'Not set up yet',
         'Subscriptions aren’t configured on this build yet — check back soon.'
       );
@@ -104,7 +105,7 @@ function BuiltInPaywall() {
     } catch (e) {
       const code = (e as { userCancelled?: boolean } | undefined)?.userCancelled;
       if (!code) {
-        Alert.alert('Purchase failed', e instanceof Error ? e.message : 'Try again.');
+        appAlert('Purchase failed', e instanceof Error ? e.message : 'Try again.');
       }
     } finally {
       setPurchasing(false);
@@ -115,9 +116,9 @@ function BuiltInPaywall() {
     setRestoring(true);
     try {
       await restorePurchases();
-      Alert.alert('Restored', 'Your purchases have been restored.');
+      appAlert('Restored', 'Your purchases have been restored.');
     } catch (e) {
-      Alert.alert('Could not restore', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not restore', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setRestoring(false);
     }

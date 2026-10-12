@@ -1,4 +1,5 @@
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { appAlert } from '../lib/appAlert';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useMemo, useState } from 'react';
@@ -47,7 +48,7 @@ export function AvatarPicker({
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(
+      appAlert(
         'Camera access needed',
         'Enable camera access for Iron Pillar in Settings to take a photo.'
       );
@@ -60,7 +61,7 @@ export function AvatarPicker({
   const choosePhoto = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(
+      appAlert(
         'Photo access needed',
         'Enable photo library access for Iron Pillar in Settings to upload a picture.'
       );

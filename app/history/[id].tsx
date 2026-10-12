@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../components/Button';
@@ -58,7 +59,7 @@ export default function WorkoutLogDetailScreen() {
   });
 
   const confirmDelete = () => {
-    Alert.alert(
+    appAlert(
       'Delete workout?',
       `This removes "${log.workoutName}", takes back the ${log.xpEarned} XP it earned, and updates your stats. Past streak days and badges you've earned are kept.`,
       [
@@ -73,7 +74,7 @@ export default function WorkoutLogDetailScreen() {
               router.back();
             } catch (e) {
               setDeleting(false);
-              Alert.alert('Could not delete', e instanceof Error ? e.message : 'Try again.');
+              appAlert('Could not delete', e instanceof Error ? e.message : 'Try again.');
             }
           },
         },

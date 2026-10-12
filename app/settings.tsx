@@ -1,4 +1,5 @@
-import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../lib/appAlert';
 import { useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, type Href } from 'expo-router';
@@ -22,7 +23,7 @@ export default function SettingsScreen() {
   const setUnits = (next: UnitSystem) => {
     if (next === units) return;
     updateProfile({ units: next }).catch((e) =>
-      Alert.alert('Could not save', e instanceof Error ? e.message : 'Try again.')
+      appAlert('Could not save', e instanceof Error ? e.message : 'Try again.')
     );
   };
   const { isPro, presentCustomerCenter, redeemOfferCode, isAvailable: purchasesAvailable } = usePurchases();
@@ -35,14 +36,14 @@ export default function SettingsScreen() {
       return;
     }
     if (logs.length === 0) {
-      Alert.alert('Nothing to export yet', 'Finish a workout first.');
+      appAlert('Nothing to export yet', 'Finish a workout first.');
       return;
     }
     setExporting(true);
     try {
       await exportWorkoutsCsv(logs, units);
     } catch (e) {
-      Alert.alert('Export failed', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Export failed', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setExporting(false);
     }
@@ -97,7 +98,7 @@ export default function SettingsScreen() {
               accessibilityRole="button"
               onPress={() =>
                 presentCustomerCenter().catch((e) =>
-                  Alert.alert('Could not open', e instanceof Error ? e.message : 'Try again.')
+                  appAlert('Could not open', e instanceof Error ? e.message : 'Try again.')
                 )
               }
             >
@@ -110,7 +111,7 @@ export default function SettingsScreen() {
               accessibilityRole="button"
               onPress={() =>
                 redeemOfferCode().catch((e) =>
-                  Alert.alert('Could not open', e instanceof Error ? e.message : 'Try again.')
+                  appAlert('Could not open', e instanceof Error ? e.message : 'Try again.')
                 )
               }
             >

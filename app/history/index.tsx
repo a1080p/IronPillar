@@ -1,4 +1,5 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../lib/appAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,7 +37,7 @@ export default function HistoryScreen() {
   const units = useUnits();
 
   const confirmDelete = (log: WorkoutLog) => {
-    Alert.alert(
+    appAlert(
       'Delete workout?',
       `This removes "${log.workoutName}" and takes back the ${log.xpEarned} XP it earned. Past streak days are kept.`,
       [
@@ -46,7 +47,7 @@ export default function HistoryScreen() {
           style: 'destructive',
           onPress: () =>
             deleteWorkoutLog(log.id).catch((e) =>
-              Alert.alert('Could not delete', e instanceof Error ? e.message : 'Try again.')
+              appAlert('Could not delete', e instanceof Error ? e.message : 'Try again.')
             ),
         },
       ]

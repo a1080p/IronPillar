@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -9,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '../../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../components/Button';
 import { Logo } from '../../components/Logo';
@@ -103,16 +103,16 @@ export default function WelcomeScreen() {
       setError('Enter your email above first, then tap "Forgot password?".');
       return;
     }
-    Alert.alert('Reset password', `Send a password reset link to ${email}?`, [
+    appAlert('Reset password', `Send a password reset link to ${email}?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Send',
         onPress: async () => {
           try {
             await sendPasswordReset(email);
-            Alert.alert('Check your email', `A password reset link was sent to ${email}.`);
+            appAlert('Check your email', `A password reset link was sent to ${email}.`);
           } catch (e) {
-            Alert.alert('Could not send reset email', e instanceof Error ? e.message : 'Try again.');
+            appAlert('Could not send reset email', e instanceof Error ? e.message : 'Try again.');
           }
         },
       },

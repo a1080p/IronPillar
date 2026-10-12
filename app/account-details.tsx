@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WorkoutHeader } from '../components/WorkoutHeader';
 import { Button } from '../components/Button';
@@ -35,15 +36,15 @@ export default function AccountDetailsScreen() {
 
   const handleSave = async () => {
     if (!name.trim() || !experienceLevel || goals.length === 0) {
-      Alert.alert('Missing info', 'Fill in your name, at least one goal, and an experience level.');
+      appAlert('Missing info', 'Fill in your name, at least one goal, and an experience level.');
       return;
     }
     setSaving(true);
     try {
       await updateProfile({ name: name.trim(), birthday, goals, experienceLevel });
-      Alert.alert('Saved', 'Your account details have been updated.');
+      appAlert('Saved', 'Your account details have been updated.');
     } catch (e) {
-      Alert.alert('Could not save', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not save', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setSaving(false);
     }
@@ -52,7 +53,7 @@ export default function AccountDetailsScreen() {
   const usernameMatches = deleteUsernameInput.trim() === profile?.username;
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    appAlert(
       'Are you sure?',
       'This permanently deletes your profile, workout history, badges, and friends. This cannot be undone.',
       [
@@ -68,7 +69,7 @@ export default function AccountDetailsScreen() {
               await signOut().catch(() => {});
               router.replace('/welcome');
             } catch (e) {
-              Alert.alert('Could not delete account', e instanceof Error ? e.message : 'Try again.');
+              appAlert('Could not delete account', e instanceof Error ? e.message : 'Try again.');
               setDeleting(false);
             } finally {
               setDeletingAccount(false);

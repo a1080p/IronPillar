@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Button } from '../../../components/Button';
@@ -78,7 +79,7 @@ export default function OutdoorTrackScreen() {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       if (result || skipConfirmRef.current) return;
       e.preventDefault();
-      Alert.alert('Quit workout?', 'All progress will be lost if you quit now.', [
+      appAlert('Quit workout?', 'All progress will be lost if you quit now.', [
         { text: 'Keep Going', style: 'cancel' },
         {
           text: 'Quit',
@@ -101,7 +102,7 @@ export default function OutdoorTrackScreen() {
 
       const granted = await requestTrackingPermissions();
       if (!granted) {
-        Alert.alert(
+        appAlert(
           'Location access needed',
           'Enable location access (Always, so it keeps working with your screen locked) for Iron Pillar in Settings to track an outdoor workout.',
           [
@@ -197,7 +198,7 @@ export default function OutdoorTrackScreen() {
         });
       }
     } catch (e) {
-      Alert.alert(
+      appAlert(
         'Could not save your activity',
         e instanceof Error ? e.message : 'Try again.'
       );

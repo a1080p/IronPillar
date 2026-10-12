@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useMemo, useState } from 'react';
 import {
-  Alert,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -14,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { appAlert } from '../lib/appAlert';
 import { Button } from './Button';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
@@ -52,7 +52,7 @@ export function CheckInSheet({
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Camera access needed', 'Enable camera access for Iron Pillar in Settings to take a check-in photo.');
+      appAlert('Camera access needed', 'Enable camera access for Iron Pillar in Settings to take a check-in photo.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ ...PHOTO_OPTIONS, cameraType: ImagePicker.CameraType.front });
@@ -62,7 +62,7 @@ export function CheckInSheet({
   const choosePhoto = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Photo access needed', 'Enable photo access for Iron Pillar in Settings to pick a photo.');
+      appAlert('Photo access needed', 'Enable photo access for Iron Pillar in Settings to pick a photo.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync(PHOTO_OPTIONS);
@@ -76,7 +76,7 @@ export function CheckInSheet({
       await createCheckIn(uid, photoUri, caption);
       close();
     } catch (e) {
-      Alert.alert('Could not share', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not share', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setPosting(false);
     }

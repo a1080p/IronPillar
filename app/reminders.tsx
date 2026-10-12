@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { appAlert } from '../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Button } from '../components/Button';
@@ -86,7 +87,7 @@ export default function RemindersScreen() {
     }
     const granted = await requestGymReminderPermissions();
     if (!granted) {
-      Alert.alert(
+      appAlert(
         'Location access needed',
         'Gym reminders need location access set to "Always" so Iron Pillar can notice when you arrive at your gym, even when the app is closed.',
         [
@@ -103,21 +104,21 @@ export default function RemindersScreen() {
   const addGym = async () => {
     const name = gymName.trim() || 'My gym';
     if (settings.gyms.length >= MAX_GYMS) {
-      Alert.alert('Gym limit reached', `You can save up to ${MAX_GYMS} gyms.`);
+      appAlert('Gym limit reached', `You can save up to ${MAX_GYMS} gyms.`);
       return;
     }
     setAddingGym(true);
     try {
       const fg = await Location.requestForegroundPermissionsAsync();
       if (!fg.granted) {
-        Alert.alert('Location access needed', 'Allow location access to save a gym.');
+        appAlert('Location access needed', 'Allow location access to save a gym.');
         return;
       }
       let coords: { latitude: number; longitude: number };
       if (gymAddress.trim()) {
         const results = await Location.geocodeAsync(gymAddress.trim());
         if (results.length === 0) {
-          Alert.alert("Couldn't find that address", 'Try a fuller address, or leave it blank to use where you are now.');
+          appAlert("Couldn't find that address", 'Try a fuller address, or leave it blank to use where you are now.');
           return;
         }
         coords = { latitude: results[0].latitude, longitude: results[0].longitude };
@@ -135,7 +136,7 @@ export default function RemindersScreen() {
       setGymName('');
       setGymAddress('');
     } catch {
-      Alert.alert("Couldn't get your location", 'Please try again in a moment.');
+      appAlert("Couldn't get your location", 'Please try again in a moment.');
     } finally {
       setAddingGym(false);
     }

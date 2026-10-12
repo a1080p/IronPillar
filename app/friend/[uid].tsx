@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../components/Button';
@@ -58,7 +59,7 @@ export default function FriendProfileScreen() {
       router.back();
     } catch (e) {
       setBusy(false);
-      Alert.alert('Something went wrong', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Something went wrong', e instanceof Error ? e.message : 'Try again.');
     }
   };
 
@@ -133,7 +134,7 @@ export default function FriendProfileScreen() {
             variant="outline"
             disabled={busy}
             onPress={() =>
-              Alert.alert(`Remove ${friend.name}?`, 'You will stop seeing each other’s activity.', [
+              appAlert(`Remove ${friend.name}?`, 'You will stop seeing each other’s activity.', [
                 { text: 'Cancel', style: 'cancel' },
                 {
                   text: 'Remove',
@@ -149,7 +150,7 @@ export default function FriendProfileScreen() {
             variant="ghost"
             disabled={busy}
             onPress={() =>
-              Alert.alert(
+              appAlert(
                 `Block ${friend.name}?`,
                 'They’ll be removed from your friends, their activity will disappear from your feed, and they won’t be able to find or add you. You can unblock them in Settings.',
                 [

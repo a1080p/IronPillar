@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import {
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -11,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { appAlert } from '../lib/appAlert';
 import { Button } from './Button';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
@@ -51,12 +51,12 @@ export function ReportUserSheet({
     try {
       await reportUser(userUid, reason, details, { postId, commentId });
       close();
-      Alert.alert(
+      appAlert(
         'Report sent',
         `Thanks for letting us know. We review reports within 24 hours. You can also block ${userName} so they can't see your profile or add you.`
       );
     } catch (e) {
-      Alert.alert('Could not send report', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not send report', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setSending(false);
     }

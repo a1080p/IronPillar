@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { appAlert } from '../../lib/appAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ProBadge, ProLockCard } from '../../components/ProLock';
@@ -103,14 +104,14 @@ export default function AnalyticsScreen() {
       return;
     }
     if (logs.length === 0) {
-      Alert.alert('Nothing to export yet', 'Finish a workout first.');
+      appAlert('Nothing to export yet', 'Finish a workout first.');
       return;
     }
     setExporting(true);
     try {
       await exportWorkoutsCsv(logs, units);
     } catch (e) {
-      Alert.alert('Export failed', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Export failed', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setExporting(false);
     }
@@ -144,7 +145,7 @@ export default function AnalyticsScreen() {
     const typed = Number(weightInput.replace(',', '.'));
     const weightLb = displayToLb(typed, units);
     if (!typed || weightLb < 60 || weightLb > 1000 || !user) {
-      Alert.alert(
+      appAlert(
         'Enter your weight',
         `Add your current weight in ${units === 'metric' ? 'kilograms' : 'pounds'} to save an entry.`
       );
@@ -348,7 +349,7 @@ export default function AnalyticsScreen() {
             style={styles.healthConnect}
             onPress={() =>
               health.connect().catch((e) =>
-                Alert.alert('Could not connect', e instanceof Error ? e.message : 'Try again.')
+                appAlert('Could not connect', e instanceof Error ? e.message : 'Try again.')
               )
             }
             accessibilityRole="button"

@@ -10,6 +10,7 @@ import { AnimatedSplash } from '../components/AnimatedSplash';
 import { BugReportButton } from '../components/BugReportButton';
 import { ReminderSync } from '../components/ReminderSync';
 import { NotificationBanner } from '../components/NotificationBanner';
+import { AppAlertHost } from '../components/AppAlertHost';
 import { NotificationsProvider } from '../contexts/NotificationsContext';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { PurchasesProvider } from '../contexts/PurchasesContext';
@@ -78,6 +79,7 @@ function RootNavigation() {
       {user && hasOnboarded ? <BugReportButton uid={user.uid} /> : null}
       {user && hasOnboarded ? <ReminderSync uid={user.uid} /> : null}
       {user && hasOnboarded ? <NotificationBanner /> : null}
+      <AppAlertHost />
       <AnimatedSplash ready={!initializing} />
     </>
   );

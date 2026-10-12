@@ -2,7 +2,6 @@ import { usePathname } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -13,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { appAlert } from '../lib/appAlert';
 import { onOpenBugReport } from '../lib/bugReport';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
@@ -49,7 +49,7 @@ export function BugReportButton({ uid }: { uid: string }) {
 
   const handleSubmit = async () => {
     if (!description.trim()) {
-      Alert.alert('Add a few words', 'Let us know what happened before submitting.');
+      appAlert('Add a few words', 'Let us know what happened before submitting.');
       return;
     }
     setSubmitting(true);
@@ -57,9 +57,9 @@ export function BugReportButton({ uid }: { uid: string }) {
       await submitBugReport({ uid, screen: pathname, category, description: description.trim() });
       setOpen(false);
       reset();
-      Alert.alert('Thanks!', "We've got your report and will look into it.");
+      appAlert('Thanks!', "We've got your report and will look into it.");
     } catch {
-      Alert.alert("Couldn't send", 'Please try again in a moment.');
+      appAlert("Couldn't send", 'Please try again in a moment.');
     } finally {
       setSubmitting(false);
     }

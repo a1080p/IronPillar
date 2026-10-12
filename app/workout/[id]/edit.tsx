@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { appAlert } from '../../../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
@@ -89,12 +90,12 @@ export default function EditWorkoutDetailsScreen() {
   const handleSave = async () => {
     if (!user || !workout) return;
     if (!name.trim()) {
-      Alert.alert('Name required', 'Give the workout a name.');
+      appAlert('Name required', 'Give the workout a name.');
       return;
     }
     const durationNum = Number(duration);
     if (!durationNum || durationNum < 1) {
-      Alert.alert('Time required', 'Enter the workout length in minutes.');
+      appAlert('Time required', 'Enter the workout length in minutes.');
       return;
     }
     setSaving(true);
@@ -110,7 +111,7 @@ export default function EditWorkoutDetailsScreen() {
       });
       router.back();
     } catch (e) {
-      Alert.alert('Could not save', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not save', e instanceof Error ? e.message : 'Try again.');
       setSaving(false);
     }
   };

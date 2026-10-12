@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { appAlert } from '../../lib/appAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, type Href } from 'expo-router';
@@ -59,7 +60,7 @@ export default function SocialScreen() {
     setAnswered((list) => [...list, uid]);
     respondFriendRequest(uid, accept).catch((e) => {
       setAnswered((list) => list.filter((id) => id !== uid));
-      Alert.alert('Something went wrong', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Something went wrong', e instanceof Error ? e.message : 'Try again.');
     });
   };
   const openRequests = incoming.filter((r) => !answered.includes(r.uid));
@@ -74,12 +75,12 @@ export default function SocialScreen() {
       const friend = await addFriend(username.trim());
       setUsername('');
       if (friend.status === 'requested') {
-        Alert.alert('Request sent', `${friend.name} will see your friend request and can accept it.`);
+        appAlert('Request sent', `${friend.name} will see your friend request and can accept it.`);
       } else {
-        Alert.alert('Friend added', `You and ${friend.name} are now friends.`);
+        appAlert('Friend added', `You and ${friend.name} are now friends.`);
       }
     } catch (e) {
-      Alert.alert('Could not add friend', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not add friend', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setAdding(false);
     }
@@ -181,7 +182,7 @@ export default function SocialScreen() {
                 <Pressable
                   onPress={() =>
                     cancelFriendRequest(r.uid).catch((e) =>
-                      Alert.alert('Could not cancel', e instanceof Error ? e.message : 'Try again.')
+                      appAlert('Could not cancel', e instanceof Error ? e.message : 'Try again.')
                     )
                   }
                   hitSlop={12}
@@ -302,7 +303,7 @@ function ReactionButtons({ item }: { item: ActivityFeedItem }) {
       await reactToActivity(item.id, reaction);
     } catch (e) {
       setSent((prev) => ({ ...prev, [reaction]: false }));
-      Alert.alert('Could not send', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not send', e instanceof Error ? e.message : 'Try again.');
     }
   };
 

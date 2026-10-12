@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WorkoutHeader } from '../components/WorkoutHeader';
 import { spacing, typography } from '../constants/theme';
@@ -16,13 +17,13 @@ export default function BlockedUsersScreen() {
   const { blocked, loading } = useBlockedUsers(user?.uid);
 
   const confirmUnblock = (uid: string, name: string) =>
-    Alert.alert(`Unblock ${name}?`, 'They will be able to find and add you again.', [
+    appAlert(`Unblock ${name}?`, 'They will be able to find and add you again.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Unblock',
         onPress: () =>
           unblockUser(uid).catch((e) =>
-            Alert.alert('Could not unblock', e instanceof Error ? e.message : 'Try again.')
+            appAlert('Could not unblock', e instanceof Error ? e.message : 'Try again.')
           ),
       },
     ]);

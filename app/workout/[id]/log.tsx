@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
+import { appAlert } from '../../../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Button } from '../../../components/Button';
@@ -82,7 +83,7 @@ export default function WorkoutLogScreen() {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       if (isCompletingRef.current) return;
       e.preventDefault();
-      Alert.alert('Quit workout?', 'All progress will be lost if you quit now.', [
+      appAlert('Quit workout?', 'All progress will be lost if you quit now.', [
         { text: 'Keep Going', style: 'cancel' },
         {
           text: 'Quit',
@@ -205,7 +206,7 @@ export default function WorkoutLogScreen() {
       advance();
       return;
     }
-    Alert.alert(
+    appAlert(
       filledSets === 0 ? 'No sets logged yet' : `${filledSets} of ${sets.length} sets logged`,
       isLastExercise
         ? 'Finish the workout anyway?'

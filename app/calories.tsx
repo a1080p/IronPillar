@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { appAlert } from '../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WorkoutHeader } from '../components/WorkoutHeader';
 import { Button } from '../components/Button';
@@ -134,7 +134,7 @@ export default function CaloriesScreen() {
       setCalories('');
       setProtein('');
     } catch (e) {
-      Alert.alert('Could not add', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not add', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setAdding(false);
     }
@@ -145,7 +145,7 @@ export default function CaloriesScreen() {
       await updateProfile({ calorieGoal: value });
       setEditingGoal(false);
     } catch (e) {
-      Alert.alert('Could not save goal', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not save goal', e instanceof Error ? e.message : 'Try again.');
     }
   };
 

@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import {
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -12,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { appAlert } from '../lib/appAlert';
 import { Button } from './Button';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
@@ -50,7 +50,7 @@ export function ExerciseNotes({
       await saveNote(draft);
       setOpen(false);
     } catch (e) {
-      Alert.alert('Could not save your notes', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not save your notes', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setSaving(false);
     }

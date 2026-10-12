@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { appAlert } from '../../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -37,7 +38,7 @@ export default function NewWorkoutScreen() {
   const handleAddExercise = () => {
     const setsNum = Number(sets);
     if (!exerciseName.trim() || !targetLabel.trim() || !setsNum || setsNum < 1) {
-      Alert.alert('Missing info', 'Give the exercise a name, set count, and a target (reps or time).');
+      appAlert('Missing info', 'Give the exercise a name, set count, and a target (reps or time).');
       return;
     }
     setExercises((prev) => [
@@ -63,15 +64,15 @@ export default function NewWorkoutScreen() {
   const handleSave = async () => {
     if (!user) return;
     if (!workoutName.trim()) {
-      Alert.alert('Name your workout', 'Give your workout a name before saving.');
+      appAlert('Name your workout', 'Give your workout a name before saving.');
       return;
     }
     if (exercises.length === 0) {
-      Alert.alert('Add an exercise', 'Add at least one exercise before saving.');
+      appAlert('Add an exercise', 'Add at least one exercise before saving.');
       return;
     }
     if (atFreeLimit) {
-      Alert.alert(
+      appAlert(
         'Custom workout limit reached',
         `Free accounts can save up to ${FREE_CUSTOM_WORKOUT_LIMIT} custom workouts. Upgrade to Pro for unlimited, or delete one you no longer use.`,
         [
@@ -106,7 +107,7 @@ export default function NewWorkoutScreen() {
       const id = await createCustomWorkout(user.uid, workoutName.trim(), exercises, details);
       router.replace(`/workout/${id}?generated=${generatedParam}`);
     } catch (e) {
-      Alert.alert('Could not save workout', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not save workout', e instanceof Error ? e.message : 'Try again.');
       setSaving(false);
       setSavingStatus('');
     }

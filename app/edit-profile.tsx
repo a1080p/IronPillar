@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useNavigation } from 'expo-router';
 import { WorkoutHeader } from '../components/WorkoutHeader';
@@ -59,7 +60,7 @@ export default function EditProfileScreen() {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       if (savedRef.current) return;
       e.preventDefault();
-      Alert.alert('Save changes?', 'You have unsaved changes to your profile.', [
+      appAlert('Save changes?', 'You have unsaved changes to your profile.', [
         { text: 'Keep Editing', style: 'cancel' },
         {
           text: 'Discard',
@@ -103,21 +104,21 @@ export default function EditProfileScreen() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Missing name', 'Enter a name to display on your profile.');
+      appAlert('Missing name', 'Enter a name to display on your profile.');
       return;
     }
     if (containsBlockedTerm(name) || containsBlockedTerm(username)) {
-      Alert.alert('Not allowed', 'Please choose a different name or username.');
+      appAlert('Not allowed', 'Please choose a different name or username.');
       return;
     }
     if (birthday && !BIRTHDAY_RE.test(birthday)) {
-      Alert.alert('Check your birthday', 'Use the format MM-DD-YYYY.');
+      appAlert('Check your birthday', 'Use the format MM-DD-YYYY.');
       return;
     }
 
     const newUsername = normalizeUsername(username);
     if (!USERNAME_RE.test(newUsername)) {
-      Alert.alert(
+      appAlert(
         'Check your username',
         'Use 3 to 20 characters: letters, numbers, periods and underscores.'
       );
@@ -151,7 +152,7 @@ export default function EditProfileScreen() {
       savedRef.current = true;
       router.back();
     } catch (e) {
-      Alert.alert('Could not save', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not save', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setSaving(false);
     }

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -11,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { appAlert } from '../../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ActionSheet } from '../../components/ActionSheet';
@@ -66,7 +66,7 @@ export default function PostScreen() {
     const body = text.trim();
     if (!body) return;
     if (containsBlockedTerm(body)) {
-      Alert.alert('Not allowed', 'That comment includes language that isn’t allowed.');
+      appAlert('Not allowed', 'That comment includes language that isn’t allowed.');
       return;
     }
     const temp: PostComment = {
@@ -82,7 +82,7 @@ export default function PostScreen() {
       await addComment(post.id, body);
     } catch (e) {
       setText(body);
-      Alert.alert('Could not comment', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not comment', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setSendingComments((list) => list.filter((c) => c.id !== temp.id));
     }
@@ -97,7 +97,7 @@ export default function PostScreen() {
         destructive: true,
         onPress: () =>
           deleteComment(post.id, c.id).catch((e) =>
-            Alert.alert('Could not delete', e instanceof Error ? e.message : 'Try again.')
+            appAlert('Could not delete', e instanceof Error ? e.message : 'Try again.')
           ),
       });
     }
@@ -213,7 +213,7 @@ export default function PostScreen() {
                   icon: 'trash-outline',
                   destructive: true,
                   onPress: () =>
-                    Alert.alert('Delete this post?', 'It and its comments will be removed for everyone.', [
+                    appAlert('Delete this post?', 'It and its comments will be removed for everyone.', [
                       { text: 'Cancel', style: 'cancel' },
                       {
                         text: 'Delete',
@@ -222,7 +222,7 @@ export default function PostScreen() {
                           deletePost(post.id)
                             .then(() => router.back())
                             .catch((e) =>
-                              Alert.alert('Could not delete', e instanceof Error ? e.message : 'Try again.')
+                              appAlert('Could not delete', e instanceof Error ? e.message : 'Try again.')
                             ),
                       },
                     ]),

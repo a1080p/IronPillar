@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import { appAlert } from '../../../lib/appAlert';
 import { router } from 'expo-router';
 import { AvatarPicker } from '../../../components/AvatarPicker';
 import { OnboardingScreen } from '../../../components/OnboardingScreen';
@@ -51,7 +52,7 @@ export default function AvatarScreen() {
       // Root layout's auth guard redirects to the tabs home once the
       // profile document exists.
     } catch (e) {
-      Alert.alert('Could not save your profile', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not save your profile', e instanceof Error ? e.message : 'Try again.');
       setSaving(false);
     }
   };

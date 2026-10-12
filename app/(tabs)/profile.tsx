@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, type Href } from 'expo-router';
 import { TopBar } from '../../components/TopBar';
@@ -179,9 +180,9 @@ function AppleHealthCard({ uid }: { uid: string }) {
     setBusy(true);
     try {
       const ok = await health.connect();
-      if (!ok) Alert.alert('Apple Health unavailable', 'Health data isn’t available on this device.');
+      if (!ok) appAlert('Apple Health unavailable', 'Health data isn’t available on this device.');
     } catch (e) {
-      Alert.alert('Could not connect Apple Health', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not connect Apple Health', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setBusy(false);
     }
@@ -253,7 +254,7 @@ function WhoopCard({ uid }: { uid: string }) {
     try {
       await connectWhoop();
     } catch (e) {
-      Alert.alert('Could not connect WHOOP', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not connect WHOOP', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setBusy(false);
     }
@@ -264,7 +265,7 @@ function WhoopCard({ uid }: { uid: string }) {
     try {
       await syncWhoop();
     } catch (e) {
-      Alert.alert('Sync failed', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Sync failed', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setBusy(false);
     }
@@ -275,7 +276,7 @@ function WhoopCard({ uid }: { uid: string }) {
     try {
       await disconnectWhoop();
     } catch (e) {
-      Alert.alert('Could not disconnect', e instanceof Error ? e.message : 'Try again.');
+      appAlert('Could not disconnect', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setBusy(false);
     }
