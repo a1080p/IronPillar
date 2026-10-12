@@ -112,9 +112,16 @@ export function AppTour({ visible, steps, onFinish }: AppTourProps) {
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onFinish}>
       <View style={StyleSheet.absoluteFill}>
-        {/* Always-present base dim, so the loading gap between steps reads as
-            a plain dim screen rather than a flash of full black. */}
-        <View style={styles.mask} />
+        {/* Base dim for the loading gap between steps, so it reads as a plain
+            dim screen rather than a flash of full black. It fades out as the
+            step fades in, leaving the highlighted area undimmed. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.mask,
+            rect && { opacity: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) },
+          ]}
+        />
 
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]} pointerEvents="box-none">
           {rect && (
