@@ -5,23 +5,8 @@ import { router } from 'expo-router';
 import { OnboardingScreen } from '../../../components/OnboardingScreen';
 import { TextField } from '../../../components/TextField';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
-import { formatBirthdayInput } from '../../../lib/dates';
+import { ageFromBirthday as ageFrom, formatBirthdayInput, MIN_AGE } from '../../../lib/dates';
 import { containsBlockedTerm } from '../../../constants/moderation';
-
-// Age in whole years from an MM-DD-YYYY birthday, or null if it isn't a real date.
-function ageFrom(birthday: string): number | null {
-  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(birthday);
-  if (!m) return null;
-  const [month, day, year] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  const date = new Date(year, month - 1, day);
-  if (date.getMonth() !== month - 1 || date.getDate() !== day || date > new Date()) return null;
-  const now = new Date();
-  let age = now.getFullYear() - year;
-  if (now.getMonth() < month - 1 || (now.getMonth() === month - 1 && now.getDate() < day)) age--;
-  return age;
-}
-
-const MIN_AGE = 13;
 
 export default function NameBirthdayScreen() {
   const { data, setNameBirthday } = useOnboarding();

@@ -5,12 +5,6 @@ export const SEX_OPTIONS: { value: Sex; label: string }[] = [
   { value: 'female', label: 'Female' },
 ];
 
-export const GOAL_OPTIONS: { value: FitnessGoal; label: string }[] = [
-  { value: 'lose_weight', label: 'Lose Weight' },
-  { value: 'build_strength', label: 'Build Strength' },
-  { value: 'build_endurance', label: 'Build Endurance' },
-];
-
 export const EXPERIENCE_OPTIONS: { value: ExperienceLevel; label: string }[] = [
   { value: 'new', label: "I'm New to This" },
   { value: 'some', label: 'I Know a Little' },

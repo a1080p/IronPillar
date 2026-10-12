@@ -1,6 +1,7 @@
 // Pro calorie tracking: the daily target, and calories burned by the day's
 // workouts (added back to the day's budget).
 import type { Meal, UserProfile, WorkoutLog } from '../types/models';
+import { ageFromBirthday } from './dates';
 
 export const MEALS: { value: Meal; label: string }[] = [
   { value: 'breakfast', label: 'Breakfast' },
@@ -19,21 +20,6 @@ const CM_PER_INCH = 2.54;
 const BASE_ACTIVITY_FACTOR = 1.375;
 const LOSE_WEIGHT_DEFICIT = 500;
 const BUILD_STRENGTH_SURPLUS = 250;
-
-function ageFromBirthday(birthday: string): number | null {
-  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(birthday);
-  if (!m) return null;
-  const born = new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]));
-  const now = new Date();
-  let age = now.getFullYear() - born.getFullYear();
-  if (
-    now.getMonth() < born.getMonth() ||
-    (now.getMonth() === born.getMonth() && now.getDate() < born.getDate())
-  ) {
-    age--;
-  }
-  return age;
-}
 
 // Mifflin-St Jeor resting energy × a light activity factor, nudged down for a
 // weight-loss goal or up for a strength goal. Rounded to the nearest 50.

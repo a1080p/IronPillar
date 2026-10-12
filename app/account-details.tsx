@@ -1,5 +1,14 @@
 import { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { appAlert } from '../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WorkoutHeader } from '../components/WorkoutHeader';
@@ -8,11 +17,19 @@ import { TextField } from '../components/TextField';
 import { SelectableOption } from '../components/SelectableOption';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
-import { GOAL_OPTIONS, EXPERIENCE_OPTIONS } from '../constants/options';
+import {
+  BARRIER_OPTIONS,
+  EXPERIENCE_OPTIONS,
+  GOAL_EXAMPLES,
+  GOAL_TEXT_MAX,
+  goalsFromText,
+} from '../constants/options';
+import { containsBlockedTerm } from '../constants/moderation';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
 import { deleteAccount } from '../lib/account';
-import type { ExperienceLevel, FitnessGoal } from '../types/models';
+import { ageFromBirthday, formatBirthdayInput, MIN_AGE } from '../lib/dates';
+import type { Barrier, ExperienceLevel } from '../types/models';
 
 export default function AccountDetailsScreen() {
   const { colors } = useTheme();
@@ -20,28 +37,55 @@ export default function AccountDetailsScreen() {
   const { user, profile, updateProfile, signOut, setDeletingAccount, changePassword } = useAuth();
   const [name, setName] = useState(profile?.name ?? '');
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
-  const [goals, setGoals] = useState<FitnessGoal[]>(profile?.goals ?? []);
+  // Same questions as onboarding: the goal in their own words, experience,
+  // and what's holding them back.
+  const [goalText, setGoalText] = useState(profile?.goalText ?? '');
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel | undefined>(
     profile?.experienceLevel
   );
+  const [barrier, setBarrier] = useState<Barrier | undefined>(profile?.barrier);
+  const [barrierOther, setBarrierOther] = useState(profile?.barrierOther ?? '');
   const [saving, setSaving] = useState(false);
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteUsernameInput, setDeleteUsernameInput] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  const toggleGoal = (goal: FitnessGoal) => {
-    setGoals((prev) => (prev.includes(goal) ? prev.filter((g) => g !== goal) : [...prev, goal]));
-  };
-
   const handleSave = async () => {
-    if (!name.trim() || !experienceLevel || goals.length === 0) {
-      appAlert('Missing info', 'Fill in your name, at least one goal, and an experience level.');
+    const trimmedName = name.trim();
+    const trimmedGoal = goalText.trim();
+    const trimmedOther = barrier === 'other' ? barrierOther.trim() : '';
+    const age = ageFromBirthday(birthday);
+    if (!trimmedName || !experienceLevel || trimmedGoal.length < 3) {
+      appAlert('Missing info', 'Fill in your name, your goal, and an experience level.');
+      return;
+    }
+    if (age == null) {
+      appAlert('Check your birthday', 'Enter a real date as MM-DD-YYYY.');
+      return;
+    }
+    if (age < MIN_AGE) {
+      appAlert('Check your birthday', `You need to be at least ${MIN_AGE} to use Iron Pillar.`);
+      return;
+    }
+    if (barrier === 'other' && !trimmedOther) {
+      appAlert('Missing info', 'Tell us what holds you back, or pick another option.');
+      return;
+    }
+    if ([trimmedName, trimmedGoal, trimmedOther].some(containsBlockedTerm)) {
+      appAlert('Please reword', 'Your name, goal, or answer has words that are not allowed.');
       return;
     }
     setSaving(true);
     try {
-      await updateProfile({ name: name.trim(), birthday, goals, experienceLevel });
+      await updateProfile({
+        name: trimmedName,
+        birthday,
+        goalText: trimmedGoal,
+        goals: goalsFromText(trimmedGoal),
+        experienceLevel,
+        ...(barrier ? { barrier, barrierOther: trimmedOther } : {}),
+      });
       appAlert('Saved', 'Your account details have been updated.');
     } catch (e) {
       appAlert('Could not save', e instanceof Error ? e.message : 'Try again.');
@@ -203,20 +247,37 @@ export default function AccountDetailsScreen() {
         <TextField
           label="Birthday"
           value={birthday}
-          onChangeText={setBirthday}
+          onChangeText={(text) => setBirthday(formatBirthdayInput(text))}
           placeholder="MM-DD-YYYY"
+          keyboardType="number-pad"
+          maxLength={10}
         />
 
         <View style={styles.optionBlock}>
-          <Text style={styles.sectionLabel}>Goals</Text>
-          {GOAL_OPTIONS.map((goal) => (
-            <SelectableOption
-              key={goal.value}
-              label={goal.label}
-              selected={goals.includes(goal.value)}
-              onPress={() => toggleGoal(goal.value)}
-            />
-          ))}
+          <Text style={styles.sectionLabel}>Your goal</Text>
+          <TextInput
+            style={styles.goalInput}
+            value={goalText}
+            onChangeText={setGoalText}
+            placeholder="e.g. Get strong enough to deadlift my body weight"
+            placeholderTextColor={colors.textMuted}
+            multiline
+            maxLength={GOAL_TEXT_MAX}
+            accessibilityLabel="Your goal"
+          />
+          <View style={styles.chips}>
+            {GOAL_EXAMPLES.map((example) => (
+              <Pressable
+                key={example}
+                style={styles.chip}
+                onPress={() => setGoalText(example)}
+                accessibilityRole="button"
+                accessibilityLabel={`Use goal: ${example}`}
+              >
+                <Text style={styles.chipText}>{example}</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         <View style={styles.optionBlock}>
@@ -229,6 +290,29 @@ export default function AccountDetailsScreen() {
               onPress={() => setExperienceLevel(level.value)}
             />
           ))}
+        </View>
+
+        <View style={styles.optionBlock}>
+          <Text style={styles.sectionLabel}>What's holding you back the most?</Text>
+          {BARRIER_OPTIONS.map((option) => (
+            <SelectableOption
+              key={option.value}
+              label={option.label}
+              selected={barrier === option.value}
+              onPress={() => setBarrier(option.value)}
+            />
+          ))}
+          {barrier === 'other' && (
+            <TextInput
+              style={styles.otherInput}
+              value={barrierOther}
+              onChangeText={setBarrierOther}
+              placeholder="Tell us what gets in the way"
+              placeholderTextColor={colors.textMuted}
+              maxLength={GOAL_TEXT_MAX}
+              accessibilityLabel="What's holding you back"
+            />
+          )}
         </View>
 
         <Button label="Save Changes" onPress={handleSave} loading={saving} />
@@ -293,6 +377,32 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   readOnlyValue: { color: colors.text, fontWeight: '600' },
   optionBlock: { gap: spacing.md },
   signInBlock: { gap: spacing.md },
+  goalInput: {
+    minHeight: 88,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    color: colors.text,
+    fontSize: typography.sizes.body,
+    textAlignVertical: 'top',
+  },
+  otherInput: {
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    color: colors.text,
+    fontSize: typography.sizes.body,
+  },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  chipText: { color: colors.text, fontSize: typography.sizes.small, fontWeight: '600' },
   signInNote: { color: colors.textMuted, fontSize: typography.sizes.small },
   passwordForm: { gap: spacing.md },
   passwordError: { color: colors.danger },
