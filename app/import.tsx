@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
@@ -38,6 +39,7 @@ import {
 } from '../lib/importData';
 
 const MAX_IMAGE_BASE64 = 6_000_000;
+const AI_CONSENT_KEY = 'importAiConsent.v1';
 
 function shortDate(date: string) {
   const [y, m, d] = date.split('-').map(Number);
@@ -136,7 +138,31 @@ export default function ImportScreen() {
     setImages((prev) => [...prev, ...picked].slice(0, IMPORT_MAX_IMAGES));
   };
 
+  // Uploads go to a third-party AI, so ask once before the first one
+  // (App Store guideline 5.1.2).
+  const confirmAiSharing = async () => {
+    const asked = await AsyncStorage.getItem(AI_CONSENT_KEY).catch(() => null);
+    if (asked) return true;
+    return new Promise<boolean>((resolve) =>
+      appAlert(
+        'Send this to Claude AI?',
+        "To read your upload, Iron Pillar sends the text, file or screenshots you chose to Anthropic's Claude AI. It's used only to find your workouts, weigh-ins and meals, and Anthropic doesn't use it to train its models.",
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+          {
+            text: 'Continue',
+            onPress: () => {
+              AsyncStorage.setItem(AI_CONSENT_KEY, '1').catch(() => {});
+              resolve(true);
+            },
+          },
+        ]
+      )
+    );
+  };
+
   const read = async () => {
+    if (!(await confirmAiSharing())) return;
     setReading(true);
     try {
       const result = await parseImport({
@@ -287,6 +313,10 @@ export default function ImportScreen() {
           <Text style={styles.hint}>
             Bring in workouts, weigh-ins and meals from your notes, a spreadsheet, or screenshots of
             another app. You'll review everything before it's added.
+          </Text>
+          <Text style={styles.hint}>
+            What you upload is sent to Anthropic's Claude AI to read it. It isn't used to train AI
+            models.
           </Text>
 
           <Text style={styles.section}>Paste notes</Text>
