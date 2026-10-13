@@ -6,9 +6,6 @@
 <title>Iron Pillar</title>
 <meta name="description" content="Iron Pillar is a workout tracker for iPhone. Log any workout in seconds, track outdoor runs with GPS, and turn consistency into streaks, XP, and badges.">
 <link rel="icon" href="assets/icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=JetBrains+Mono:wght@500;700&family=Public+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="styles.css">
 <style>
   /* ---------- hero ---------- */
@@ -20,7 +17,7 @@
     align-items: center;
   }
   .hero-copy { display: grid; gap: 22px; min-width: 0; }
-  .hero h1 { font-size: clamp(3.5rem, 10vw, 7.5rem); }
+  .hero h1 { font-size: clamp(3rem, 8vw, 5.75rem); }
   .hero h1 .flame { color: var(--flame); }
 
   /* stacked app cards */
@@ -48,7 +45,8 @@
   .streak-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
   .streak-count {
     font-family: var(--display);
-    font-weight: 900;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     font-size: 2.75rem;
     line-height: 1;
   }
@@ -92,7 +90,7 @@
   .route path { fill: none; stroke: #ffffff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
   .route circle { fill: var(--flame-fill); }
   .run-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .run-stats b { display: block; font-family: var(--display); font-weight: 800; font-size: 1.625rem; line-height: 1; font-variant-numeric: tabular-nums; }
+  .run-stats b { display: block; font-family: var(--display); font-weight: 800; font-size: 1.375rem; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
   .run-stats small { font-size: 0.75rem; color: var(--on-card-muted); }
 
   /* ---------- feature sections ---------- */
@@ -118,7 +116,7 @@
   }
   .categories { padding: 0; margin: 0; }
   .big-stat { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
-  .big-stat b { font-family: var(--display); font-weight: 900; font-size: clamp(4rem, 9vw, 6rem); line-height: 0.9; color: var(--pillar); }
+  .big-stat b { font-family: var(--display); font-weight: 800; letter-spacing: -0.03em; font-size: clamp(4rem, 9vw, 6rem); line-height: 0.9; color: var(--pillar); }
   .big-stat span { color: var(--muted); max-width: 22ch; }
 
   /* XP log — set like a training log */
@@ -156,7 +154,7 @@
   }
   .plan.best { background: #ffffff; border-color: #ffffff; color: #1a1a1a; }
   .plan.best .price { color: #3d4fea; }
-  .plan .price { font-family: var(--display); font-weight: 900; font-size: 3rem; line-height: 1; }
+  .plan .price { font-family: var(--display); font-weight: 800; letter-spacing: -0.02em; font-size: 3rem; line-height: 1; }
   .plan .price small { font-family: var(--body); font-size: 0.9375rem; font-weight: 500; opacity: 0.8; }
   .plan .tag { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #a84e00; min-height: 1em; }
   .fine { font-size: 0.8125rem; color: var(--on-card-muted); max-width: 72ch; margin: 24px 0 0; }
