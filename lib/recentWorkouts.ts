@@ -25,6 +25,8 @@ export function dedupeRecentWorkouts(
   const seen = new Set<string>();
   const recent: WorkoutLog[] = [];
   for (const log of logs) {
+    // Imported strength workouts have no template to jump back into.
+    if (log.workoutSource === 'import') continue;
     const key = recentKey(log);
     const hiddenAt = hidden[key];
     if (hiddenAt && log.completedAt <= hiddenAt) continue;

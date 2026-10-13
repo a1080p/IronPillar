@@ -125,7 +125,9 @@ export interface WorkoutLog {
   id: string;
   workoutId: string;
   workoutName: string;
-  workoutSource: 'preset' | 'quick_start' | 'browse' | 'custom' | 'outdoor';
+  // 'import': brought in with Import with AI (no template to reopen).
+  workoutSource: 'preset' | 'quick_start' | 'browse' | 'custom' | 'outdoor' | 'import';
+  imported?: boolean; // true for anything added through Import with AI (no XP, no streak)
   completedAt: string; // ISO timestamp
   durationSeconds: number;
   exercises: ExerciseLog[]; // empty for outdoor activities — see activityType below

@@ -82,6 +82,10 @@ export default function InsightsScreen() {
             title="Calorie tracking"
             description="Log meals against a daily target built from your body and goal, with workout calories added back."
           />
+          <ProLockCard
+            title="Import with AI"
+            description="Bring workouts, weigh-ins and meals in from your notes, a spreadsheet, or screenshots of other apps."
+          />
         </ScrollView>
       </SafeAreaView>
     );
@@ -112,6 +116,20 @@ export default function InsightsScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.caloriesTitle}>Calories</Text>
             <Text style={styles.caloriesSub}>Log meals and see what's left for today</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.caloriesCard, pressed && { opacity: 0.7 }]}
+          onPress={() => router.push('/import' as Href)}
+          accessibilityRole="button"
+          accessibilityLabel="Import with AI"
+        >
+          <Ionicons name="sparkles" size={22} color={colors.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.caloriesTitle}>Import with AI</Text>
+            <Text style={styles.caloriesSub}>Bring in notes, CSVs or screenshots from other apps</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </Pressable>

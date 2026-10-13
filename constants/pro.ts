@@ -49,6 +49,12 @@ export const PRO_FEATURES: PlanFeature[] = [
       'Add steps and calories left to your Home Screen and Lock Screen widget, next to your streak.',
   },
   {
+    icon: 'cloud-upload',
+    title: 'Import with AI',
+    description:
+      'Bring workouts, weigh-ins and meals in from your notes, a spreadsheet, or screenshots of other apps.',
+  },
+  {
     icon: 'sparkles',
     title: 'AI workout details',
     description:
