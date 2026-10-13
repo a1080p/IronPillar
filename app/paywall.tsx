@@ -16,8 +16,8 @@ import { FREE_FEATURES, PRO_FEATURES, type PlanFeature } from '../constants/pro'
 // fetched — keeps the paywall's copy/pricing visible (if not yet purchasable)
 // instead of a blank screen while that setup is pending.
 const FALLBACK_PLANS = [
-  { id: 'monthly', label: 'Monthly', price: '$9.99', period: '/month' },
-  { id: 'annual', label: 'Annual', price: '$79.99', period: '/year', badge: 'Best value' },
+  { id: 'monthly', label: 'Monthly', price: '$4.99', period: '/month' },
+  { id: 'annual', label: 'Annual', price: '$39.99', period: '/year', badge: 'Best value' },
 ];
 
 // Props we use on RevenueCatUI.Paywall. Typed locally because the module is
