@@ -1,7 +1,8 @@
 import { Image, StyleSheet } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
-const ASPECT_RATIO = 3199 / 900;
+// Figma lockup proportions (assets/Iron Pillar assets/Asset 7@2x.png) at 900px tall.
+const ASPECT_RATIO = 2373 / 900;
 
 export function Logo({ size = 'md' }: { size?: 'md' | 'lg' | 'xl' }) {
   const { colors } = useTheme();
