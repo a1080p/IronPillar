@@ -4,6 +4,16 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-13: New pricing live in App Store Connect; paywall republished; Import with AI deployed
+
+- **App Store Connect** (subscription group `ironpillar_pro_monthly`): monthly now **$4.99** (was $8.99 in the US, not $9.99 as assumed), yearly **$39.99**, both with other countries recalculated from the US price. Yearly has a **7-day free introductory offer** (Oct 13, 2026, no end date, 175 countries). Monthly has no offer.
+- **RevenueCat paywall** "Iron Pillar Pro" republished: added Calories, Import with AI and widgets lines (two lines merged so the plans stay above the fold). All prices come from store product variables; trial copy ("7 days free", "Start 7-day free trial", trial disclosure) shows only when the annual intro offer is eligible. RevenueCat Test Store products still list $9.99 / $79.99 (base price not editable in the dashboard; dev builds only).
+- **Website**: annual plan "Try 7 days free"; support FAQ explains the trial. (App fallback paywall and site prices were updated earlier today in a5da102.)
+- **Import with AI** functions `parseImport` / `saveImport` deployed. **Not yet run end to end** (no Anthropic key locally); first real check is a Pro account using it on the next build.
+- **Before submit**: App Store description should mention the new Pro features and the annual trial.
+
+---
+
 ## 2026-10-12: Widgets, two reminders a day, in-app pop-ups, review fixes
 
 - **Home + lock screen widget** "Iron Pillar Today" (`widgets/TodayWidget.tsx`, `components/WidgetSync.tsx`, `app.json` expo-widgets config): small, medium, lock screen circular/rectangular/inline. Edit Widget toggles Workout & streak (free), Steps (Pro + Apple Health), Calories (Pro). The app pushes a timeline (now, next midnight reset, streak drop the midnight after). Simulator Debug build with the extension **succeeded**; the extension is embedded (`com.aidand510.ironpillar.ExpoWidgetsTarget`). **Not yet seen on a home screen** (the Simulator's Add Widget menu can't be driven headlessly). Steps are only as fresh as the last time the app was open (no HealthKit background delivery); the widget shows "Updated h:mm".
