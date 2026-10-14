@@ -57,13 +57,12 @@ export function activeStreak(
   const last = profile?.lastWorkoutDate;
   if (!last || count <= 0) return 0;
   const today = dateStringInZone(now, profile?.timeZone ?? 'UTC');
-  const [y, m, d] = today.split('-').map(Number);
-  const yesterday = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+  const yesterday = offsetDateString(today, -1);
   return last >= yesterday ? count : 0;
 }
 
 // yyyy-mm-dd of `date` in an IANA zone, falling back to the device's day.
-function dateStringInZone(date: Date, timeZone: string) {
+export function dateStringInZone(date: Date, timeZone: string) {
   try {
     const parts = new Intl.DateTimeFormat('en-US', {
       timeZone,
@@ -75,6 +74,23 @@ function dateStringInZone(date: Date, timeZone: string) {
     return `${part('year')}-${part('month')}-${part('day')}`;
   } catch {
     return todayDateString(date);
+  }
+}
+
+// `dateStr` (yyyy-mm-dd) shifted by `days` (negative for earlier).
+export function offsetDateString(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+// The hour (0-23) of `date` in an IANA zone, falling back to the device's hour.
+export function hourInZone(date: Date, timeZone: string): number {
+  try {
+    return Number(
+      new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hourCycle: 'h23' }).format(date)
+    );
+  } catch {
+    return date.getHours();
   }
 }
 
