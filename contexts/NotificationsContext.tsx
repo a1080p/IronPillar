@@ -6,7 +6,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Href } from 'expo-router';
-import { todayDateString, yesterdayDateString } from '../constants/gamification';
+import { dateStringInZone, hourInZone, offsetDateString } from '../constants/gamification';
 import { useActivityFeed } from '../hooks/useActivityFeed';
 import { useFriendRequests } from '../hooks/useSocial';
 import { useActiveStreak } from '../hooks/useActiveStreak';
@@ -137,15 +137,17 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       if (n) list.push(n);
     }
     const now = new Date();
+    const zone = profile?.timeZone ?? 'UTC';
+    const todayInZone = dateStringInZone(now, zone);
     if (
       streak > 0 &&
-      profile?.lastWorkoutDate === yesterdayDateString(now) &&
-      now.getHours() >= STREAK_AT_RISK_HOUR
+      profile?.lastWorkoutDate === offsetDateString(todayInZone, -1) &&
+      hourInZone(now, zone) >= STREAK_AT_RISK_HOUR
     ) {
       const at = new Date(now);
       at.setHours(STREAK_AT_RISK_HOUR, 0, 0, 0);
       list.push({
-        id: `streak-risk-${todayDateString(now)}`,
+        id: `streak-risk-${todayInZone}`,
         kind: 'streak_at_risk',
         title: `Keep your ${streak}-day streak 🔥`,
         body: 'No workout yet today. Get 30 minutes in before midnight to keep it going.',
@@ -154,7 +156,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       });
     }
     return list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [uid, items, incoming, streak, profile?.lastWorkoutDate, atRiskTick]);
+  }, [uid, items, incoming, streak, profile?.lastWorkoutDate, profile?.timeZone, atRiskTick]);
 
   const isUnread = (n: InAppNotification) => !lastSeenAt || n.createdAt > lastSeenAt;
   const unreadCount = lastSeenLoaded ? notifications.filter(isUnread).length : 0;
