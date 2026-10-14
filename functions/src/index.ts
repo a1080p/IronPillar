@@ -1308,7 +1308,7 @@ export const unblockUser = onCall(async (request) => {
 });
 
 const REPORT_REASONS = ['offensive_profile', 'harassment', 'impersonation', 'spam', 'other'] as const;
-const SUPPORT_EMAIL = 'aidand510@gmail.com';
+const SUPPORT_EMAIL = 'IronPillarsupport@gmail.com';
 
 // Files a report about another user and emails it to the developer, so it
 // can be reviewed and acted on within 24 hours (see the Terms of Use).

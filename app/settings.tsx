@@ -144,7 +144,7 @@ export default function SettingsScreen() {
           <Pressable
             style={styles.row}
             accessibilityRole="link"
-            onPress={() => Linking.openURL('mailto:aidand510@gmail.com?subject=Iron%20Pillar%20support')}
+            onPress={() => Linking.openURL('mailto:IronPillarsupport@gmail.com?subject=Iron%20Pillar%20support')}
           >
             <Text style={styles.rowLabel}>Contact Support</Text>
           </Pressable>
