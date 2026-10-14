@@ -171,6 +171,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!firebaseUser) {
         setProfile(null);
         setInitializing(false);
+        // Apple only shares its name on that provider's first sign-in; don't
+        // let it leak into a different account signing up afterward in the
+        // same app session.
+        setSignInName(null);
       }
     });
     return unsubscribe;
@@ -335,6 +339,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await updateAuthProfile(appleUser, { displayName: fullName }).catch(() => {});
           }
         } catch (e) {
+          if (fullName) setSignInName(null);
           throw new Error(friendlyAuthError(e, 'Apple'));
         }
       },
