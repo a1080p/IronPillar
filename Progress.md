@@ -4,6 +4,16 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-18: Pulse check — stale support email in the drafted App Review reply, fixed
+
+- **Verified the 10-14 session's claims against code and Jira**, not just trusted them: `AuthContext.tsx`'s `signInName` reset (the Apple sign-in leak, IP-66) is in place exactly as PR #5 described, and that PR was in fact merged — by a human (`a1080p`), not auto-merged by this routine, consistent with policy for anything touching `AuthContext.tsx`. IP-65 and IP-66 are both Done in Jira. Root and `functions/` `npx tsc --noEmit` both clean.
+- **Found + fixed (merged, [PR #6](https://github.com/a1080p/IronPillar/pull/6)):** the latest unlogged commit (`92596d5`) moved the app's support contact from `aidand510@gmail.com` to `IronPillarsupport@gmail.com` everywhere user-facing (Settings, website privacy/support/terms, the Cloud Function that emails user reports) — but missed `docs/app-review-reply.md`, the drafted reply to Apple App Review for the Guideline 1.2 (user-generated content) question. It still told Apple the contact was the old address "also under Settings → Contact Support," which would have contradicted the actual Settings screen if sent as-is. Pure copy-text fix in a markdown doc, no excluded paths touched, auto-merged per policy.
+- **Broader sweep found nothing else:** a forked sub-agent re-checked `data/browseWorkoutTemplates.ts` for the same copy-paste bug class as the 10-08 soccer-tip fix (a tip clearly belonging to a different sport/equipment) across strength, cardio, sport-specific, yoga and outdoor entries — found none. (One cosmetic note, not a bug: the exact same generic swing-cue sentence is reused verbatim for Tennis Groundstroke, Tennis Serve and Golf Swing Practice — not wrong for any of the three, not worth a fix or ticket on its own.) No new TODO/FIXME/"not yet" markers beyond the existing IP-37 theme-color one. No stray branches, stashes, or debug `console.log`s.
+- **No new tickets filed.** IP-61 (username-squatting rules PR #2) is still open, draft, unmerged, mergeable — now 15 days with no human action; still correctly left alone since it's a `firestore.rules` change. IP-63, IP-64, IP-35, IP-36, IP-37 re-confirmed still open and still correctly untouched (none is a scoped one-function fix).
+- **Jira MCP tools were available this session** (`mcp__Atlassian_Rovo__*`).
+
+---
+
 ## 2026-10-14: Pulse check — streak-at-risk timezone bug fixed; Apple sign-in name leak found, needs human review
 
 - **Verified the 10-13 session's claims against code** (pricing, paywall copy, Import with AI): `app/paywall.tsx` and both website pages show $4.99/$39.99 and the annual 7-day trial consistently; `parseImport`/`saveImport` exist in `functions/src/index.ts` with real input validation, a prompt-injection-resistant system prompt, and server-side Pro gating via `REVENUECAT_SECRET_KEY` — matches what Progress.md described. Root and `functions/` `npx tsc --noEmit` both clean (after `npm install` in each, which this sandbox needed fresh).
