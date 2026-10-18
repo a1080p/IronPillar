@@ -38,7 +38,7 @@ The app functions the same in all regions where it is available. Units (miles/po
 Iron Pillar is not in a regulated industry and is not a medical device. It does not provide medical advice (stated in the Terms of Use). All workout content, text and artwork are original to Iron Pillar.
 
 **User-generated content (Guideline 1.2)**
-User-generated content is names, usernames, profile photos, optional check-in photos with captions, and comments. It is only visible to accepted friends (friend requests must be approved). Names, usernames, captions and comments are checked against a blocked-word filter. Users can report a profile, post or comment, block users, and delete their own posts and comments (authors can also delete comments on their posts). Reports are emailed to the developer and reviewed within 24 hours, and violating content or accounts are removed. Users must agree to the Terms of Use, which include zero-tolerance community rules, when they sign up. Contact: aidand510@gmail.com, also under Settings → Contact Support.
+User-generated content is names, usernames, profile photos, optional check-in photos with captions, and comments. It is only visible to accepted friends (friend requests must be approved). Names, usernames, captions and comments are checked against a blocked-word filter. Users can report a profile, post or comment, block users, and delete their own posts and comments (authors can also delete comments on their posts). Reports are emailed to the developer and reviewed within 24 hours, and violating content or accounts are removed. Users must agree to the Terms of Use, which include zero-tolerance community rules, when they sign up. Contact: IronPillarsupport@gmail.com, also under Settings → Contact Support.
 
 Thank you!
 
