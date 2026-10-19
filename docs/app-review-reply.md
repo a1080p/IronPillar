@@ -1,22 +1,29 @@
-# Reply to App Review (Guideline 2.1 – Information Needed)
+# Reply to App Review (Guideline 2.1(a) – Sign in with Apple, and Information Needed)
 
 Paste the section below into the reply in App Store Connect, and paste it again
 into App Review Information → Notes. Attach the screen recording to the reply.
 Replace `[review account email]` / `[password]` with the demo account you added.
+Submit build 1.0.0 (15) or later with this reply: earlier builds still have the
+Sign in with Apple problem.
 
 ---
 
-Hello App Review team, thank you for the review. Here is the information you requested.
+Hello App Review team, thank you for the review.
+
+**Sign in with Apple (Guideline 2.1(a))**
+Thank you for catching this. Creating an account with Sign in with Apple failed because our iOS app was not registered with our authentication backend (Firebase), so it rejected every Apple sign-in token. We registered the app (bundle ID com.aidand510.ironpillar) and verified Sign in with Apple, including creating a new account, on a physical iPhone with build 1.0.0 (15). The attached recording shows it working.
+
+Here is the information you requested.
 
 **1. Screen recording**
-Attached: a recording on a physical iPhone running the latest iOS. It starts at app launch and shows sign-up with email and the 6-digit verification code, onboarding, logging a workout, the post-workout summary and streak screen, an outdoor walk with the Lock Screen Live Activity, the Social tab with a friend's profile and the Report, Block and Remove Friend controls, subscribing to Iron Pillar Pro with a sandbox account and the Pro features it unlocks, Restore Purchases, signing out and back in, and deleting the account from Settings → Account Details → Delete Account.
+Attached: a recording on a physical iPhone running the latest iOS. It starts at app launch and shows creating an account with Sign in with Apple, sign-up with email and the 6-digit verification code, onboarding, starting a training program, logging a workout, the post-workout summary and weekly goal screen, an outdoor walk with the Lock Screen Live Activity, the Social tab with a friend's profile and the Report, Block and Remove Friend controls, subscribing to Iron Pillar Pro with a sandbox account and the Pro features it unlocks, Restore Purchases, signing out and back in, and deleting the account from Settings → Account Details → Delete Account.
 
 **2. Purpose and audience**
-Iron Pillar is a workout tracker for adults and teens (13+) who want to build a consistent exercise habit. It solves the problem of starting strong and then quitting: users follow or build workouts, log sets, reps, weight and time (or GPS-track walks, runs and rides), and earn XP, levels, streaks and badges that reward consistency and personal records. The value is a simple, motivating log of real training with clear progress over time.
+Iron Pillar is a workout tracker for adults and teens (13+) who want to build a consistent exercise habit. It solves the problem of starting strong and then quitting: users follow a training program or build their own workouts (each exercise shows photos of correct form), log sets, reps, weight and time (or GPS-track walks, runs and rides), set a weekly goal of 2-6 workouts, and earn XP, levels, a week streak and badges that reward consistency and personal records. Rest days never break the streak. The value is a simple, motivating log of real training with clear progress over time.
 
 **3. Setup and access**
 - Demo account: `[review account email]` / `[password]` (email verification is already complete).
-- Home → tap any workout → Get Started to log sets → Finish to see XP, the streak screen and any badges.
+- Home → Follow a program (or tap any workout) → Get Started to log sets (tap ✓ to log a set) → Finish to see XP, progress toward the weekly goal and any badges.
 - Home → Walk / Run / Bike Ride starts GPS tracking (location permission is requested at that point; "Always" keeps tracking with the screen locked). Lock the phone to see the Live Activity.
 - Pro: Settings → Upgrade to Pro, or the Insights tab. Purchase with a sandbox account. Pro unlocks the Insights tab (readiness score and strength analytics), Apple Health sync (Profile → Connected apps), CSV export (Settings), unlimited custom workouts, AI-filled details for custom workouts, and 2× XP. Restore Purchases is on the paywall.
 - Social: Social tab → send a friend request by username; the other person must accept it (Friend Requests section). Friends see each other's workouts and optional post-workout check-in photos (camera button at the top of the Social tab) and can comment on them. From a friend's profile: Report, Block, Remove Friend. On any post or comment, the ••• menu has Report (and Delete for your own content or comments on your posts). Blocked users are listed under Settings → Blocked Users.
@@ -30,12 +37,13 @@ Iron Pillar is a workout tracker for adults and teens (13+) who want to build a 
 - Anthropic (Claude): generates the overview, tips and equipment list for custom workouts created by Pro users. Only the workout name and exercise list are sent, no personal data.
 - Apple HealthKit (optional, Pro): reads HRV, resting heart rate, sleep, steps, energy, weight and workouts to compute a readiness score, and writes completed workouts. Health data stays on the device and is never uploaded.
 - Apple Maps (MapKit) shows outdoor routes; Sign in with Apple and Google Sign-In for login.
+- Exercise form photos are from free-exercise-db, a public-domain (Unlicense) image set, loaded from the jsDelivr CDN.
 
 **5. Regional differences**
 The app functions the same in all regions where it is available. Units (miles/pounds or kilometers/kilograms) follow the user's choice.
 
 **6. Regulated industry / third-party material**
-Iron Pillar is not in a regulated industry and is not a medical device. It does not provide medical advice (stated in the Terms of Use). All workout content, text and artwork are original to Iron Pillar.
+Iron Pillar is not in a regulated industry and is not a medical device. It does not provide medical advice (stated in the Terms of Use). Workout content, text and artwork are original to Iron Pillar, except the exercise form photos, which are public domain (free-exercise-db).
 
 **User-generated content (Guideline 1.2)**
 User-generated content is names, usernames, profile photos, optional check-in photos with captions, and comments. It is only visible to accepted friends (friend requests must be approved). Names, usernames, captions and comments are checked against a blocked-word filter. Users can report a profile, post or comment, block users, and delete their own posts and comments (authors can also delete comments on their posts). Reports are emailed to the developer and reviewed within 24 hours, and violating content or accounts are removed. Users must agree to the Terms of Use, which include zero-tolerance community rules, when they sign up. Contact: IronPillarsupport@gmail.com, also under Settings → Contact Support.
@@ -49,13 +57,14 @@ Thank you!
 Settings → Control Center → add Screen Recording. Record in one take, about 3–5 minutes. Use a fresh test email for the sign-up part and delete that account at the end.
 
 1. Start recording on the Home Screen, then tap Iron Pillar to launch it (the splash shows).
-2. **Sign up:** Continue with Email → new email + password → enter the code from your inbox → onboarding (name, birthday, body, goals, avatar).
-3. **Workout:** Home → a short workout → Get Started → log two sets → tap "Add notes for this exercise", type a note, save → Next Exercise … Finish → summary → Next → streak screen.
-4. **Outdoor:** Home → Walk → Start → allow location → lock the phone briefly to show the Live Activity → unlock → Stop.
-5. **Pro:** Settings → Upgrade to Pro → buy monthly with a sandbox account → open the Insights tab to show Pro content → back on the paywall, show Restore Purchases.
-6. **Social:** Social tab → send a friend request to your second test account → accept it on the other phone/account → tap the camera button, take a check-in selfie, Share → open it, add a comment → show the ••• menu (Report / Delete) → open the friend's profile → show Report (pick a reason, send) → Block → Settings → Blocked Users → Unblock.
-7. **Sign out and log in** with the account.
-8. **Delete account:** Settings → Account Details → Delete Account → confirm → it returns to the welcome screen.
+2. **Sign in with Apple:** Continue with Apple → create the account (use "Hide My Email" or an Apple ID that has never used Iron Pillar) → onboarding (name, birthday, body, goals, what's holding you back, weekly goal, avatar). This is the part the rejection was about, so keep it on screen until Home loads.
+3. **Sign up with email:** sign out → Continue with Email → new email + password → enter the code from your inbox → onboarding.
+4. **Program and workout:** Home → Follow a program → Start Program → back on Home tap the program day → Get Started → tap ✓ on two sets → tap the form photo to show it full size → tap "Add notes for this exercise", type a note, save → Next Exercise … Finish → summary → Next → weekly goal screen.
+5. **Outdoor:** Home → Walk → Start → allow location → lock the phone briefly to show the Live Activity → unlock → Stop.
+6. **Pro:** Settings → Upgrade to Pro → buy monthly with a sandbox account → open the Insights tab to show Pro content → back on the paywall, show Restore Purchases.
+7. **Social:** Social tab → send a friend request to your second test account → accept it on the other phone/account → tap the camera button, take a check-in selfie, Share → open it, add a comment → show the ••• menu (Report / Delete) → open the friend's profile → show Report (pick a reason, send) → Block → Settings → Blocked Users → Unblock.
+8. **Sign out and log in** with the account.
+9. **Delete account:** Settings → Account Details → Delete Account → confirm → it returns to the welcome screen.
 
 ## Also check in App Store Connect before resubmitting
 - Age Rating: answer the social media questions. Iron Pillar has a friends activity feed, so answer **Yes** to user-generated content / social features. The rating will probably move to 12+ or 13+.
