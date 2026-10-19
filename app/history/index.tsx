@@ -39,7 +39,7 @@ export default function HistoryScreen() {
   const confirmDelete = (log: WorkoutLog) => {
     appAlert(
       'Delete workout?',
-      `This removes "${log.workoutName}" and takes back the ${log.xpEarned} XP it earned. Past streak days are kept.`,
+      `This removes "${log.workoutName}" and takes back the ${log.xpEarned} XP it earned. Weeks you already hit are kept.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -95,7 +95,7 @@ export default function HistoryScreen() {
               {activityMeta(log, units)}
             </Text>
             {log.streakBonusEarned > 0 && (
-              <Text style={styles.streakBonus}>Streak Bonus: +{log.streakBonusEarned}xp</Text>
+              <Text style={styles.streakBonus}>Weekly Goal Bonus: +{log.streakBonusEarned}xp</Text>
             )}
           </Pressable>
         ))}

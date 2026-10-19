@@ -4,6 +4,17 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-19 (later): Weekly goal replaces the daily streak; training programs
+
+- **Weekly goal** (owner's decisions: drop old daily streaks, any logged workout counts, weeks start Monday). Users pick 2-6 workouts a week (new onboarding step 5 of 6, `app/(auth)/onboarding/weekly.tsx`; Settings → Weekly goal). The streak (`streakCount`, now weeks) counts weeks that hit the goal; one missed week a calendar month is forgiven automatically. A workout counts with one completed set or 10+ minutes; the 30-minute day rule is gone. Goal changes take effect the next Monday (the server locks `weekGoal` per week). Pure logic in `applyWeekGoal`/`activeWeekStreak` (`functions/src/achievements.ts`), mirrored client-side in `constants/gamification.ts`; 13 scenario checks pass (shield, double miss, mid-week goal change, Sunday/Monday boundary, short workouts).
+- XP: weekly-goal bonus (100 + 25 per streak week, capped) replaces the per-day streak bonus. Badges: `weeks-2/4/8/12/26/52` replace `streak-3…365`, which stay visible only to people who earned them (`LEGACY_BADGES`). Friends' feed milestone every 4 weeks. Widget shows week streak + count/goal. The evening "streak at risk" nudge now only fires when the workouts still needed equal the days left in the week.
+- **Programs** (`data/programs.ts`, `app/programs.tsx`): 3-Day Full Body, 4-Day Upper/Lower, Push/Pull/Legs, 2-Day Minimal, built from catalog exercises (form photos + tips). Days are bundled templates (category `program`), found by `useWorkout`. Next day is derived from logs. Home shows a This-week card and "Next in <program>" (or a suggested program); starting a program sets the weekly goal to its days.
+- Rules: week fields are server-only; `weeklyGoal` must be an int 2-6; `programId` is user-editable.
+- **Verified in the simulator** (signed-in account): Home week card, Programs screen, Start Program → Home "Day 1 of 3 · Full Body A", program day detail with photos, Settings rows. **Not verified:** the onboarding step (needs a new account) and the post-workout weekly-goal screen (needs the new `completeWorkout`).
+- **Not deployed yet:** functions + `firestore.rules` (`npm run deploy:rules`). Until then, finishing a workout still runs the old daily-streak server code.
+
+---
+
 ## 2026-10-19: Exercise catalog, form photos, logger overhaul
 
 - **Exercise catalog** (`data/exercises.ts`): 138 canonical exercises (name, aliases, log type, equipment, primary muscles). Template exercises carry a `catalogId` (stamped in `data/workoutTemplates.ts`); 124 of 228 template exercises match. One-off segments ("Cool-Down Spin", "Match Play") intentionally have none. History keys ("last time", PRs, strength analytics) now go through `canonicalExerciseName`, so aliases and old names share one history.

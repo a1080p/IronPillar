@@ -23,6 +23,9 @@ import {
 import { formatShortDate } from '../../lib/dates';
 import { pickQuickStartWorkouts } from '../../lib/recommendations';
 import { useRecommendedWorkout } from '../../hooks/useRecommendedWorkout';
+import { useWeekProgress } from '../../hooks/useActiveStreak';
+import { nextProgramDay, programById, suggestedProgram } from '../../data/programs';
+import { FlameIcon } from '../../components/icons/BrandIcons';
 import { dedupeRecentWorkouts, hideRecent, loadHiddenRecents } from '../../lib/recentWorkouts';
 import { deleteWorkoutLog } from '../../lib/workoutCompletion';
 import type { CustomWorkout, OutdoorActivityType, WorkoutLog, WorkoutTemplate } from '../../types/models';
@@ -132,6 +135,11 @@ export default function HomeScreen() {
       ),
     [templates, logs, profile, user?.uid, recommended]
   );
+  const week = useWeekProgress();
+  const program = programById(profile?.programId);
+  const programNext = useMemo(() => (program ? nextProgramDay(program, logs) : null), [program, logs]);
+  const suggested = suggestedProgram(profile?.experienceLevel, profile?.barrier);
+
   const [hiddenRecents, setHiddenRecents] = useState<Record<string, string>>({});
   const [recentMenuLog, setRecentMenuLog] = useState<WorkoutLog | null>(null);
   useEffect(() => {
@@ -145,7 +153,7 @@ export default function HomeScreen() {
   const confirmDeleteLog = (log: WorkoutLog) => {
     appAlert(
       'Delete workout?',
-      `This removes "${log.workoutName}" from ${formatShortDate(log.completedAt)} and takes back the ${log.xpEarned} XP it earned. Past streak days are kept.`,
+      `This removes "${log.workoutName}" from ${formatShortDate(log.completedAt)} and takes back the ${log.xpEarned} XP it earned. Weeks you already hit are kept.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -218,9 +226,82 @@ export default function HomeScreen() {
           </Text>
         )}
 
+        <View
+          style={styles.weekCard}
+          accessible
+          accessibilityLabel={`This week: ${week.count} of ${week.goal} workouts. ${week.streak} week streak.`}
+        >
+          <View style={styles.weekHeader}>
+            <Text style={styles.weekTitle}>
+              {week.goalHit ? 'Weekly goal hit' : 'This week'}
+            </Text>
+            <View style={styles.weekStreak}>
+              <FlameIcon size={16} color={week.streak > 0 ? colors.accentFlame : colors.divider} />
+              <Text style={styles.weekStreakText}>
+                {week.streak} {week.streak === 1 ? 'week' : 'weeks'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.weekDots}>
+            {Array.from({ length: week.goal }, (_, i) => (
+              <View key={i} style={[styles.weekDot, i < week.count && styles.weekDotDone]} />
+            ))}
+          </View>
+          <Text style={styles.weekNote}>
+            {week.goalHit
+              ? week.count > week.goal
+                ? `${week.count} workouts this week. Everything extra is a bonus.`
+                : 'Rest up or keep going. Next week starts Monday.'
+              : `${week.count} of ${week.goal} workouts · ${week.daysLeft} ${week.daysLeft === 1 ? 'day' : 'days'} left`}
+          </Text>
+        </View>
+
+        {program && programNext ? (
+          <View style={styles.section}>
+            <View style={styles.programLabelRow}>
+              <Text style={styles.sectionLabel}>Next in {program.name}:</Text>
+              <Pressable onPress={() => router.push('/programs')} hitSlop={8} accessibilityRole="button">
+                <Text style={styles.changeLink}>Change</Text>
+              </Pressable>
+            </View>
+            <Pressable
+              style={styles.recommendedCard}
+              accessibilityRole="button"
+              accessibilityLabel={`Next in your program: day ${programNext.index + 1}, ${programNext.day.name}`}
+              onPress={() => router.push(`/workout/${programNext.day.id}`)}
+            >
+              <Text style={styles.programDayKicker}>
+                DAY {programNext.index + 1} OF {program.days.length}
+              </Text>
+              <Text style={styles.recommendedTitle}>{programNext.day.name}</Text>
+              <View style={styles.recommendedMetaRow}>
+                <Text style={styles.recommendedMeta}>{programNext.day.durationMinutes} Minutes</Text>
+                <Text style={styles.recommendedMeta}>{programNext.day.exercises.length} exercises</Text>
+              </View>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            style={styles.pickProgram}
+            onPress={() => router.push('/programs')}
+            accessibilityRole="button"
+            accessibilityLabel={`Pick a training program. Suggested: ${suggested.name}`}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pickProgramTitle}>Follow a program</Text>
+              <Text style={styles.pickProgramBody}>
+                Same lifts every week, so you can watch them go up. Try {suggested.name}.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+          </Pressable>
+        )}
+
         {recommended && (
           <View style={styles.section} ref={recommendedRef}>
-            <Text style={styles.sectionLabel}>Today's Recommended Workout:</Text>
+            <Text style={styles.sectionLabel}>
+              {program ? 'Something different today?' : "Today's Recommended Workout:"}
+            </Text>
             <Pressable
               style={styles.recommendedCard}
               accessibilityRole="button"
@@ -488,6 +569,42 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   section: { marginBottom: spacing.xl },
   sectionLabel: { fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
   sectionSubLabel: { color: colors.textMuted, marginBottom: spacing.md },
+  weekCard: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  weekHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  weekTitle: { fontWeight: '700', color: colors.primary },
+  weekStreak: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  weekStreakText: { fontWeight: '700', color: colors.text, fontSize: typography.sizes.small },
+  weekDots: { flexDirection: 'row', gap: spacing.sm, marginVertical: spacing.md },
+  weekDot: { flex: 1, height: 10, borderRadius: radii.pill, backgroundColor: colors.divider },
+  weekDotDone: { backgroundColor: colors.primary },
+  weekNote: { color: colors.textMuted, fontSize: typography.sizes.small },
+  programLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  changeLink: { color: colors.primary, fontWeight: '700', fontSize: typography.sizes.small },
+  programDayKicker: {
+    color: colors.textOnDark,
+    opacity: 0.8,
+    fontWeight: '800',
+    fontSize: 11,
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
+  },
+  pickProgram: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  pickProgramTitle: { fontWeight: '700', color: colors.primary, marginBottom: 2 },
+  pickProgramBody: { color: colors.text, fontSize: typography.sizes.small, lineHeight: 18 },
   recommendedCard: {
     backgroundColor: colors.primary,
     borderRadius: radii.md,

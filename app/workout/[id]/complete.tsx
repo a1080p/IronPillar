@@ -138,7 +138,10 @@ export default function WorkoutCompleteScreen() {
 
         {!saving && (
           <Text style={styles.streakLabel}>
-            Streak: <Text style={styles.streakValue}>{result.streakCountAfter}</Text>
+            {result.week
+              ? `${result.week.count} of ${result.week.goal} this week · `
+              : ''}
+            Week streak: <Text style={styles.streakValue}>{result.streakCountAfter}</Text>
           </Text>
         )}
       </ScrollView>

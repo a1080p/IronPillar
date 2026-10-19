@@ -63,8 +63,8 @@ function buildLines(result: CompletionResult): Line[] {
   }
   if (b.baseStreakBonus > 0) {
     lines.push({
-      label: 'Streak bonus',
-      detail: `day ${result.streakCountAfter} × 20`,
+      label: 'Weekly goal',
+      detail: result.streakCountAfter > 1 ? `${result.streakCountAfter} weeks in a row` : 'Goal hit this week',
       value: b.baseStreakBonus,
     });
   }
@@ -151,34 +151,35 @@ function TotalLine({ total, delay }: { total: number; delay: number }) {
   );
 }
 
-// Today's progress toward the 30 combined minutes a streak day needs.
+// This week's progress toward the weekly goal.
 function StreakProgress({ result }: { result: CompletionResult }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const min = result.minStreakDayMinutes;
-  const day = result.dayMinutes;
-  if (min == null || day == null) return null;
+  const week = result.week;
+  if (!week) return null;
 
+  const left = Math.max(0, week.goal - week.count);
   let message: string;
-  if (result.dayCountedNow) {
-    const n = result.streakCountAfter;
-    message = `Today counts! Your streak is now ${n} day${n === 1 ? '' : 's'}.`;
-  } else if (result.dayAlreadyCounted) {
-    message = 'Today already counted toward your streak.';
+  if (week.goalHitNow) {
+    const n = week.streak;
+    message = n > 1 ? `Weekly goal hit, ${n} weeks in a row.` : 'Weekly goal hit!';
+  } else if (left === 0) {
+    message = "This week's goal is already done. Extra credit.";
+  } else if (!week.counted) {
+    message = `Workouts count from 10 minutes or one logged set. ${left} to go this week.`;
   } else {
-    const left = Math.max(0, min - day);
-    message = `${left} more minute${left === 1 ? '' : 's'} today to count toward your streak.`;
+    message = `${left} more workout${left === 1 ? '' : 's'} this week to hit your goal.`;
   }
 
   return (
     <View style={styles.streakBox}>
       <View style={styles.streakHeader}>
-        <Text style={styles.streakLabel}>Today's training</Text>
+        <Text style={styles.streakLabel}>This week</Text>
         <Text style={styles.streakMinutes}>
-          {Math.min(day, 999)} / {min} min
+          {week.count} / {week.goal} workouts
         </Text>
       </View>
-      <ProgressBar progress={Math.min(1, day / min)} />
+      <ProgressBar progress={Math.min(1, week.count / Math.max(1, week.goal))} />
       <Text style={styles.streakMessage}>{message}</Text>
     </View>
   );

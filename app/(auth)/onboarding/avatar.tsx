@@ -46,6 +46,7 @@ export default function AvatarScreen() {
         heightInches: data.heightInches,
         startingWeightLb: data.startingWeightLb,
         units: data.units,
+        weeklyGoal: data.weeklyGoal,
         avatarKey: avatarUrl ? undefined : data.avatarKey ?? undefined,
         avatarUrl,
       });
@@ -64,8 +65,8 @@ export default function AvatarScreen() {
       onNext={handleFinish}
       nextLabel={saving ? 'Saving...' : 'Finish'}
       nextDisabled={saving}
-      step={5}
-      totalSteps={5}
+      step={6}
+      totalSteps={6}
     >
       <AvatarPicker
         photoUrl={data.avatarPhotoUri}

@@ -30,7 +30,7 @@ export function WorkoutHeader({ onBack }: { onBack?: () => void }) {
         <View
           style={styles.streak}
           accessible
-          accessibilityLabel={`${streak} day streak`}
+          accessibilityLabel={`${streak} week streak`}
         >
           <Text style={styles.streakCount}>{streak}</Text>
           <FlameIcon size={20} color={colors.accentFlame} />

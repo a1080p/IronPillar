@@ -28,7 +28,7 @@ export function useAchievementStats(
     const num = (key: string) => (typeof totals?.[key] === 'number' ? (totals[key] as number) : undefined);
     const stats: AchievementStats = {
       workouts: num('workoutCount') ?? workoutCount,
-      streak: Math.max(profile?.longestStreak ?? 0, profile?.streakCount ?? 0),
+      streak: Math.max(profile?.longestWeekStreak ?? 0, profile?.streakCount ?? 0),
       level: levelForXp(profile?.xp ?? 0),
     };
     if (totals) {
@@ -43,5 +43,5 @@ export function useAchievementStats(
       stats.variety = Array.isArray(totals.workoutIds) ? totals.workoutIds.length : undefined;
     }
     return stats;
-  }, [totals, profile?.longestStreak, profile?.streakCount, profile?.xp, workoutCount]);
+  }, [totals, profile?.longestWeekStreak, profile?.streakCount, profile?.xp, workoutCount]);
 }

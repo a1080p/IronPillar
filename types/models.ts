@@ -32,12 +32,24 @@ export interface UserProfile {
   calorieGoal?: number | null; // Pro calorie tracking: the user's own daily target, if they set one
   level: number;
   xp: number;
+  // Weeks in a row the weekly goal was hit; server-written. (Before the
+  // weekly goal this counted days; those values were dropped.)
   streakCount: number;
-  longestStreak?: number; // best streak ever; server-written (absent on older profiles)
-  lastWorkoutDate: string | null; // last day that counted toward the streak (30+ min) // ISO date (yyyy-mm-dd), local to timeZone
-  // Written only by the completeWorkout Cloud Function: the IANA zone streak
-  // days are counted in, and when it last changed (changes are rate-limited).
-  // Absent on older profiles, whose lastWorkoutDate is a UTC date.
+  weeklyGoal?: number; // the user's own setting: workouts a week, 2-6 (default 3)
+  programId?: string | null; // active training program (data/programs.ts)
+  // Server-written weekly-goal state (see applyWeekGoal in functions/src/achievements.ts).
+  weekStart?: string | null; // Monday (yyyy-mm-dd, local to timeZone) of the week below
+  weekCount?: number; // workouts counted that week
+  weekGoal?: number; // the goal locked in for that week
+  lastGoalWeek?: string | null; // Monday of the last week the goal was hit
+  shieldMonth?: string | null; // yyyy-mm a missed week was last forgiven in
+  longestWeekStreak?: number;
+  // Old daily-streak fields, no longer written.
+  longestStreak?: number;
+  lastWorkoutDate: string | null;
+  // Written only by the completeWorkout Cloud Function: the IANA zone days
+  // and weeks are counted in, and when it last changed (changes are
+  // rate-limited). Absent on older profiles.
   timeZone?: string;
   timeZoneUpdatedAt?: string;
   friendCount: number;
@@ -74,7 +86,7 @@ export interface WorkoutTemplate {
   durationMinutes: number;
   caloriesRangeLabel: string; // e.g. "320-450 Calories"
   equipmentRequired: boolean;
-  category: 'preset' | 'quick_start' | 'browse';
+  category: 'preset' | 'quick_start' | 'browse' | 'program';
   browseCategory?: string; // section label for the Browse tab, e.g. "Yoga" (only set when category is 'browse')
   tags: FitnessGoal[];
   overview?: string; // short prose summary shown on the Overview tab
@@ -127,7 +139,7 @@ export interface WorkoutLog {
   workoutId: string;
   workoutName: string;
   // 'import': brought in with Import with AI (no template to reopen).
-  workoutSource: 'preset' | 'quick_start' | 'browse' | 'custom' | 'outdoor' | 'import';
+  workoutSource: 'preset' | 'quick_start' | 'browse' | 'program' | 'custom' | 'outdoor' | 'import';
   imported?: boolean; // true for anything added through Import with AI (no XP, no streak)
   completedAt: string; // ISO timestamp
   durationSeconds: number;

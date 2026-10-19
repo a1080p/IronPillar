@@ -24,7 +24,7 @@ export default function BarrierScreen() {
   const handleNext = () => {
     if (!barrier) return;
     setBarrier(barrier, barrier === 'other' ? otherTrimmed : '');
-    router.push('/onboarding/avatar');
+    router.push('/onboarding/weekly');
   };
 
   return (
@@ -34,7 +34,7 @@ export default function BarrierScreen() {
       onNext={handleNext}
       nextDisabled={!canContinue}
       step={4}
-      totalSteps={5}
+      totalSteps={6}
     >
       <Text style={styles.helper}>
         Pick the one that fits best. It helps us make Iron Pillar work better for you.

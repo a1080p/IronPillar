@@ -33,7 +33,7 @@ export default function GoalsScreen() {
       onNext={handleNext}
       nextDisabled={!canContinue}
       step={3}
-      totalSteps={5}
+      totalSteps={6}
     >
       <Text style={styles.groupLabel}>What do you want to achieve?</Text>
       <Text style={styles.helper}>In your own words. We use it to pick your workouts.</Text>

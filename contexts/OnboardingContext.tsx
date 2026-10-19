@@ -14,6 +14,7 @@ interface OnboardingData {
   experienceLevel: ExperienceLevel | null;
   barrier: Barrier | null;
   barrierOther: string;
+  weeklyGoal: number;
   avatarKey: string | null;
   avatarPhotoUri: string | null;
 }
@@ -24,6 +25,7 @@ interface OnboardingContextValue {
   setBody: (sex: Sex, heightInches: number, startingWeightLb: number, units: UnitSystem) => void;
   setGoal: (goalText: string, experienceLevel: ExperienceLevel) => void;
   setBarrier: (barrier: Barrier, barrierOther: string) => void;
+  setWeeklyGoal: (weeklyGoal: number) => void;
   // A picked photo and a preset icon/color key are mutually exclusive —
   // setting one clears the other.
   setAvatarKey: (avatarKey: string) => void;
@@ -47,6 +49,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     experienceLevel: null,
     barrier: null,
     barrierOther: '',
+    weeklyGoal: 3,
     avatarKey: null,
     avatarPhotoUri: null,
   });
@@ -65,6 +68,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setGoal: (goalText, experienceLevel) =>
       setData((d) => ({ ...d, goalText, experienceLevel })),
     setBarrier: (barrier, barrierOther) => setData((d) => ({ ...d, barrier, barrierOther })),
+    setWeeklyGoal: (weeklyGoal) => setData((d) => ({ ...d, weeklyGoal })),
     setAvatarKey: (avatarKey) => setData((d) => ({ ...d, avatarKey, avatarPhotoUri: null })),
     setAvatarPhotoUri: (avatarPhotoUri) => setData((d) => ({ ...d, avatarPhotoUri, avatarKey: null })),
     clearAvatarPhoto: () => setData((d) => ({ ...d, avatarPhotoUri: null })),

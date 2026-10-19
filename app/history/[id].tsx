@@ -61,7 +61,7 @@ export default function WorkoutLogDetailScreen() {
   const confirmDelete = () => {
     appAlert(
       'Delete workout?',
-      `This removes "${log.workoutName}", takes back the ${log.xpEarned} XP it earned, and updates your stats. Past streak days and badges you've earned are kept.`,
+      `This removes "${log.workoutName}", takes back the ${log.xpEarned} XP it earned, and updates your stats. Weeks you already hit and badges you've earned are kept.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -117,9 +117,9 @@ export default function WorkoutLogDetailScreen() {
           <Text style={styles.xpValue}>+{log.xpEarned} XP</Text>
           <Text style={styles.xpDetail}>
             {[
-              log.streakBonusEarned > 0 ? `includes +${log.streakBonusEarned} streak bonus` : null,
+              log.streakBonusEarned > 0 ? `includes +${log.streakBonusEarned} weekly goal bonus` : null,
               (log.xpMultiplier ?? 1) > 1 ? `${log.xpMultiplier}× Pro` : null,
-              log.streakCountAfter > 0 ? `streak after: ${log.streakCountAfter} days` : null,
+              log.streakCountAfter > 0 ? `week streak: ${log.streakCountAfter}` : null,
             ]
               .filter(Boolean)
               .join(' · ')}

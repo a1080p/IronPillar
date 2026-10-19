@@ -27,13 +27,12 @@ export const BADGE_LIST: Badge[] = [
   badge('workouts-250', 'Iron Regular', 'Complete 250 workouts', 'workouts', 'gold', 'shield-checkmark', 'workouts', 250),
   badge('workouts-500', 'Pillar of Iron', 'Complete 500 workouts', 'workouts', 'platinum', 'shield-checkmark', 'workouts', 500),
 
-  badge('streak-3', 'Three in a Row', 'Reach a 3-day streak', 'streaks', 'bronze', 'flame', 'streak', 3),
-  badge('streak-7', 'One Week Strong', 'Reach a 7-day streak', 'streaks', 'bronze', 'flame', 'streak', 7),
-  badge('streak-14', 'Two Weeks Strong', 'Reach a 14-day streak', 'streaks', 'silver', 'flame', 'streak', 14),
-  badge('streak-30', '30-Day Streak', 'Reach a 30-day streak', 'streaks', 'silver', 'bonfire', 'streak', 30),
-  badge('streak-60', '60-Day Streak', 'Reach a 60-day streak', 'streaks', 'gold', 'bonfire', 'streak', 60),
-  badge('streak-100', '100-Day Streak', 'Reach a 100-day streak', 'streaks', 'gold', 'bonfire', 'streak', 100),
-  badge('streak-365', 'Year of Iron', 'Reach a 365-day streak', 'streaks', 'platinum', 'calendar', 'streak', 365),
+  badge('weeks-2', 'Back to Back', 'Hit your weekly goal 2 weeks in a row', 'streaks', 'bronze', 'flame', 'streak', 2),
+  badge('weeks-4', 'A Month Strong', 'Hit your weekly goal 4 weeks in a row', 'streaks', 'bronze', 'flame', 'streak', 4),
+  badge('weeks-8', 'Two Months Strong', 'Hit your weekly goal 8 weeks in a row', 'streaks', 'silver', 'flame', 'streak', 8),
+  badge('weeks-12', 'A Season of Iron', 'Hit your weekly goal 12 weeks in a row', 'streaks', 'silver', 'bonfire', 'streak', 12),
+  badge('weeks-26', 'Half a Year', 'Hit your weekly goal 26 weeks in a row', 'streaks', 'gold', 'bonfire', 'streak', 26),
+  badge('weeks-52', 'A Year Strong', 'Hit your weekly goal 52 weeks in a row', 'streaks', 'platinum', 'calendar', 'streak', 52),
 
   badge('level-5', 'Level 5', 'Reach level 5', 'levels', 'bronze', 'star', 'level', 5),
   badge('level-10', 'Level 10', 'Reach level 10', 'levels', 'bronze', 'star', 'level', 10),
@@ -78,7 +77,21 @@ export const BADGE_LIST: Badge[] = [
   badge('variety-15', 'Well-Rounded', 'Try 15 different workouts', 'habits', 'gold', 'shapes', 'variety', 15),
 ];
 
-export const badges: Record<string, Badge> = Object.fromEntries(BADGE_LIST.map((b) => [b.id, b]));
+// Daily-streak badges from before the weekly goal. No longer awarded; shown
+// only to people who earned them.
+export const LEGACY_BADGES: Badge[] = [
+  badge('streak-3', 'Three in a Row', 'Earned for a 3-day streak', 'streaks', 'bronze', 'flame', 'streak', 3),
+  badge('streak-7', 'One Week Strong', 'Earned for a 7-day streak', 'streaks', 'bronze', 'flame', 'streak', 7),
+  badge('streak-14', 'Two Weeks Strong', 'Earned for a 14-day streak', 'streaks', 'silver', 'flame', 'streak', 14),
+  badge('streak-30', '30-Day Streak', 'Earned for a 30-day streak', 'streaks', 'silver', 'bonfire', 'streak', 30),
+  badge('streak-60', '60-Day Streak', 'Earned for a 60-day streak', 'streaks', 'gold', 'bonfire', 'streak', 60),
+  badge('streak-100', '100-Day Streak', 'Earned for a 100-day streak', 'streaks', 'gold', 'bonfire', 'streak', 100),
+  badge('streak-365', 'Year of Iron', 'Earned for a 365-day streak', 'streaks', 'platinum', 'calendar', 'streak', 365),
+];
+
+export const badges: Record<string, Badge> = Object.fromEntries(
+  [...BADGE_LIST, ...LEGACY_BADGES].map((b) => [b.id, b])
+);
 
 export const BADGE_CATEGORIES: { key: BadgeCategory; label: string }[] = [
   { key: 'workouts', label: 'Workouts' },

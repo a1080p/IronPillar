@@ -42,7 +42,7 @@ type Step = 'streak' | 'level' | 'badges';
 
 function stepsFor(result: CompletionResult): Step[] {
   const steps: Step[] = [];
-  if (result.minStreakDayMinutes != null && result.dayMinutes != null) steps.push('streak');
+  if (result.week) steps.push('streak');
   if (leveledUp(result)) steps.push('level');
   // A level badge is shown on the level-up screen itself.
   const others = earnedBadges(result).filter((b) => !(leveledUp(result) && b.category === 'levels'));
@@ -231,8 +231,9 @@ function LevelUp({ result, onContinue }: { result: CompletionResult; onContinue:
   );
 }
 
-// Today's progress toward the 30 minutes a streak day needs: the bar fills
-// from where the day stood before this workout, and if it reaches the end the
+
+// This week's progress toward the weekly goal. The bar fills from where the
+// week stood before this workout; if this one completes the goal, the week
 // streak counts up.
 function StreakDay({
   result,
@@ -245,48 +246,54 @@ function StreakDay({
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const goal = result.minStreakDayMinutes ?? 30;
-  const after = Math.min(result.dayMinutes ?? 0, goal);
-  const before = Math.min(result.dayMinutesBefore ?? 0, after);
-  const extended = !!result.dayCountedNow;
-  const alreadyCounted = !!result.dayAlreadyCounted;
-  const streak = result.streakCountAfter;
-  const left = Math.max(0, goal - (result.dayMinutes ?? 0));
+  const week = result.week!;
+  const goal = Math.max(1, week.goal);
+  const after = Math.min(week.count, goal);
+  const before = Math.max(0, Math.min(week.count - (week.counted ? 1 : 0), goal));
+  const hitNow = week.goalHitNow;
+  const alreadyHit = !hitNow && week.count - (week.counted ? 1 : 0) >= goal;
+  const streak = week.streak;
+  const left = Math.max(0, goal - week.count);
 
-  const fill = useRef(new Animated.Value(alreadyCounted ? 1 : before / goal)).current;
+  const fill = useRef(new Animated.Value(before / goal)).current;
   const flame = useRef(new Animated.Value(0)).current;
-  const [shownStreak, setShownStreak] = useState(extended ? Math.max(0, streak - 1) : streak);
-  const [filled, setFilled] = useState(alreadyCounted);
+  const [shownStreak, setShownStreak] = useState(hitNow ? Math.max(0, streak - 1) : streak);
+  const [filled, setFilled] = useState(alreadyHit);
 
   useEffect(() => {
-    if (alreadyCounted) return;
     Animated.timing(fill, {
       toValue: after / goal,
-      duration: 1400,
+      duration: 1100,
       delay: 350,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start(() => {
-      if (!extended) return;
+      if (!hitNow) return;
       setFilled(true);
       setShownStreak(streak);
       Vibration.vibrate(60);
       Animated.spring(flame, { toValue: 1, friction: 4, tension: 90, useNativeDriver: true }).start();
     });
-  }, [fill, flame, after, goal, extended, alreadyCounted, streak]);
+  }, [fill, flame, after, goal, hitNow, streak]);
 
-  const heading = extended
-    ? streak === 1
-      ? 'Streak Started'
-      : 'Streak Extended'
-    : alreadyCounted
-      ? 'Today Already Counts'
-      : 'Keep It Going';
-  const body = extended
-    ? `${streak} day${streak === 1 ? '' : 's'} in a row. See you tomorrow.`
-    : alreadyCounted
-      ? `Your ${streak}-day streak is safe today. Come back tomorrow to extend it.`
-      : `${left} more minute${left === 1 ? '' : 's'} today extends your streak. ${pickMessage(streakKeepGoingMessages, left)}`;
+  const heading = hitNow
+    ? streak <= 1
+      ? 'Weekly Goal Hit'
+      : `${streak} Weeks in a Row`
+    : alreadyHit
+      ? 'Bonus Workout'
+      : !week.counted
+        ? 'Nice Work'
+        : 'Keep It Going';
+  const body = hitNow
+    ? week.shieldUsed
+      ? 'Your monthly rest-week shield covered the week you missed, so your streak lives on. Rest up, next week starts Monday.'
+      : 'Rest up. Next week starts Monday.'
+    : alreadyHit
+      ? "You already hit this week's goal. This one is extra credit."
+      : !week.counted
+        ? `Workouts count toward your week from 10 minutes or one logged set. ${left} to go this week.`
+        : `${left} more workout${left === 1 ? '' : 's'} this week hits your goal. ${pickMessage(streakKeepGoingMessages, left)}`;
 
   return (
     <View style={styles.screen}>
@@ -296,12 +303,12 @@ function StreakDay({
             transform: [{ scale: flame.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.35, 1] }) }],
           }}
         >
-          <FlameIcon size={88} color={filled ? colors.accentFlame : colors.divider} />
+          <FlameIcon size={88} color={filled || shownStreak > 0 ? colors.accentFlame : colors.divider} />
         </Animated.View>
-        <Text style={styles.streakNumber} accessibilityLabel={`${shownStreak} day streak`}>
+        <Text style={styles.streakNumber} accessibilityLabel={`${shownStreak} week streak`}>
           {shownStreak}
         </Text>
-        <Text style={styles.streakUnit}>day streak</Text>
+        <Text style={styles.streakUnit}>week streak</Text>
 
         <Text style={[styles.kicker, { marginTop: spacing.xl }]}>{heading.toUpperCase()}</Text>
         <Text style={styles.body}>{body}</Text>
@@ -310,8 +317,8 @@ function StreakDay({
           style={styles.dayBarWrap}
           accessible
           accessibilityRole="progressbar"
-          accessibilityLabel="Today's training toward a streak day"
-          accessibilityValue={{ min: 0, max: goal, now: Math.round(after) }}
+          accessibilityLabel="Workouts this week toward your weekly goal"
+          accessibilityValue={{ min: 0, max: goal, now: after }}
         >
           <View style={styles.dayBarTrack}>
             <Animated.View
@@ -322,14 +329,14 @@ function StreakDay({
             />
           </View>
           <Text style={styles.dayBarLabel}>
-            {Math.min(result.dayMinutes ?? 0, 999)} / {goal} min today
+            {week.count} / {goal} workouts this week
           </Text>
         </View>
       </View>
       <View style={styles.footer}>
         <Button label={isLast ? 'Done' : 'Keep Going'} onPress={onContinue} />
       </View>
-      {extended && filled && <Confetti />}
+      {hitNow && filled && <Confetti />}
     </View>
   );
 }

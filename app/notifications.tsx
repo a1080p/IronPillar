@@ -41,7 +41,7 @@ export default function NotificationsScreen() {
         </Text>
         {notifications.length === 0 ? (
           <Text style={styles.empty}>
-            Nothing yet. Friend requests, reactions, comments and streak alerts show up here.
+            Nothing yet. Friend requests, reactions, comments and weekly goal alerts show up here.
           </Text>
         ) : (
           notifications.map((n) => {

@@ -17,6 +17,15 @@ service cloud.firestore {
     // and can freely update everything else (name, goals, etc.), but can
     // never move its own xp/streak/level directly — that's the whole point
     // of moving this server-side: a raw Firestore write can't spoof a streak.
+    // Weekly goal (workouts a week, 2-6) and the active program are the
+    // user's own settings; the week-streak fields beside them are server-only.
+    function validWeeklyGoal() {
+      return !('weeklyGoal' in request.resource.data)
+        || (request.resource.data.weeklyGoal is int
+            && request.resource.data.weeklyGoal >= 2
+            && request.resource.data.weeklyGoal <= 6);
+    }
+
     match /users/{uid} {
       allow read: if isOwner(uid);
 
@@ -30,6 +39,13 @@ service cloud.firestore {
         && request.resource.data.get('longestStreak', null) == null
         && request.resource.data.get('activeDate', null) == null
         && request.resource.data.get('activeDayMinutes', null) == null
+        && request.resource.data.get('weekStart', null) == null
+        && request.resource.data.get('weekCount', null) == null
+        && request.resource.data.get('weekGoal', null) == null
+        && request.resource.data.get('lastGoalWeek', null) == null
+        && request.resource.data.get('shieldMonth', null) == null
+        && request.resource.data.get('longestWeekStreak', null) == null
+        && validWeeklyGoal()
         && request.resource.data.friendCount == 0;
 
       allow update: if isOwner(uid)
@@ -42,6 +58,13 @@ service cloud.firestore {
         && request.resource.data.get('longestStreak', null) == resource.data.get('longestStreak', null)
         && request.resource.data.get('activeDate', null) == resource.data.get('activeDate', null)
         && request.resource.data.get('activeDayMinutes', null) == resource.data.get('activeDayMinutes', null)
+        && request.resource.data.get('weekStart', null) == resource.data.get('weekStart', null)
+        && request.resource.data.get('weekCount', null) == resource.data.get('weekCount', null)
+        && request.resource.data.get('weekGoal', null) == resource.data.get('weekGoal', null)
+        && request.resource.data.get('lastGoalWeek', null) == resource.data.get('lastGoalWeek', null)
+        && request.resource.data.get('shieldMonth', null) == resource.data.get('shieldMonth', null)
+        && request.resource.data.get('longestWeekStreak', null) == resource.data.get('longestWeekStreak', null)
+        && validWeeklyGoal()
         && request.resource.data.friendCount == resource.data.friendCount
         // Changed only through the changeUsername Cloud Function, which
         // keeps the usernames/{name} claims in step.

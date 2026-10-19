@@ -24,9 +24,9 @@ export function levelForXp(totalXp: number) {
   return levelProgress(totalXp).level;
 }
 
-// Streak days follow the user's local calendar day. The server
-// (completeWorkout in functions/src/index.ts) is the source of truth for
-// streaks — these just mirror its day boundary for client-side display.
+// Dates follow the user's local calendar. The server (completeWorkout in
+// functions/src/index.ts) is the source of truth for the weekly goal and the
+// week streak; these mirror its rules for display.
 function pad(n: number) {
   return String(n).padStart(2, '0');
 }
@@ -41,24 +41,75 @@ export function yesterdayDateString(date = new Date()) {
   return todayDateString(d);
 }
 
-// The streak as of right now. The server only rewrites streakCount when a
-// workout is logged, so a streak whose last counted day is before yesterday
-// has already ended at local midnight and shows as 0.
+// Same limits as functions/src/achievements.ts.
+export const WEEKLY_GOAL_MIN = 2;
+export const WEEKLY_GOAL_MAX = 6;
+export const WEEKLY_GOAL_DEFAULT = 3;
+
+export function clampWeeklyGoal(goal: number | null | undefined): number {
+  const n = Math.round(Number(goal));
+  if (!Number.isFinite(n)) return WEEKLY_GOAL_DEFAULT;
+  return Math.min(WEEKLY_GOAL_MAX, Math.max(WEEKLY_GOAL_MIN, n));
+}
+
+// The Monday of the week `date` (yyyy-mm-dd) falls in.
+export function weekStartOf(date: string): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const dayOfWeek = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0 = Sunday
+  return offsetDateString(date, -((dayOfWeek + 6) % 7));
+}
+
+type WeekProfile = {
+  streakCount?: number;
+  timeZone?: string;
+  weeklyGoal?: number | null;
+  weekStart?: string | null;
+  weekCount?: number;
+  weekGoal?: number;
+  lastGoalWeek?: string | null;
+  shieldMonth?: string | null;
+};
+
+// The week streak as of right now: alive while last week (or this week) hit
+// the goal, or while the monthly shield can still cover one missed week.
 // Days are counted in the zone the server stored (profile.timeZone), or UTC
-// for older profiles that never sent one, exactly as completeWorkout does.
-export function activeStreak(
-  profile:
-    | { streakCount?: number; lastWorkoutDate?: string | null; timeZone?: string }
-    | null
-    | undefined,
-  now = new Date()
-): number {
+// for older profiles, exactly as completeWorkout does.
+export function activeStreak(profile: WeekProfile | null | undefined, now = new Date()): number {
   const count = profile?.streakCount ?? 0;
-  const last = profile?.lastWorkoutDate;
+  const last = profile?.lastGoalWeek;
   if (!last || count <= 0) return 0;
+  const thisWeek = weekStartOf(dateStringInZone(now, profile?.timeZone ?? 'UTC'));
+  if (last >= offsetDateString(thisWeek, -7)) return count;
+  const shieldCovers =
+    last === offsetDateString(thisWeek, -14) && profile?.shieldMonth !== thisWeek.slice(0, 7);
+  return shieldCovers ? count : 0;
+}
+
+export interface WeekProgress {
+  streak: number;
+  count: number; // workouts counted this week
+  goal: number; // this week's goal
+  weekStart: string; // Monday, yyyy-mm-dd
+  daysLeft: number; // days left in the week, today included (1 on Sunday)
+  goalHit: boolean;
+}
+
+export function weekProgress(profile: WeekProfile | null | undefined, now = new Date()): WeekProgress {
   const today = dateStringInZone(now, profile?.timeZone ?? 'UTC');
-  const yesterday = offsetDateString(today, -1);
-  return last >= yesterday ? count : 0;
+  const weekStart = weekStartOf(today);
+  const thisWeek = !!profile?.weekStart && profile.weekStart >= weekStart;
+  const count = thisWeek ? (profile?.weekCount ?? 0) : 0;
+  const goal = thisWeek && profile?.weekGoal ? clampWeeklyGoal(profile.weekGoal) : clampWeeklyGoal(profile?.weeklyGoal);
+  const [y, m, d] = today.split('-').map(Number);
+  const dayOfWeek = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return {
+    streak: activeStreak(profile, now),
+    count,
+    goal,
+    weekStart,
+    daysLeft: dayOfWeek === 0 ? 1 : 8 - dayOfWeek,
+    goalHit: count >= goal,
+  };
 }
 
 // yyyy-mm-dd of `date` in an IANA zone, falling back to the device's day.

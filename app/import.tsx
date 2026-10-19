@@ -286,7 +286,7 @@ export default function ImportScreen() {
 
           <Text style={styles.note}>
             Imported workouts appear in History and your stats. They don't earn XP or count toward
-            your streak.
+            your weekly goal.
           </Text>
         </ScrollView>
         <View style={styles.footer}>

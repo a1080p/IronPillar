@@ -42,7 +42,7 @@ const DAILY_MESSAGES: Record<DailySlot, { title: string; body: string }[]> = {
     { title: 'Quick break?', body: 'Stretch, walk, or lift. Your minutes add up toward today’s 30.' },
   ],
   evening: [
-    { title: 'Still time today 🌙', body: 'Squeeze in a workout before the day wraps up. Your streak will thank you.' },
+    { title: 'Still time today 🌙', body: 'Squeeze in a workout before the day wraps up. It counts toward your week.' },
     { title: 'Evening reminder', body: 'No workout logged yet today. There’s still time to get your 30 minutes in.' },
     { title: 'Finish strong 🔥', body: 'End the day with a win. Log a quick workout in Iron Pillar.' },
   ],

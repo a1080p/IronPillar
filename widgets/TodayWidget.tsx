@@ -1,5 +1,5 @@
-// The "Iron Pillar Today" home screen and lock screen widget: streak and
-// today's workout minutes, steps (Pro, Apple Health), and calories left
+// The "Iron Pillar Today" home screen and lock screen widget: week streak and
+// workouts this week toward the weekly goal, steps (Pro, Apple Health), and calories left
 // (Pro). Long-press → Edit Widget to choose which of the three it shows.
 // Kept up to date from the app by components/WidgetSync.tsx.
 //
@@ -32,8 +32,8 @@ import type { SFSymbol } from 'sf-symbols-typescript';
 
 export type TodayWidgetProps = {
   streak: number;
-  minutesToday: number;
-  minutesGoal: number; // minutes that count a streak day (30)
+  weekCount: number; // workouts counted this week
+  weekGoal: number; // the week's goal (2-6)
   steps: number | null; // null until Apple Health is connected (Pro)
   stepsGoal: number;
   caloriesLeft: number | null; // null when not Pro
@@ -89,16 +89,17 @@ const TodayWidget = (props: TodayWidgetProps, env: WidgetEnvironment<TodayWidget
   }[] = [];
 
   if (config.showWorkout) {
-    const done = props.minutesToday >= props.minutesGoal;
-    const toGo = Math.max(0, props.minutesGoal - Math.round(props.minutesToday));
+    const done = props.weekCount >= props.weekGoal;
     metrics.push({
       key: 'workout',
       symbol: 'flame.fill',
       color: flame,
       value: `${props.streak}`,
-      label: done ? 'day streak · today counts' : `day streak · ${toGo} min to go`,
-      progress: clamp(props.minutesToday / props.minutesGoal),
-      inline: `${props.streak}-day streak`,
+      label: done
+        ? 'week streak · goal hit'
+        : `week streak · ${props.weekCount}/${props.weekGoal} this week`,
+      progress: clamp(props.weekCount / props.weekGoal),
+      inline: `${props.streak}-week streak · ${props.weekCount}/${props.weekGoal}`,
       circular: `${props.streak}`,
     });
   }

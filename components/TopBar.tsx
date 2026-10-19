@@ -60,7 +60,7 @@ export function TopBar() {
         <View
           style={styles.streak}
           accessible
-          accessibilityLabel={`${streak} day streak`}
+          accessibilityLabel={`${streak} week streak`}
         >
           <Text style={styles.streakCount}>{streak}</Text>
           <FlameIcon size={20} color={colors.accentFlame} />

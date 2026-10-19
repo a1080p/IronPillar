@@ -15,11 +15,11 @@ export const completionMessages = [
   { heading: 'You Finished Strong', sub: 'Consistency beats everything' },
 ];
 
-// Shown when a workout didn't reach the day's 30 minutes.
+// Shown when a workout counted toward the week but didn't finish its goal.
 export const streakKeepGoingMessages = [
-  'Every minute counts. Top it up later today.',
-  'A short walk or stretch finishes the job.',
-  "You're closer than you think. Come back and close it out.",
+  'Rest days count too. Come back when you are ready.',
+  'A short walk or stretch counts as long as it is 10 minutes.',
+  "You're closer than you think.",
 ];
 
 export const levelUpMessages = [

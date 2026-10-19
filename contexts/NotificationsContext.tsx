@@ -6,10 +6,10 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Href } from 'expo-router';
-import { dateStringInZone, hourInZone, offsetDateString } from '../constants/gamification';
+import { dateStringInZone, hourInZone } from '../constants/gamification';
 import { useActivityFeed } from '../hooks/useActivityFeed';
 import { useFriendRequests } from '../hooks/useSocial';
-import { useActiveStreak } from '../hooks/useActiveStreak';
+import { useWeekProgress } from '../hooks/useActiveStreak';
 import { useAuth } from './AuthContext';
 import type { ActivityFeedItem } from '../types/models';
 
@@ -88,7 +88,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const uid = profile ? user?.uid : undefined;
   const { items } = useActivityFeed(uid);
   const { incoming } = useFriendRequests(uid);
-  const streak = useActiveStreak();
+  const week = useWeekProgress();
   const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
   const [lastSeenLoaded, setLastSeenLoaded] = useState(false);
   const [banner, setBanner] = useState<InAppNotification | null>(null);
@@ -96,8 +96,8 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const openedAt = useRef(new Date().toISOString());
   const bannered = useRef(new Set<string>());
 
-  // Recompute at the streak-at-risk hour every day, even if the app stays
-  // open across it (useActiveStreak only ticks at midnight and on resume).
+  // Recompute at the reminder hour every day, even if the app stays open
+  // across it (useWeekProgress only ticks at midnight and on resume).
   const [atRiskTick, setAtRiskTick] = useState(0);
   useEffect(() => {
     const now = new Date();
@@ -136,27 +136,35 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       const n = fromFeed(item, uid);
       if (n) list.push(n);
     }
+    // Only when the week is down to the wire: as many workouts still needed
+    // as days left, so a rest day today would mean missing the goal. Never on
+    // a week with slack, so rest days stay guilt-free.
     const now = new Date();
     const zone = profile?.timeZone ?? 'UTC';
     const todayInZone = dateStringInZone(now, zone);
+    const needed = week.goal - week.count;
     if (
-      streak > 0 &&
-      profile?.lastWorkoutDate === offsetDateString(todayInZone, -1) &&
+      week.streak > 0 &&
+      needed > 0 &&
+      needed === week.daysLeft &&
       hourInZone(now, zone) >= STREAK_AT_RISK_HOUR
     ) {
       const at = new Date(now);
       at.setHours(STREAK_AT_RISK_HOUR, 0, 0, 0);
       list.push({
-        id: `streak-risk-${todayInZone}`,
+        id: `week-goal-${todayInZone}`,
         kind: 'streak_at_risk',
-        title: `Keep your ${streak}-day streak 🔥`,
-        body: 'No workout yet today. Get 30 minutes in before midnight to keep it going.',
+        title: needed === 1 ? 'One workout left this week' : `${needed} workouts left this week`,
+        body:
+          needed === 1
+            ? `One more by Sunday night keeps your ${week.streak}-week streak going.`
+            : `One a day from here keeps your ${week.streak}-week streak going.`,
         createdAt: at.toISOString(),
         href: '/' as Href,
       });
     }
     return list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [uid, items, incoming, streak, profile?.lastWorkoutDate, profile?.timeZone, atRiskTick]);
+  }, [uid, items, incoming, week.streak, week.goal, week.count, week.daysLeft, profile?.timeZone, atRiskTick]);
 
   const isUnread = (n: InAppNotification) => !lastSeenAt || n.createdAt > lastSeenAt;
   const unreadCount = lastSeenLoaded ? notifications.filter(isUnread).length : 0;

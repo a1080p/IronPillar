@@ -70,8 +70,8 @@ export default function OutdoorIntroScreen() {
         <View style={styles.panel}>
           <Row icon="map-outline" text="Your route on the map" />
           <Row icon="speedometer-outline" text="Live distance, time, and average pace" />
-          <Row icon="flash-outline" text="40 XP per kilometer, plus your streak bonus" />
-          <Row icon="flame-outline" text="Minutes count toward today's 30-minute streak day" />
+          <Row icon="flash-outline" text="40 XP per kilometer, plus your weekly goal bonus" />
+          <Row icon="flame-outline" text="Counts toward your weekly goal from 10 minutes" />
           {isPro && <Row icon="heart-outline" text="Saved to Apple Health if you've connected it" />}
         </View>
 

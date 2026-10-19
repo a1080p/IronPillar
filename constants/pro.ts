@@ -17,7 +17,7 @@ export const PRO_FEATURES: PlanFeature[] = [
   {
     icon: 'flash',
     title: '2× XP on every workout',
-    description: 'Level up twice as fast while you’re subscribed, streak bonuses included.',
+    description: 'Level up twice as fast while you’re subscribed, weekly goal bonuses included.',
   },
   {
     icon: 'pulse',
@@ -46,7 +46,7 @@ export const PRO_FEATURES: PlanFeature[] = [
     icon: 'apps',
     title: 'Steps and calories widgets',
     description:
-      'Add steps and calories left to your Home Screen and Lock Screen widget, next to your streak.',
+      'Add steps and calories left to your Home Screen and Lock Screen widget, next to your week streak.',
   },
   {
     icon: 'cloud-upload',
@@ -75,7 +75,7 @@ export const PRO_FEATURES: PlanFeature[] = [
 // What stays free, listed on the paywall so it's clear nobody loses the core
 // app by not subscribing.
 export const FREE_FEATURES = [
-  'Unlimited workout logging, streaks, XP, and badges',
+  'Unlimited workout logging, weekly goals, XP, and badges',
   'Rest timer and "last time" numbers while you lift',
   'Consistency calendar, weekly stats, and personal records',
   'GPS walks, runs, and rides',

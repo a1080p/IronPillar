@@ -242,13 +242,15 @@ export const BADGE_RULES: BadgeRule[] = [
   rule('workouts-250', 'Iron Regular', 'workouts', 250),
   rule('workouts-500', 'Pillar of Iron', 'workouts', 500),
 
-  rule('streak-3', 'Three in a Row', 'streak', 3),
-  rule('streak-7', 'One Week Strong', 'streak', 7),
-  rule('streak-14', 'Two Weeks Strong', 'streak', 14),
-  rule('streak-30', '30-Day Streak', 'streak', 30),
-  rule('streak-60', '60-Day Streak', 'streak', 60),
-  rule('streak-100', '100-Day Streak', 'streak', 100),
-  rule('streak-365', 'Year of Iron', 'streak', 365),
+  // Week streaks: consecutive weeks the weekly goal was hit. (The old
+  // daily-streak badges, streak-3 … streak-365, are no longer awarded; the
+  // app still shows them to people who earned them.)
+  rule('weeks-2', 'Back to Back', 'streak', 2),
+  rule('weeks-4', 'A Month Strong', 'streak', 4),
+  rule('weeks-8', 'Two Months Strong', 'streak', 8),
+  rule('weeks-12', 'A Season of Iron', 'streak', 12),
+  rule('weeks-26', 'Half a Year', 'streak', 26),
+  rule('weeks-52', 'A Year Strong', 'streak', 52),
 
   rule('level-5', 'Level 5', 'level', 5),
   rule('level-10', 'Level 10', 'level', 10),
@@ -299,10 +301,10 @@ export const BADGE_NAMES: Record<string, string> = Object.fromEntries(
 );
 
 // Every badge these totals qualify for, earned already or not.
-export function qualifyingBadgeIds(stats: UserStats, longestStreak: number, level: number): string[] {
+export function qualifyingBadgeIds(stats: UserStats, longestWeekStreak: number, level: number): string[] {
   const values: Record<Metric, number> = {
     workouts: stats.workoutCount,
-    streak: longestStreak,
+    streak: longestWeekStreak,
     level,
     prs: stats.prCount,
     volumeLb: stats.totalVolumeLb,
@@ -399,4 +401,140 @@ export function improvementsOver(
   if (before.holdSeconds > 0 && now.holdSeconds > before.holdSeconds) add('Longer holds than last time');
   if (before.setsDone > 0 && now.setsDone > before.setsDone) add('More sets than last time');
   return improvements;
+}
+
+// ---- Weekly goal --------------------------------------------------------
+// The streak counts weeks, not days: a week counts once the user logs their
+// weekly goal of workouts (2-6, their choice) in it. Rest days cost nothing.
+// One missed week a calendar month is forgiven automatically (a "shield").
+// Weeks start on Monday, in the user's own time zone.
+
+export const WEEKLY_GOAL_MIN = 2;
+export const WEEKLY_GOAL_MAX = 6;
+export const WEEKLY_GOAL_DEFAULT = 3;
+// A workout counts toward the week with at least one completed set, or, for
+// timed activities like walks and yoga, this long.
+export const MIN_GOAL_WORKOUT_SECONDS = 10 * 60;
+export const XP_WEEK_GOAL = 100;
+export const XP_PER_WEEK_STREAK = 25; // extra per week of streak, capped below
+const MAX_WEEK_STREAK_BONUS_STEPS = 8;
+
+export function clampWeeklyGoal(goal: unknown): number {
+  const n = Math.round(Number(goal));
+  if (!Number.isFinite(n)) return WEEKLY_GOAL_DEFAULT;
+  return Math.min(WEEKLY_GOAL_MAX, Math.max(WEEKLY_GOAL_MIN, n));
+}
+
+// yyyy-mm-dd shifted by whole days (pure calendar arithmetic).
+export function addDays(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+// The Monday of the week `date` (yyyy-mm-dd) falls in.
+export function weekStartOf(date: string): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const dayOfWeek = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0 = Sunday
+  return addDays(date, -((dayOfWeek + 6) % 7));
+}
+
+export interface WeekState {
+  weekStart?: string | null; // Monday of the week weekCount belongs to
+  weekCount?: number; // workouts counted that week
+  weekGoal?: number; // the goal locked in for that week
+  streakCount?: number; // weeks in a row the goal was hit
+  longestWeekStreak?: number;
+  lastGoalWeek?: string | null; // Monday of the last week the goal was hit
+  shieldMonth?: string | null; // yyyy-mm a shield was last used in
+}
+
+// Whether a missed week can still be forgiven when `weekStart`'s week hits
+// its goal: the week before it was missed, the one before that was hit, and
+// no shield has been used this calendar month.
+function shieldCovers(state: WeekState, weekStart: string) {
+  return (
+    state.lastGoalWeek === addDays(weekStart, -14) &&
+    state.shieldMonth !== weekStart.slice(0, 7)
+  );
+}
+
+// The week streak as of `today`: still alive if last week (or this week) hit
+// the goal, or if a shield can still cover a single missed week.
+export function activeWeekStreak(state: WeekState, today: string): number {
+  const count = state.streakCount ?? 0;
+  const last = state.lastGoalWeek;
+  if (!last || count <= 0) return 0;
+  const thisWeek = weekStartOf(today);
+  if (last >= addDays(thisWeek, -7)) return count;
+  return shieldCovers(state, thisWeek) ? count : 0;
+}
+
+export interface WeekResult {
+  next: Required<Omit<WeekState, 'shieldMonth' | 'lastGoalWeek' | 'weekStart'>> & {
+    weekStart: string;
+    lastGoalWeek: string | null;
+    shieldMonth: string | null;
+  };
+  counted: boolean; // this workout counted toward the week
+  goalHitNow: boolean; // this workout completed the week's goal
+  shieldUsed: boolean;
+  bonusXp: number; // before any Pro multiplier
+}
+
+// Applies one finished workout to the week state. `today` is the local date
+// it was finished on. `weeklyGoal` is the user's current setting; a change
+// only takes effect from the next week, so it can't be lowered mid-week to
+// hit it.
+export function applyWeekGoal(
+  state: WeekState,
+  today: string,
+  weeklyGoal: unknown,
+  workout: { setsDone: number; durationSeconds: number }
+): WeekResult {
+  const thisWeek = weekStartOf(today);
+  // `>=`: after a westward time-zone change the stored week can be later than
+  // "this" week; treat it as the same week rather than starting over.
+  const sameWeek = !!state.weekStart && state.weekStart >= thisWeek;
+  const weekStart = sameWeek ? (state.weekStart as string) : thisWeek;
+  const weekGoal = sameWeek && state.weekGoal ? clampWeeklyGoal(state.weekGoal) : clampWeeklyGoal(weeklyGoal);
+  const countBefore = sameWeek ? Math.max(0, state.weekCount ?? 0) : 0;
+  const counted = workout.setsDone > 0 || workout.durationSeconds >= MIN_GOAL_WORKOUT_SECONDS;
+  const weekCount = countBefore + (counted ? 1 : 0);
+  const goalHitNow = counted && countBefore < weekGoal && weekCount >= weekGoal;
+
+  let streak = activeWeekStreak(state, today);
+  let lastGoalWeek = state.lastGoalWeek ?? null;
+  let shieldMonth = state.shieldMonth ?? null;
+  let shieldUsed = false;
+  if (goalHitNow) {
+    if (lastGoalWeek === addDays(weekStart, -7)) {
+      streak = (state.streakCount ?? 0) + 1;
+    } else if (shieldCovers(state, weekStart) && (state.streakCount ?? 0) > 0) {
+      streak = (state.streakCount ?? 0) + 1;
+      shieldUsed = true;
+      shieldMonth = weekStart.slice(0, 7);
+    } else {
+      streak = 1;
+    }
+    lastGoalWeek = weekStart;
+  }
+  const bonusXp = goalHitNow
+    ? XP_WEEK_GOAL + XP_PER_WEEK_STREAK * Math.min(streak - 1, MAX_WEEK_STREAK_BONUS_STEPS)
+    : 0;
+
+  return {
+    next: {
+      weekStart,
+      weekCount,
+      weekGoal,
+      streakCount: streak,
+      longestWeekStreak: Math.max(state.longestWeekStreak ?? 0, streak),
+      lastGoalWeek,
+      shieldMonth,
+    },
+    counted,
+    goalHitNow,
+    shieldUsed,
+    bonusXp,
+  };
 }

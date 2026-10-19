@@ -13,11 +13,13 @@ import { exportWorkoutsCsv } from '../lib/export';
 import { ProBadge } from '../components/ProLock';
 import { useUnits } from '../hooks/useUnits';
 import type { UnitSystem } from '../types/models';
+import { WEEKLY_GOAL_MAX, WEEKLY_GOAL_MIN, clampWeeklyGoal } from '../constants/gamification';
+import { programById } from '../data/programs';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const { signOut, user, updateProfile } = useAuth();
+  const { signOut, user, profile, updateProfile } = useAuth();
   const units = useUnits();
 
   const setUnits = (next: UnitSystem) => {
@@ -26,6 +28,24 @@ export default function SettingsScreen() {
       appAlert('Could not save', e instanceof Error ? e.message : 'Try again.')
     );
   };
+  const weeklyGoal = clampWeeklyGoal(profile?.weeklyGoal);
+  const setWeeklyGoal = (next: number) => {
+    if (next === weeklyGoal) return;
+    updateProfile({ weeklyGoal: next })
+      .then(() =>
+        appAlert(
+          `Weekly goal: ${next} workouts`,
+          "If you've already worked out this week, the new goal starts next Monday."
+        )
+      )
+      .catch((e) => appAlert('Could not save', e instanceof Error ? e.message : 'Try again.'));
+  };
+  const program = programById(profile?.programId);
+  const goalOptions = Array.from(
+    { length: WEEKLY_GOAL_MAX - WEEKLY_GOAL_MIN + 1 },
+    (_, i) => WEEKLY_GOAL_MIN + i
+  );
+
   const { isPro, presentCustomerCenter, redeemOfferCode, isAvailable: purchasesAvailable } = usePurchases();
   const { logs } = useWorkoutLogs(user?.uid);
   const [exporting, setExporting] = useState(false);
@@ -83,6 +103,37 @@ export default function SettingsScreen() {
               );
             })}
           </View>
+        </View>
+
+        <View style={styles.unitsRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowLabel}>Weekly goal</Text>
+            <Text style={styles.unitsHint}>Workouts a week</Text>
+          </View>
+          <View style={styles.segment} accessibilityRole="radiogroup">
+            {goalOptions.map((n) => {
+              const active = weeklyGoal === n;
+              return (
+                <Pressable
+                  key={n}
+                  onPress={() => setWeeklyGoal(n)}
+                  style={[styles.segmentOption, active && styles.segmentOptionActive]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: active }}
+                  accessibilityLabel={`${n} workouts a week`}
+                >
+                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{n}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.rowGroup}>
+          <Pressable style={styles.row} accessibilityRole="button" onPress={() => router.push('/programs')}>
+            <Text style={styles.rowLabel}>Training program</Text>
+            <Text style={styles.unitsHint}>{program ? program.name : 'None'}</Text>
+          </Pressable>
         </View>
 
         <View style={styles.rowGroup}>

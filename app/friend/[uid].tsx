@@ -102,8 +102,8 @@ export default function FriendProfileScreen() {
           Stats
         </Text>
         <View style={styles.tiles}>
-          <StatTile value={friend.streakCount} label="Current streak" />
-          <StatTile value={stats.streak ?? friend.streakCount} label="Longest streak" />
+          <StatTile value={friend.streakCount} label="Week streak" />
+          <StatTile value={stats.streak ?? friend.streakCount} label="Best week streak" />
           <StatTile value={stats.workouts ?? 0} label="Workouts" />
           {stats.prs != null && <StatTile value={stats.prs} label="Personal records" />}
           {stats.volumeLb != null && stats.volumeLb > 0 && (

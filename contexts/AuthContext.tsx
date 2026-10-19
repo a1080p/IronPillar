@@ -125,7 +125,7 @@ interface AuthContextValue {
       | 'startingWeightLb'
     > &
       Partial<
-        Pick<UserProfile, 'avatarKey' | 'avatarUrl' | 'units' | 'goalText' | 'barrier' | 'barrierOther'>
+        Pick<UserProfile, 'avatarKey' | 'avatarUrl' | 'units' | 'goalText' | 'barrier' | 'barrierOther' | 'weeklyGoal'>
       >
   ) => Promise<void>;
   updateProfile: (
@@ -146,6 +146,8 @@ interface AuthContextValue {
         | 'goalText'
         | 'barrier'
         | 'barrierOther'
+        | 'weeklyGoal'
+        | 'programId'
       >
     >
   ) => Promise<void>;
@@ -386,6 +388,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         goalText,
         barrier,
         barrierOther,
+        weeklyGoal,
       }) {
         if (!user) throw new Error('Must be signed in to create a profile');
         const ref = doc(db, 'users', user.uid);
@@ -428,6 +431,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (goalText) newProfile.goalText = goalText;
           if (barrier) newProfile.barrier = barrier;
           if (barrierOther) newProfile.barrierOther = barrierOther;
+          if (weeklyGoal) newProfile.weeklyGoal = weeklyGoal;
           if (avatarUrl) newProfile.avatarUrl = avatarUrl;
           else if (avatarKey) newProfile.avatarKey = avatarKey;
           tx.set(ref, newProfile);

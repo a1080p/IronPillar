@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
-import { activeStreak } from '../constants/gamification';
+import { weekProgress, type WeekProgress } from '../constants/gamification';
 import { useAuth } from '../contexts/AuthContext';
 
-// The signed-in user's current streak, dropping to 0 at local midnight after
-// a day without a qualifying workout — while the app is open (a timer for
-// midnight) or when it comes back to the foreground.
-export function useActiveStreak(): number {
+// The signed-in user's week streak and this week's progress toward their
+// weekly goal, rechecked at local midnight while the app is open (the week
+// rolls over at Monday midnight) and when it comes back to the foreground.
+export function useWeekProgress(): WeekProgress {
   const { profile } = useAuth();
   const [now, setNow] = useState(() => new Date());
 
@@ -23,5 +23,10 @@ export function useActiveStreak(): number {
     };
   }, [now]);
 
-  return activeStreak(profile, now);
+  return weekProgress(profile, now);
+}
+
+// Just the week streak.
+export function useActiveStreak(): number {
+  return useWeekProgress().streak;
 }

@@ -82,17 +82,8 @@ export default function AnalyticsScreen() {
   const health = useAppleHealth(user?.uid, isPro);
   const [exporting, setExporting] = useState(false);
 
-  // Best streak ever: the server tracks it now (longestStreak), but older
-  // accounts predate that, so also take the best from their logs.
-  const highestStreak = useMemo(
-    () =>
-      Math.max(
-        profile?.longestStreak ?? 0,
-        profile?.streakCount ?? 0,
-        ...logs.map((l) => l.streakCountAfter ?? 0)
-      ),
-    [profile?.longestStreak, profile?.streakCount, logs]
-  );
+  // Best week streak ever (weeks in a row the weekly goal was hit).
+  const highestStreak = Math.max(profile?.longestWeekStreak ?? 0, profile?.streakCount ?? 0);
   const totalDistance = useMemo(
     () => metersToDistance(logs.reduce((sum, l) => sum + (l.distanceMeters ?? 0), 0), units),
     [logs, units]
@@ -187,7 +178,7 @@ export default function AnalyticsScreen() {
                 label="Distance traveled"
               />
               <StatTile value={formatDuration(stats.minutes)} label="Training time" />
-              <StatTile value={highestStreak} label="Highest streak" />
+              <StatTile value={highestStreak} label="Best week streak" />
             </View>
 
             <Text style={styles.sectionLabel}>This week</Text>

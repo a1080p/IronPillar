@@ -10,6 +10,8 @@ import {
   BADGE_NAMES,
   STATS_VERSION,
   XP_PER_PERSONAL_RECORD,
+  activeWeekStreak,
+  applyWeekGoal,
   applyWorkout,
   emptyStats,
   improvementsOver,
@@ -19,6 +21,7 @@ import {
   type ComparableWorkout,
   type StatsWorkout,
   type UserStats,
+  type WeekState,
 } from './achievements';
 import { containsBlockedTerm } from './moderation';
 
@@ -84,11 +87,8 @@ const VERIFICATION_MAX_ATTEMPTS = 5;
 
 const XP_PER_EXERCISE = 50;
 const XP_PER_SET = 5;
-const XP_PER_STREAK_DAY = 20;
-const STREAK_MILESTONE_INTERVAL = 5;
-// A day only counts toward the streak once that day's workouts add up to at
-// least this many minutes (summed across every workout logged that day).
-const MIN_STREAK_DAY_MINUTES = 30;
+// Friends hear about every 4th week in a row the weekly goal is hit.
+const STREAK_MILESTONE_INTERVAL = 4;
 const XP_PER_KM = 40;
 // How many recent logs to search for the previous time a workout was done.
 const PREVIOUS_WORKOUT_LOOKBACK = 40;
@@ -125,7 +125,7 @@ interface CompleteWorkoutRequest {
   workout: {
     id: string;
     name: string;
-    category: 'preset' | 'quick_start' | 'browse' | 'custom' | 'outdoor';
+    category: 'preset' | 'quick_start' | 'browse' | 'program' | 'custom' | 'outdoor';
   };
   exercises: ExerciseLog[];
   durationSeconds: number;
@@ -165,22 +165,6 @@ function localDateString(date: Date, timeZone: string) {
   }).formatToParts(date);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value;
   return `${part('year')}-${part('month')}-${part('day')}`;
-}
-
-// Pure calendar arithmetic on the yyyy-mm-dd string, so DST days (23h/25h)
-// can't make "24 hours ago" land on the same or a skipped date.
-function previousDateString(dateString: string) {
-  const [y, m, d] = dateString.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
-}
-
-// The streak as of right now: the stored count only moves when a workout is
-// logged, so a streak whose last day is before yesterday (in the user's own
-// zone) has already ended at their local midnight.
-function activeStreak(streakCount: number, lastWorkoutDate: string | null, timeZone?: string) {
-  if (!lastWorkoutDate || streakCount <= 0) return 0;
-  const today = localDateString(new Date(), timeZone ?? 'UTC');
-  return lastWorkoutDate >= previousDateString(today) ? streakCount : 0;
 }
 
 function isValidRoutePoint(p: unknown): p is RoutePoint {
@@ -244,15 +228,14 @@ function newFeedItem(
 }
 
 // Server-computed streak/XP/badges — the client only reports *what was done*
-// (exercise/set shape); it can never set xp, streakCount, or lastWorkoutDate
-// directly (Firestore rules block that), so this function is the only path
-// that can move those numbers, using the server's own clock for the streak
-// day boundary rather than trusting anything the client says about "today."
-// The client does say which time zone it's in (so a 9 PM workout counts as
-// that evening, not the next UTC day), but that only picks which local
-// calendar the server's clock is read in: zone changes are rate-limited and
-// lastWorkoutDate never moves backwards, so zone-hopping can't manufacture
-// extra streak days.
+// (exercise/set shape); it can never set xp, streakCount or the weekly-goal
+// fields directly (Firestore rules block that), so this function is the only
+// path that can move those numbers, using the server's own clock for the
+// week boundary rather than trusting anything the client says about "today."
+// The client does say which time zone it's in (so a Sunday 11 PM workout
+// counts for that week), but that only picks which local calendar the
+// server's clock is read in: zone changes are rate-limited and the stored
+// week never moves backwards, so zone-hopping can't manufacture weeks.
 export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
@@ -298,16 +281,12 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     if (!userSnap.exists) {
       throw new HttpsError('failed-precondition', 'User profile does not exist yet.');
     }
-    const profile = userSnap.data() as {
+    const profile = userSnap.data() as WeekState & {
       name: string;
       xp: number;
-      streakCount: number;
-      lastWorkoutDate: string | null;
+      weeklyGoal?: number;
       timeZone?: string;
       timeZoneUpdatedAt?: string;
-      longestStreak?: number;
-      activeDate?: string; // local date the minutes below were logged on
-      activeDayMinutes?: number;
     };
 
     const now = new Date();
@@ -324,55 +303,16 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
       }
     }
 
-    // Profiles from before streaks followed local time have lastWorkoutDate
-    // as a UTC date. On their first zone-aware workout, re-derive it from
-    // the last log's (server-written) completedAt in the user's zone, so the
-    // switch can't break a streak or double-count a day.
-    let lastWorkoutDate = profile.lastWorkoutDate;
-    if (!storedTimeZone && timeZoneChanged && lastWorkoutDate) {
-      const lastLogSnap = await tx.get(
-        db
-          .collection('workoutLogs')
-          .doc(uid)
-          .collection('logs')
-          .orderBy('completedAt', 'desc')
-          .limit(1)
-      );
-      const lastCompletedAt = lastLogSnap.docs[0]?.get('completedAt');
-      if (typeof lastCompletedAt === 'string' && !Number.isNaN(Date.parse(lastCompletedAt))) {
-        lastWorkoutDate = localDateString(new Date(lastCompletedAt), timeZone);
-      }
-    }
-
     const today = localDateString(now, timeZone);
-    // `lastWorkoutDate` is the last day that *counted* toward the streak (30+
-    // combined minutes). `<=`, not `===`: after a westward zone change "today"
-    // can be earlier than the stored date. That counts as already counted, and
-    // the stored date is kept, so moving the zone back and forth can't re-earn
-    // a day.
-    const dayAlreadyCounted = lastWorkoutDate !== null && today <= lastWorkoutDate;
-
-    const workoutMinutes = Math.max(0, Math.round(durationSeconds / 60));
-    const dayMinutes =
-      (profile.activeDate === today ? (profile.activeDayMinutes ?? 0) : 0) + workoutMinutes;
-    // This workout is the one that pushes today over the threshold.
-    const dayQualifiesNow = !dayAlreadyCounted && dayMinutes >= MIN_STREAK_DAY_MINUTES;
-
-    // A streak ends at local midnight after a day with no qualifying workout,
-    // even though nothing writes the zero until the next workout — so a short
-    // workout after a gap reports 0, not the old streak.
-    const streakAlive =
-      lastWorkoutDate !== null &&
-      (dayAlreadyCounted || lastWorkoutDate === previousDateString(today));
-    let streakCountAfter: number;
-    if (!dayQualifiesNow) {
-      streakCountAfter = streakAlive ? profile.streakCount : 0;
-    } else if (lastWorkoutDate === previousDateString(today)) {
-      streakCountAfter = profile.streakCount + 1;
-    } else {
-      streakCountAfter = 1;
-    }
-    const longestStreak = Math.max(profile.longestStreak ?? 0, streakCountAfter, profile.streakCount);
+    // The streak counts weeks that hit the user's weekly goal (see
+    // applyWeekGoal). The old daily-streak fields (lastWorkoutDate,
+    // activeDate, activeDayMinutes) are no longer read or written.
+    const totals = workoutTotals(exercises);
+    const week = applyWeekGoal(profile, today, profile.weeklyGoal, {
+      setsDone: totals.setsDone,
+      durationSeconds,
+    });
+    const streakCountAfter = week.next.streakCount;
 
     // Lifetime totals live in userStats/{uid}. The first time (or after a
     // deleted log reset them) they're rebuilt from the full history, without
@@ -425,14 +365,13 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
 
     // XP is earned for what was actually logged: exercises with at least one
     // completed set, and each completed set. Blank rows earn nothing.
-    const totals = workoutTotals(exercises);
     const setCount = totals.setsDone;
     const exerciseXp = totals.exercisesDone * XP_PER_EXERCISE;
     const setXp = setCount * XP_PER_SET;
     const distanceXp = distanceMeters ? Math.round((distanceMeters / 1000) * XP_PER_KM) : 0;
     const prBonus = personalRecords.length * XP_PER_PERSONAL_RECORD;
     const improvementXp = improvements.reduce((sum, i) => sum + i.xp, 0);
-    const baseStreakBonus = dayQualifiesNow ? streakCountAfter * XP_PER_STREAK_DAY : 0;
+    const baseStreakBonus = week.bonusXp;
     const baseXp = exerciseXp + setXp + distanceXp + prBonus + improvementXp;
     const xpMultiplier = await proMultiplier;
     const xpEarned = (baseXp + baseStreakBonus) * xpMultiplier;
@@ -442,13 +381,13 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     const levelAfter = levelForXp((profile.xp ?? 0) + xpEarned);
 
     const alreadyEarned = new Set(badgesSnap.docs.map((d) => d.id));
-    const badgesEarned = qualifyingBadgeIds(applied.stats, longestStreak, levelAfter).filter(
+    const badgesEarned = qualifyingBadgeIds(applied.stats, week.next.longestWeekStreak, levelAfter).filter(
       (id) => !alreadyEarned.has(id)
     );
     // Older app builds only read this single id.
     const badgeEarnedId = badgesEarned[0] ?? null;
     const hitStreakMilestone =
-      dayQualifiesNow && streakCountAfter > 0 && streakCountAfter % STREAK_MILESTONE_INTERVAL === 0;
+      week.goalHitNow && streakCountAfter > 0 && streakCountAfter % STREAK_MILESTONE_INTERVAL === 0;
 
     tx.set(logRef, {
       id: logRef.id,
@@ -462,17 +401,16 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
       xpMultiplier,
       streakBonusEarned: streakBonus,
       streakCountAfter,
+      weekStart: week.next.weekStart,
+      weekCountAfter: week.next.weekCount,
+      weekGoal: week.next.weekGoal,
       ...(activityType ? { activityType, distanceMeters, route: route ?? [] } : {}),
     });
 
     tx.update(userRef, {
       xp: FieldValue.increment(xpEarned),
       level: levelAfter,
-      streakCount: streakCountAfter,
-      longestStreak,
-      activeDate: today,
-      activeDayMinutes: dayMinutes,
-      lastWorkoutDate: dayQualifiesNow ? today : lastWorkoutDate,
+      ...week.next,
       ...(timeZoneChanged ? { timeZone, timeZoneUpdatedAt: now.toISOString() } : {}),
     });
 
@@ -554,8 +492,8 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
             'streak_milestone',
             uid,
             profile.name,
-            `${profile.name} hit a ${streakCountAfter}-day streak!`,
-            `a ${streakCountAfter}-day streak`
+            `${profile.name} hit their weekly goal ${streakCountAfter} weeks in a row!`,
+            `a ${streakCountAfter}-week streak`
           )
         );
       }
@@ -581,11 +519,14 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
         improvements,
         baseStreakBonus,
       },
-      dayMinutes,
-      dayMinutesBefore: dayMinutes - workoutMinutes,
-      minStreakDayMinutes: MIN_STREAK_DAY_MINUTES,
-      dayCountedNow: dayQualifiesNow,
-      dayAlreadyCounted,
+      week: {
+        count: week.next.weekCount,
+        goal: week.next.weekGoal,
+        counted: week.counted,
+        goalHitNow: week.goalHitNow,
+        shieldUsed: week.shieldUsed,
+        streak: streakCountAfter,
+      },
     };
   });
 
@@ -632,9 +573,9 @@ function statsFromHistory(
 
 // Deletes one of the caller's own workout logs (e.g. a bugged or accidental
 // one from Recent Workouts) and takes back the XP it awarded, so deleting
-// can't be used to farm XP. Streak history is left alone: a past streak day
-// isn't un-earned retroactively. If the log is from today, its minutes are
-// also removed from today's running total toward the 30-minute streak day.
+// can't be used to farm XP. Streak history is left alone: a week whose goal
+// was hit isn't un-earned retroactively. A log from the current week comes
+// off this week's count.
 export const deleteWorkoutLog = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
@@ -660,12 +601,17 @@ export const deleteWorkoutLog = onCall(async (request) => {
     if (!logSnap.exists) {
       throw new HttpsError('not-found', 'That workout was already deleted.');
     }
-    const log = logSnap.data() as { xpEarned?: number; completedAt?: string; durationSeconds?: number };
+    const log = logSnap.data() as {
+      xpEarned?: number;
+      completedAt?: string;
+      weekStart?: string;
+      weekCountAfter?: number;
+    };
     const profile = (userSnap.data() ?? {}) as {
       xp?: number;
       timeZone?: string;
-      activeDate?: string;
-      activeDayMinutes?: number;
+      weekStart?: string;
+      weekCount?: number;
     };
 
     const xpToRemove = Math.min(Math.max(0, log.xpEarned ?? 0), Math.max(0, profile.xp ?? 0));
@@ -674,12 +620,10 @@ export const deleteWorkoutLog = onCall(async (request) => {
       level: levelForXp(Math.max(0, (profile.xp ?? 0) - xpToRemove)),
     };
 
-    if (log.completedAt && profile.activeDate) {
-      const logDay = localDateString(new Date(log.completedAt), profile.timeZone ?? 'UTC');
-      if (logDay === profile.activeDate) {
-        const minutes = Math.round((log.durationSeconds ?? 0) / 60);
-        updates.activeDayMinutes = Math.max(0, (profile.activeDayMinutes ?? 0) - minutes);
-      }
+    // A workout from the current week no longer counts toward it. A week
+    // whose goal was already hit stays hit (like a past streak week).
+    if (log.completedAt && profile.weekStart && log.weekStart === profile.weekStart && log.weekCountAfter) {
+      updates.weekCount = Math.max(0, (profile.weekCount ?? 0) - 1);
     }
 
     tx.delete(logRef);
@@ -779,14 +723,11 @@ export const getFriendProfile = onCall(async (request) => {
     avatarUrl?: string | null;
     avatarKey?: string | null;
     xp?: number;
-    streakCount?: number;
-    longestStreak?: number;
-    lastWorkoutDate?: string | null;
     timeZone?: string;
     friendCount?: number;
-  };
+  } & WeekState;
   const xp = profile.xp ?? 0;
-  const currentStreak = activeStreak(profile.streakCount ?? 0, profile.lastWorkoutDate ?? null, profile.timeZone);
+  const currentStreak = activeWeekStreak(profile, localDateString(new Date(), profile.timeZone ?? 'UTC'));
   const stored = statsSnap.data() as UserStats | undefined;
   // Totals exist once the friend has finished a workout on a recent build;
   // before that only the workout count is known.
@@ -812,7 +753,7 @@ export const getFriendProfile = onCall(async (request) => {
     }),
     stats: {
       workouts,
-      streak: Math.max(profile.longestStreak ?? 0, profile.streakCount ?? 0),
+      streak: profile.longestWeekStreak ?? 0,
       level: levelForXp(xp),
       ...(stored
         ? {

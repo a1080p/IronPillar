@@ -1,12 +1,12 @@
 // Keeps the "Iron Pillar Today" home/lock screen widget (widgets/TodayWidget)
 // current while the app runs. Widgets can't read Firestore or HealthKit on
 // their own, so the app hands them a timeline: today's numbers now, then a
-// reset at the next midnight (and the streak dropping if no workout counted).
+// reset at the next midnight (and on Monday, the week rolling over).
 // Safe everywhere: without the native widget module it does nothing.
 import { useEffect, useMemo, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import type { Widget } from 'expo-widgets';
-import { activeStreak, todayDateString } from '../constants/gamification';
+import { todayDateString, weekProgress } from '../constants/gamification';
 import { useAuth } from '../contexts/AuthContext';
 import { usePurchases } from '../contexts/PurchasesContext';
 import { useAppleHealth } from '../hooks/useAppleHealth';
@@ -16,8 +16,13 @@ import { useWorkoutLogs } from '../hooks/useWorkoutLogs';
 import { estimatedCalorieGoal, workoutCaloriesBurned } from '../lib/calories';
 import type { TodayWidgetConfig, TodayWidgetProps } from '../widgets/TodayWidget';
 
-const MINUTES_GOAL = 30;
 const STEPS_GOAL = 10000;
+
+// Week streak and this week's workouts as of `at`.
+function weekFields(profile: Parameters<typeof weekProgress>[0], at = new Date()) {
+  const week = weekProgress(profile, at);
+  return { streak: week.streak, weekCount: week.count, weekGoal: week.goal };
+}
 
 let widget: Widget<TodayWidgetProps, TodayWidgetConfig> | null | undefined;
 function getWidget() {
@@ -63,16 +68,13 @@ export function WidgetSync({ uid }: { uid: string }) {
   const props = useMemo<TodayWidgetProps | null>(() => {
     if (!profile) return null;
     const todaysLogs = logs.filter((l) => todayDateString(new Date(l.completedAt)) === day);
-    const minutesToday = todaysLogs.reduce((sum, l) => sum + l.durationSeconds / 60, 0);
     const weightLb = metrics.at(-1)?.weightLb ?? profile.startingWeightLb ?? 165;
     const calorieGoal = isPro ? profile.calorieGoal ?? estimatedCalorieGoal(profile, weightLb) : null;
     const burned = todaysLogs.reduce((sum, l) => sum + workoutCaloriesBurned(l, weightLb), 0);
     const eaten = entries.reduce((sum, e) => sum + e.calories, 0);
     const healthConnected = isPro && health.enabled;
     return {
-      streak: activeStreak(profile),
-      minutesToday: Math.round(minutesToday),
-      minutesGoal: MINUTES_GOAL,
+      ...weekFields(profile),
       steps: healthConnected ? health.snapshot?.stepsToday ?? null : null,
       stepsGoal: STEPS_GOAL,
       caloriesLeft: calorieGoal != null ? Math.round(calorieGoal + burned - eaten) : null,
@@ -92,15 +94,14 @@ export function WidgetSync({ uid }: { uid: string }) {
     const midnight = nextMidnight(now);
     const dayAfter = nextMidnight(now, 2);
     const freshDay = {
-      minutesToday: 0,
       steps: props.steps == null ? null : 0,
       caloriesLeft: props.calorieGoal,
     };
     try {
       w.updateTimeline([
         { date: now, props },
-        { date: midnight, props: { ...props, ...freshDay, streak: activeStreak(profile, midnight) } },
-        { date: dayAfter, props: { ...props, ...freshDay, streak: activeStreak(profile, dayAfter) } },
+        { date: midnight, props: { ...props, ...freshDay, ...weekFields(profile, midnight) } },
+        { date: dayAfter, props: { ...props, ...freshDay, ...weekFields(profile, dayAfter) } },
       ]);
     } catch {
       // Widget extension missing on this build.

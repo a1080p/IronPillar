@@ -5,7 +5,7 @@ import { Button } from './Button';
 import { ProgressBar } from './ProgressBar';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
-import { BADGE_CATEGORIES, BADGE_LIST } from '../data/badges';
+import { BADGE_CATEGORIES, BADGE_LIST, LEGACY_BADGES } from '../data/badges';
 import { useUnits } from '../hooks/useUnits';
 import { formatDistance, formatVolume } from '../lib/units';
 import type { AchievementStats, Badge, BadgeMetric, UnitSystem } from '../types/models';
@@ -20,7 +20,7 @@ const TIER_LABELS: Record<Badge['tier'], string> = {
 // What each metric is called on a badge's detail sheet.
 const METRIC_LABELS: Record<BadgeMetric, string> = {
   workouts: 'Workouts completed',
-  streak: 'Longest streak',
+  streak: 'Longest week streak',
   level: 'Level',
   prs: 'Personal records set',
   volumeLb: 'Total weight lifted',
@@ -44,7 +44,7 @@ function formatHours(seconds: number) {
 function formatMetric(metric: BadgeMetric, value: number, units: UnitSystem) {
   switch (metric) {
     case 'streak':
-      return `${value} ${value === 1 ? 'day' : 'days'}`;
+      return `${value} ${value === 1 ? 'week' : 'weeks'}`;
     case 'volumeLb':
       return formatVolume(value, units);
     case 'distanceMeters':
@@ -87,7 +87,10 @@ export function BadgeList({
           <Text style={styles.sectionHeading} accessibilityRole="header">
             {category.label}
           </Text>
-          {BADGE_LIST.filter((b) => b.category === category.key).map((badge) => {
+          {[
+            ...BADGE_LIST.filter((b) => b.category === category.key),
+            ...LEGACY_BADGES.filter((b) => b.category === category.key && b.id in earnedAt),
+          ].map((badge) => {
             const isEarned = badge.id in earnedAt;
             return (
               <Pressable
