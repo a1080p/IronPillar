@@ -108,7 +108,8 @@ export function SwapExerciseSheet({
               <View style={styles.rowText}>
                 <Text style={styles.rowName}>{item.name}</Text>
                 <Text style={styles.rowMeta}>
-                  {item.primaryMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')} · {item.equipment}
+                  {item.primaryMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')} ·{' '}
+                  {item.equipment.charAt(0).toUpperCase() + item.equipment.slice(1)}
                 </Text>
               </View>
               <ExerciseFormThumb exercise={item} />

@@ -421,16 +421,19 @@ export default function WorkoutLogScreen() {
   // this session's previous set, else the target. Weight carries down from the
   // set above, since most people keep it the same across sets.
   const suggestion = (i: number): LoggedSet => {
-    const prev = i > 0 ? sets[i - 1] : undefined;
+    // The nearest set above with a value, so an untouched set in between
+    // doesn't break the carry-down.
+    const above = <K extends keyof LoggedSet>(key: K) =>
+      sets.slice(0, i).reverse().find((s) => s[key] != null)?.[key];
     const lastSet = last ? (last.sets[i] ?? last.sets[last.sets.length - 1]) : undefined;
     const target = targetFromLabel(exercise.targetRepsLabel);
     if (exercise.logType === 'duration') {
-      return { durationSeconds: lastSet?.durationSeconds ?? prev?.durationSeconds ?? target };
+      return { durationSeconds: lastSet?.durationSeconds ?? above('durationSeconds') ?? target };
     }
     const lastWeight = lastSet?.weight != null ? lbToDisplay(lastSet.weight, units) : undefined;
     return {
-      reps: lastSet?.reps ?? prev?.reps ?? target,
-      weight: tracksWeight ? (prev?.weight ?? lastWeight) : undefined,
+      reps: lastSet?.reps ?? above('reps') ?? target,
+      weight: tracksWeight ? (above('weight') ?? lastWeight) : undefined,
     };
   };
 
@@ -793,7 +796,25 @@ export default function WorkoutLogScreen() {
         current={exercise}
         currentCatalog={catalogExercise}
         canRestore={!!swaps[exercise.id]}
-        onPick={(picked) => swapTo(picked.id)}
+        onPick={(picked) => {
+          if (filledSets === 0) {
+            swapTo(picked.id);
+            return;
+          }
+          // The sheet is closing; let it finish before the dialog opens.
+          setTimeout(
+            () =>
+              appAlert(
+                `Swap to ${picked.name}?`,
+                `The ${filledSets} ${filledSets === 1 ? 'set' : 'sets'} you logged for ${exercise.name} will be cleared.`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Swap', onPress: () => swapTo(picked.id) },
+                ]
+              ),
+            350
+          );
+        }}
         onRestore={() => swapTo(null)}
         onClose={() => setSwapOpen(false)}
       />
