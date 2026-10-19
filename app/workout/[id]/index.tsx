@@ -1,12 +1,15 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../../components/Button';
 import { FlameIcon, GymIcon } from '../../../components/icons/BrandIcons';
 import { WorkoutHeader } from '../../../components/WorkoutHeader';
 import { ExerciseNotes } from '../../../components/ExerciseNotes';
+import { ExerciseFormThumb } from '../../../components/ExerciseForm';
+import { findCatalogExercise } from '../../../data/exercises';
+import { loadWorkoutDraft } from '../../../lib/workoutDraft';
 import { radii, spacing, typography } from '../../../constants/theme';
 import { useTheme, type ThemeColors } from '../../../contexts/ThemeContext';
 import { useWorkout } from '../../../hooks/useWorkout';
@@ -23,6 +26,21 @@ export default function WorkoutDetailScreen() {
   const { workout: template, loading } = useWorkout(id, user?.uid);
   const [tab, setTab] = useState<Tab>('overview');
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  // An unfinished session of this workout saved on the phone (see
+  // lib/workoutDraft); rechecked whenever the screen comes back into view.
+  const [hasDraft, setHasDraft] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!user || !id) return;
+      let cancelled = false;
+      loadWorkoutDraft(user.uid, id).then((draft) => {
+        if (!cancelled) setHasDraft(!!draft);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [user?.uid, id])
+  );
 
   const isOwnCustom =
     !!template && template.category === 'custom' && template.createdBy === user?.uid;
@@ -145,14 +163,19 @@ export default function WorkoutDetailScreen() {
             </Text>
             {template.exercises.map((ex, i) => (
               <View key={ex.id} style={styles.exerciseRow}>
-                <Text style={styles.exerciseTitle}>
-                  {i + 1}: {ex.name}
-                </Text>
-                <Text style={styles.exerciseDetail}>Sets: {ex.targetSets}</Text>
-                <Text style={styles.exerciseDetail}>
-                  {ex.logType === 'duration' ? 'Target: ' : 'Reps: '}
-                  {ex.targetRepsLabel}
-                </Text>
+                <View style={styles.exerciseHeader}>
+                  <View style={styles.exerciseHeaderText}>
+                    <Text style={styles.exerciseTitle}>
+                      {i + 1}: {ex.name}
+                    </Text>
+                    <Text style={styles.exerciseDetail}>Sets: {ex.targetSets}</Text>
+                    <Text style={styles.exerciseDetail}>
+                      {ex.logType === 'duration' ? 'Target: ' : 'Reps: '}
+                      {ex.targetRepsLabel}
+                    </Text>
+                  </View>
+                  <ExerciseFormThumb exercise={findCatalogExercise(ex)} />
+                </View>
                 {ex.tips ? <Text style={styles.exerciseTip}>{ex.tips}</Text> : null}
                 <ExerciseNotes uid={user?.uid} exerciseName={ex.name} compact />
               </View>
@@ -175,7 +198,10 @@ export default function WorkoutDetailScreen() {
           ))}
       </ScrollView>
       <View style={styles.footer}>
-        <Button label="Get Started" onPress={() => router.push(`/workout/${template.id}/log`)} />
+        <Button
+          label={hasDraft ? 'Resume Workout' : 'Get Started'}
+          onPress={() => router.push(`/workout/${template.id}/log`)}
+        />
       </View>
     </SafeAreaView>
   );
@@ -267,6 +293,8 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   tabLabel: { fontSize: typography.sizes.md, fontWeight: '700', color: colors.textMuted },
   tabLabelActive: { color: colors.primary },
   exerciseRow: { marginBottom: spacing.md },
+  exerciseHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  exerciseHeaderText: { flex: 1 },
   exerciseTitle: { fontWeight: '700', color: colors.primary, marginBottom: 2 },
   exerciseDetail: { color: colors.text },
   infoBlock: { marginBottom: spacing.lg },

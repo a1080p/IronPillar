@@ -1,5 +1,6 @@
 import type { WorkoutTemplate } from '../types/models';
 import { browseWorkoutTemplates } from './browseWorkoutTemplates';
+import { findCatalogExercise } from './exercises';
 
 const presetsAndQuickStarts: WorkoutTemplate[] = [
   {
@@ -21,7 +22,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
       },
       {
         id: 'bent-over-barbell-row',
-        name: 'Bent-Over Barbell Row',
+        name: 'Barbell Bent-Over Row',
         logType: 'reps_weight',
         targetSets: 4,
         targetRepsLabel: '8-10 reps',
@@ -29,7 +30,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
       },
       {
         id: 'overhead-press',
-        name: 'Overhead Press (Standing)',
+        name: 'Barbell Overhead Press',
         logType: 'reps_weight',
         targetSets: 3,
         targetRepsLabel: '8-10 reps',
@@ -37,15 +38,15 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
       },
       {
         id: 'lat-pulldown',
-        name: 'Pull-Ups (or Lat Pulldown)',
+        name: 'Pull-Ups',
         logType: 'reps_weight',
         targetSets: 3,
         targetRepsLabel: '6-12 reps',
-        tips: 'Pull your chin over the bar (or the bar to your chest) by driving your elbows down and back, then return with control.',
+        tips: 'Pull your chin over the bar by driving your elbows down and back, then lower with control. Can\'t do pull-ups yet? Tap Swap and pick Lat Pulldown or Band-Assisted Pull-Ups.',
       },
       {
         id: 'dumbbell-incline-press',
-        name: 'Dumbbell Incline Press',
+        name: 'Incline Dumbbell Press',
         logType: 'reps_weight',
         targetSets: 3,
         targetRepsLabel: '10-12 reps',
@@ -53,7 +54,7 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
       },
       {
         id: 'dumbbell-rows',
-        name: 'Dumbbell Rows (Single Arm)',
+        name: 'Single-Arm Dumbbell Row',
         logType: 'reps_weight',
         targetSets: 3,
         targetRepsLabel: '10-12 reps each arm',
@@ -248,7 +249,19 @@ const presetsAndQuickStarts: WorkoutTemplate[] = [
   },
 ];
 
+// Every exercise that matches a catalog entry carries its catalogId, which is
+// what links it to form photos and swap suggestions (see data/exercises.ts).
+function withCatalogIds(template: WorkoutTemplate): WorkoutTemplate {
+  return {
+    ...template,
+    exercises: template.exercises.map((exercise) => {
+      const catalogId = findCatalogExercise(exercise)?.id;
+      return catalogId ? { ...exercise, catalogId } : exercise;
+    }),
+  };
+}
+
 export const workoutTemplates: WorkoutTemplate[] = [
   ...presetsAndQuickStarts,
   ...browseWorkoutTemplates,
-];
+].map(withCatalogIds);

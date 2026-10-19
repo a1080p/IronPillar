@@ -4,6 +4,16 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-19: Exercise catalog, form photos, logger overhaul
+
+- **Exercise catalog** (`data/exercises.ts`): 138 canonical exercises (name, aliases, log type, equipment, primary muscles). Template exercises carry a `catalogId` (stamped in `data/workoutTemplates.ts`); 124 of 228 template exercises match. One-off segments ("Cool-Down Spin", "Match Play") intentionally have none. History keys ("last time", PRs, strength analytics) now go through `canonicalExerciseName`, so aliases and old names share one history.
+- **Renamed 7 duplicate template exercises** to their catalog name (e.g. Conventional Deadlift → Barbell Deadlift, Front Plank → Plank, Pull-Ups (or Lat Pulldown) → Pull-Ups). The server folds PR bests stored under the old names (`RENAMED_EXERCISES` in `functions/src/achievements.ts`), checked with a script: a lighter lift after the rename is not a PR, a heavier one is. Exercise notes are still keyed by the displayed name, so notes on those 7 names won't show under the new name.
+- **Form photos** (`components/ExerciseForm.tsx`): free-exercise-db start/finish photos (public domain, Unlicense), 110 of 138 exercises, served from jsDelivr pinned to commit `f00c92c`. All 210 URLs checked 200. Crossfading loop on the logger, thumbnails on the workout detail list, full-size viewer on tap; side-by-side when Reduce Motion is on. The free-exercise-db instruction text was left out (verbose, repeats outdated cues).
+- **Logger** (`app/workout/[id]/log.tsx`): ✓ per set (fills blanks with the suggestion and auto-starts rest, default 90s), suggestions = last time's set → previous set this session (weight carries down) → target, Add/Remove Set, Swap exercise (`components/SwapExerciseSheet.tsx`: same-muscle suggestions + search, same log type only, restorable), progress bar by sets not time, and an on-device draft (`lib/workoutDraft.ts`, 12h) with Save & Exit / Discard, resume prompt, and "Resume Workout" on the detail screen.
+- **Needs deploy:** `functions` (PR fold) and a template re-seed (`npm run seed:workouts`) for the renames and catalog ids to reach Firestore. Until the re-seed, photos and swaps still work because the app resolves catalog entries by name.
+
+---
+
 ## 2026-10-18: Pulse check — stale support email in the drafted App Review reply, fixed
 
 - **Verified the 10-14 session's claims against code and Jira**, not just trusted them: `AuthContext.tsx`'s `signInName` reset (the Apple sign-in leak, IP-66) is in place exactly as PR #5 described, and that PR was in fact merged — by a human (`a1080p`), not auto-merged by this routine, consistent with policy for anything touching `AuthContext.tsx`. IP-65 and IP-66 are both Done in Jira. Root and `functions/` `npx tsc --noEmit` both clean.

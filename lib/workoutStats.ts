@@ -1,4 +1,5 @@
 import type { ExerciseLog, WorkoutLog } from '../types/models';
+import { canonicalExerciseName, normalizeExerciseName } from '../data/exercises';
 
 // Everything here is derived on the client from the workoutLogs the
 // completeWorkout Cloud Function already stores (name, timestamp,
@@ -150,11 +151,12 @@ export function personalRecords(logs: WorkoutLog[], limit = 5): PersonalRecord[]
       for (const set of exercise.sets) {
         if (!set.weight || !set.reps) continue;
         const oneRm = set.weight * (1 + set.reps / 30);
-        const key = exercise.exerciseName.toLowerCase();
+        const name = canonicalExerciseName(exercise.exerciseName);
+        const key = normalizeExerciseName(name);
         const existing = best.get(key);
         if (!existing || oneRm > existing.estimatedOneRepMax) {
           best.set(key, {
-            exerciseName: exercise.exerciseName,
+            exerciseName: name,
             weight: set.weight,
             reps: set.reps,
             estimatedOneRepMax: Math.round(oneRm),

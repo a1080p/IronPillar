@@ -1,6 +1,7 @@
 import type { UnitSystem, WorkoutLog } from '../types/models';
 import { displayToLb, formatWeight, metersToDistance } from './units';
 import { summarizeLog, weekStart } from './workoutStats';
+import { canonicalExerciseName, normalizeExerciseName } from '../data/exercises';
 
 // Pro "Insights" math (plus the free consistency calendar and "last time"
 // hint). Like workoutStats, everything is derived on the client from the
@@ -42,8 +43,11 @@ export function exerciseHistories(logs: WorkoutLog[]): ExerciseHistory[] {
         volume: weighted.reduce((sum, s) => sum + s.weight! * s.reps!, 0),
       };
 
-      const key = exercise.exerciseName.trim().toLowerCase();
-      const entry = byName.get(key) ?? { name: exercise.exerciseName.trim(), sessions: [] };
+      // Older logs may use an alias ("Bent-Over Barbell Row"); group them
+      // under the catalog name so one exercise has one history.
+      const name = canonicalExerciseName(exercise.exerciseName);
+      const key = normalizeExerciseName(name);
+      const entry = byName.get(key) ?? { name, sessions: [] };
       entry.sessions.push(session);
       byName.set(key, entry);
     }
@@ -247,9 +251,11 @@ export function activeDays(logs: WorkoutLog[], days = 30): number {
 // The sets logged for this exercise in the most recent workout that included
 // it (logs arrive newest-first from useWorkoutLogs).
 export function lastPerformance(logs: WorkoutLog[], exerciseName: string) {
-  const key = exerciseName.trim().toLowerCase();
+  const key = normalizeExerciseName(canonicalExerciseName(exerciseName));
   for (const log of logs) {
-    const match = log.exercises.find((e) => e.exerciseName.trim().toLowerCase() === key);
+    const match = log.exercises.find(
+      (e) => normalizeExerciseName(canonicalExerciseName(e.exerciseName)) === key
+    );
     if (match && match.sets.some((s) => s.reps != null || s.durationSeconds != null)) {
       return { completedAt: log.completedAt, sets: match.sets };
     }

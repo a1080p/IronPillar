@@ -103,7 +103,7 @@ export const browseWorkoutTemplates: WorkoutTemplate[] = [
     ['lose_weight', 'build_endurance'],
     [
       ex('stair-climber-steady', 'Stair Climber Steady Climb', 'duration', 1, '15 minutes moderate pace', { tips: 'Keep a tall posture and drive through your full foot on each step, avoiding leaning on the rails.' }),
-      ex('stair-climber-surges', 'Stair Climber Surges', 'duration', 5, '1 min fast / 1 min moderate', { tips: 'Keep a tall posture and drive through your full foot on each step, avoiding leaning on the rails.' }),
+      ex('stair-climber-surges', 'Stair Climber Surges', 'duration', 5, '1 min fast / 1 min moderate', { catalogId: 'stair-climber', tips: 'Keep a tall posture and drive through your full foot on each step, avoiding leaning on the rails.' }),
     ],
     [info('Form', ['Stand tall, avoid leaning on the rails', 'Take full steps rather than tiny shuffles'])],
     [info('Essential Equipment', ['Stair climber machine'])]
@@ -229,7 +229,7 @@ export const browseWorkoutTemplates: WorkoutTemplate[] = [
     true,
     ['build_strength'],
     [
-      ex('deadlift-pull-day', 'Conventional Deadlift', 'reps_weight', 3, '5-6 reps', { tips: 'Keep the bar close to your shins, brace your core, and drive through your heels while keeping your back flat.' }),
+      ex('deadlift-pull-day', 'Barbell Deadlift', 'reps_weight', 3, '5-6 reps', { tips: 'Keep the bar close to your shins, brace your core, and drive through your heels while keeping your back flat.' }),
       ex('pull-ups-pull-day', 'Pull-Ups', 'reps_weight', 3, '6-10 reps', { tips: 'Pull your chin over the bar by driving your elbows down and back, then lower with control.' }),
       ex('seated-cable-row', 'Seated Cable Row', 'reps_weight', 3, '10-12 reps', { tips: 'Sit tall, pull the handle to your torso by driving your elbows back, and squeeze your shoulder blades together.' }),
       ex('barbell-curl', 'Barbell Curl', 'reps_weight', 3, '10-12 reps', { tips: 'Keep your elbows pinned to your sides and curl with control, without swinging your torso.' }),
@@ -580,7 +580,7 @@ export const browseWorkoutTemplates: WorkoutTemplate[] = [
     false,
     ['build_strength'],
     [
-      ex('plank-core', 'Front Plank', 'duration', 3, '30-45 second hold', { tips: 'Keep a straight line from head to heels, brace your core, and don\'t let your hips sag.' }),
+      ex('plank-core', 'Plank', 'duration', 3, '30-45 second hold', { tips: 'Keep a straight line from head to heels, brace your core, and don\'t let your hips sag.' }),
       ex('side-plank-core', 'Side Plank', 'duration', 2, '30 second hold each side', { tips: 'Stack your feet, lift your hips until your body is a straight line, and keep your supporting elbow under your shoulder.' }),
       ex('bird-dog', 'Bird Dog', 'reps_weight', 3, '10 reps each side', { tracksWeight: false, tips: 'Extend opposite arm and leg while keeping your hips level and your core braced.' }),
       ex('dead-bug', 'Dead Bug', 'reps_weight', 3, '12 reps each side', { tracksWeight: false, tips: 'Lower opposite arm and leg toward the floor while keeping your lower back pressed down.' }),
@@ -716,9 +716,9 @@ export const browseWorkoutTemplates: WorkoutTemplate[] = [
     ['lose_weight', 'build_strength', 'build_endurance'],
     [
       ex('bootcamp-station-1', 'Station 1: Dumbbell Squat to Press', 'reps_weight', 3, '12 reps', { tips: 'Squat down holding dumbbells at your shoulders, then stand and press them overhead in one fluid motion.' }),
-      ex('bootcamp-station-2', 'Station 2: Battle Rope Slams', 'duration', 3, '30 seconds', { tips: 'Raise both ropes overhead together and slam them down hard, using your legs and core to drive the power.' }),
-      ex('bootcamp-station-3', 'Station 3: Box Jumps', 'reps_weight', 3, '10 reps', { tracksWeight: false, tips: 'Swing your arms and jump onto the box, landing softly with bent knees, then step back down.' }),
-      ex('bootcamp-station-4', 'Station 4: Kettlebell Swings', 'reps_weight', 3, '15 reps', { tips: 'Hinge at the hips (not a squat), snap them forward explosively to swing the kettlebell to chest height, keeping your arms relaxed.' }),
+      ex('bootcamp-station-2', 'Station 2: Battle Rope Slams', 'duration', 3, '30 seconds', { catalogId: 'battle-rope-slams', tips: 'Raise both ropes overhead together and slam them down hard, using your legs and core to drive the power.' }),
+      ex('bootcamp-station-3', 'Station 3: Box Jumps', 'reps_weight', 3, '10 reps', { catalogId: 'box-jumps', tracksWeight: false, tips: 'Swing your arms and jump onto the box, landing softly with bent knees, then step back down.' }),
+      ex('bootcamp-station-4', 'Station 4: Kettlebell Swings', 'reps_weight', 3, '15 reps', { catalogId: 'kettlebell-swing', tips: 'Hinge at the hips (not a squat), snap them forward explosively to swing the kettlebell to chest height, keeping your arms relaxed.' }),
     ],
     [info('Format', ['Rotate through all 4 stations, resting 1 minute between rounds', 'Complete 3 full rounds'])],
     [info('Essential Equipment', ['Dumbbells', 'Kettlebell', 'Battle ropes', 'Plyo box'])]
@@ -782,7 +782,7 @@ export const browseWorkoutTemplates: WorkoutTemplate[] = [
     true,
     ['build_strength', 'build_endurance'],
     [
-      ex('row-sculpt-erg-intervals', 'Rowing Machine Intervals', 'duration', 5, '3 minutes hard / 1 minute easy', { tips: 'Drive with your legs first, then lean back and pull the handle to your chest, reversing the order on the way back.' }),
+      ex('row-sculpt-erg-intervals', 'Rowing Machine Intervals', 'duration', 5, '3 minutes hard / 1 minute easy', { catalogId: 'rowing-machine', tips: 'Drive with your legs first, then lean back and pull the handle to your chest, reversing the order on the way back.' }),
       ex('row-sculpt-dumbbell-strength', 'Dumbbell Strength Block', 'reps_weight', 3, '12 reps', { tips: 'Move through each exercise with control, prioritizing full range of motion over speed.' }),
     ],
     [info('Format', ['Alternates rowing intervals with strength blocks on the floor', 'Adjust rowing resistance so 3-minute intervals feel like an 8/10 effort'])],
@@ -1178,7 +1178,7 @@ export const browseWorkoutTemplates: WorkoutTemplate[] = [
     [],
     [
       ex('deep-hamstring-stretch', 'Deep Hamstring Stretch', 'duration', 2, '45 seconds each leg', { tips: 'Hinge from your hips with a straight back and reach toward your toes, stopping at a gentle stretch.' }),
-      ex('deep-hip-flexor-stretch', 'Deep Hip Flexor Stretch', 'duration', 2, '45 seconds each side', { tips: 'Kneel into a lunge and gently press your hips forward until you feel a stretch in the front of your hip.' }),
+      ex('deep-hip-flexor-stretch', 'Deep Hip Flexor Stretch', 'duration', 2, '45 seconds each side', { catalogId: 'kneeling-hip-flexor-stretch', tips: 'Kneel into a lunge and gently press your hips forward until you feel a stretch in the front of your hip.' }),
       ex('deep-shoulder-stretch', 'Deep Shoulder & Chest Stretch', 'duration', 2, '30 seconds each side', { tips: 'Place your forearm on a doorway and gently lean forward until you feel a stretch across your chest.' }),
       ex('deep-spinal-twist', 'Deep Seated Spinal Twist', 'duration', 2, '30 seconds each side', { tips: 'Sit tall and rotate your torso from your spine, using your arm for gentle leverage, not force.' }),
     ],

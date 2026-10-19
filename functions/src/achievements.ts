@@ -96,6 +96,37 @@ export function levelForXp(totalXp: number) {
   return level;
 }
 
+// Template exercises that were renamed to their exercise-catalog name
+// (data/exercises.ts in the app lists these as aliases). Personal-record
+// bests are keyed by lowercase name, so a best stored under an old name is
+// carried over to the new one; without this the first workout after the
+// rename would count as a brand-new record.
+const RENAMED_EXERCISES: Record<string, string> = {
+  'bent-over barbell row': 'barbell bent-over row',
+  'conventional deadlift': 'barbell deadlift',
+  'overhead press (standing)': 'barbell overhead press',
+  'dumbbell incline press': 'incline dumbbell press',
+  'front plank': 'plank',
+  'pull-ups (or lat pulldown)': 'pull-ups',
+  'dumbbell rows (single arm)': 'single-arm dumbbell row',
+};
+
+function exerciseKey(name: string) {
+  const key = name.trim().toLowerCase();
+  return RENAMED_EXERCISES[key] ?? key;
+}
+
+// Moves bests stored under old names onto the current name, keeping the
+// higher of the two.
+function mergeRenamedBests(bests: Record<string, number>): Record<string, number> {
+  const merged: Record<string, number> = {};
+  for (const [name, best] of Object.entries(bests)) {
+    const key = exerciseKey(name);
+    merged[key] = Math.max(merged[key] ?? 0, best);
+  }
+  return merged;
+}
+
 // Epley estimate, the same formula the app's analytics use.
 const epley = (weight: number, reps: number) => weight * (1 + reps / 30);
 
@@ -113,7 +144,11 @@ export function applyWorkout(
   workout: StatsWorkout,
   timeZone: string
 ): { stats: UserStats; personalRecords: PersonalRecord[] } {
-  const next: UserStats = { ...stats, bests: { ...stats.bests }, workoutIds: [...stats.workoutIds] };
+  const next: UserStats = {
+    ...stats,
+    bests: mergeRenamedBests(stats.bests),
+    workoutIds: [...stats.workoutIds],
+  };
   const personalRecords: PersonalRecord[] = [];
 
   next.workoutCount += 1;
@@ -148,7 +183,7 @@ export function applyWorkout(
       if (!sessionBest || oneRm > sessionBest.oneRm) sessionBest = { weight, reps, oneRm };
     }
     if (!sessionBest || typeof exercise.exerciseName !== 'string') continue;
-    const key = exercise.exerciseName.trim().toLowerCase();
+    const key = exerciseKey(exercise.exerciseName);
     if (!key) continue;
     const previous = next.bests[key];
     if (previous === undefined) {

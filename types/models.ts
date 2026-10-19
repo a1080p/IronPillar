@@ -54,6 +54,7 @@ export interface Friend {
 export interface ExerciseSpec {
   id: string;
   name: string;
+  catalogId?: string; // entry in the exercise catalog (data/exercises.ts), when it's a known exercise
   logType: 'reps_weight' | 'duration';
   tracksWeight?: boolean; // for reps_weight exercises with no external load (e.g. bodyweight); default true
   targetSets: number;
