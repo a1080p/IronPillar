@@ -4,6 +4,16 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-20 (evening): PR #8 merged and rules deployed; build 16 built
+
+- **Merged PR #8** (fast-forward to `d07bf13`): check-in photos readable only by the owner and accepted friends (IP-64); usernames can't be claimed once a profile exists (IP-61). `npm test` 58/58 after merge; the PR's `test:rules` emulator suite passed 11/11 in its session.
+- **Deployed** `firestore.rules` and `storage.rules` with the Firebase CLI (both compiled and released).
+- **IAM grant still missing** (checked the project IAM policy): `service-875028642720@gcp-sa-firebasestorage.iam.gserviceaccount.com` has only `roles/firebasestorage.serviceAgent`. Until the owner adds `roles/firebaserules.firestoreServiceAgent`, the friend branch of the check-in read rule can't run: owners can still read their own photos, friends' SDK reads are denied. Feed images are shown via stored download URLs, which bypass rules, so they likely still display (not verified on a device).
+- **Build 16** (first build with the `production` update channel) finished on EAS with auto-submit to TestFlight; upload not confirmed from here.
+- RevenueCat paywall published: "2x XP on every workout" → "Gold frame around your rank emblem". App Store listing copy in `docs/app-store-listing.md` (owner to paste; App Store Connect isn't signed in on this machine).
+
+---
+
 ## 2026-10-20 (later still): Unit tests for streak, rank and exercise logic
 
 - **`npm test`** (root) runs 58 pure-logic tests in ~1s with Node's built-in runner via tsx; no emulator or app needed. `cd functions && npm test` runs the server half alone.
