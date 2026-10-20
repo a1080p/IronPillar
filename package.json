@@ -53,7 +53,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "seed:workouts": "tsx scripts/seed-workouts.ts",
-    "deploy:rules": "tsx scripts/deploy-rules.ts"
+    "deploy:rules": "tsx scripts/deploy-rules.ts",
+    "test": "node --import tsx --test tests/unit/*.test.ts functions/test/*.test.ts"
   },
   "private": true
 }

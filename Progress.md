@@ -4,6 +4,15 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-20 (later still): Unit tests for streak, rank and exercise logic
+
+- **`npm test`** (root) runs 58 pure-logic tests in ~1s with Node's built-in runner via tsx; no emulator or app needed. `cd functions && npm test` runs the server half alone.
+- `functions/test/achievements.test.ts`: weekly goal (hit on the Nth workout, no double bonus, short workouts don't count, mid-week goal changes wait for Monday, Sunday→Monday), week streak (rest days, monthly shield, second miss in a month resets, two misses end it, bonus cap), `weekStartOf`, `clampWeeklyGoal`, and PRs incl. renamed-exercise folding (an old "conventional deadlift" best blocks a lighter "Barbell Deadlift" PR).
+- `tests/unit/`: rank thresholds and boundaries; client `activeStreak`/`weekProgress` checked against the server's `activeWeekStreak`/`applyWeekGoal` over 8 weeks × shield states × time zones; exercise catalog (aliases, curly apostrophes, swap filtering, every template/program catalogId resolves).
+- No bugs found. Mutation check: breaking the shield window or a rename fails 11 tests. Side note: `clampWeeklyGoal(null)` gives 2, not the default 3 (`Number(null)` is 0); nothing writes null today.
+
+---
+
 ## 2026-10-20 (later): Workout type colors, rotating greeting, ranks intro, friends' ranks
 
 - **Workout types** (`constants/workoutTypes.ts`): Strength (blue), Cardio (orange), HIIT (red), Mobility (teal), Outdoor (green), Sports (purple), from each template's browse category (program/custom/preset days: timed-only → cardio, else strength). Shown as accents, not fills: Home Today chip + colored stripes on Other workouts + week dots tinted by that day's workout; Browse cards are light with a type stripe and icon, section icons tinted; History rows get a type dot. Light/dark variants for contrast.
