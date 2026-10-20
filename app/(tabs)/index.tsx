@@ -28,7 +28,54 @@ import { nextProgramDay, programById, suggestedProgram } from '../../data/progra
 import { FlameIcon } from '../../components/icons/BrandIcons';
 import { dedupeRecentWorkouts, hideRecent, loadHiddenRecents } from '../../lib/recentWorkouts';
 import { deleteWorkoutLog } from '../../lib/workoutCompletion';
-import type { CustomWorkout, OutdoorActivityType, WorkoutLog, WorkoutTemplate } from '../../types/models';
+import type { CustomWorkout, OutdoorActivityType, UnitSystem, WorkoutLog, WorkoutTemplate } from '../../types/models';
+import { RankEmblem } from '../../components/RankEmblem';
+import { ExerciseFormThumb } from '../../components/ExerciseForm';
+import { ProgressBar } from '../../components/ProgressBar';
+import { rankProgress } from '../../constants/rank';
+import { offsetDateString, todayDateString } from '../../constants/gamification';
+import { canonicalExerciseName, findCatalogExercise } from '../../data/exercises';
+import { useActivityFeed } from '../../hooks/useActivityFeed';
+import { useUnits } from '../../hooks/useUnits';
+import { personalRecords } from '../../lib/workoutStats';
+import { lbToDisplay, weightUnit } from '../../lib/units';
+
+const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const PR_RECENT_DAYS = 14;
+
+// A greeting that knows where the week stands.
+function greeting(
+  name: string | undefined,
+  hour: number,
+  week: { count: number; goal: number; goalHit: boolean },
+  trainedToday: boolean,
+  todayName?: string
+) {
+  const first = name?.split(' ')[0];
+  const hello = hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening';
+  const who = first ? `${hello}, ${first}.` : `${hello}.`;
+  if (trainedToday) return `${who} Nice work today.`;
+  if (week.goalHit) return `${who} Weekly goal hit. Anything now is a bonus.`;
+  if (todayName) return `${who} ${todayName} today.`;
+  return `${who} ${week.count} of ${week.goal} this week.`;
+}
+
+// "Last time" for a workout: the first exercise's sets from the most recent
+// log of it, e.g. "Goblet Squat 3 × 8 at 25 lb".
+function lastTimeLine(logs: WorkoutLog[], workoutId: string, units: UnitSystem) {
+  const log = logs.find((l) => l.workoutId === workoutId);
+  if (!log) return null;
+  for (const e of log.exercises) {
+    const done = e.sets.filter((set) => set.reps != null || set.durationSeconds != null);
+    if (done.length === 0) continue;
+    const top = done[0];
+    if (top.durationSeconds != null) return `${e.exerciseName} ${done.length} × ${top.durationSeconds}s`;
+    const w = top.weight ? ` at ${lbToDisplay(top.weight, units)} ${weightUnit(units)}` : '';
+    return `${e.exerciseName} ${done.length} × ${top.reps}${w}`;
+  }
+  return null;
+}
+
 
 const OUTDOOR_ACTIVITY_TYPES: OutdoorActivityType[] = ['walk', 'run', 'bike'];
 const OUTDOOR_ACTIVITY_LABELS: Record<OutdoorActivityType, string> = {
@@ -136,6 +183,9 @@ export default function HomeScreen() {
     [templates, logs, profile, user?.uid, recommended]
   );
   const week = useWeekProgress();
+  const units = useUnits();
+  const { items: feed } = useActivityFeed(user?.uid);
+  const rp = rankProgress(profile?.xp);
   const program = programById(profile?.programId);
   const programNext = useMemo(() => (program ? nextProgramDay(program, logs) : null), [program, logs]);
   const suggested = suggestedProgram(profile?.experienceLevel, profile?.barrier);
@@ -149,6 +199,57 @@ export default function HomeScreen() {
     () => dedupeRecentWorkouts(logs, 5, hiddenRecents),
     [logs, hiddenRecents]
   );
+
+  const todayWorkout: WorkoutTemplate | null = programNext?.day ?? recommended ?? null;
+  const todayLastTime = todayWorkout ? lastTimeLine(logs, todayWorkout.id, units) : null;
+
+  // Monday-to-Sunday dots: a day is filled when a workout that counts
+  // toward the week (some XP, or 10+ minutes) was logged on it.
+  const todayStr = todayDateString();
+  const trainedDays = new Set(
+    logs
+      .filter((l) => !l.imported && (l.xpEarned > 0 || l.durationSeconds >= 600))
+      .map((l) => todayDateString(new Date(l.completedAt)))
+  );
+  const weekDays = WEEKDAY_LABELS.map((label, i) => {
+    const date = offsetDateString(week.weekStart, i);
+    return { label, date, trained: trainedDays.has(date), isToday: date === todayStr, future: date > todayStr };
+  });
+  const trainedToday = trainedDays.has(todayStr);
+
+  // A personal record from the last two weeks, if there is one.
+  const recentPr = useMemo(() => {
+    const cutoff = Date.now() - PR_RECENT_DAYS * 24 * 60 * 60 * 1000;
+    // Only a real record: the lift was logged with weight in an earlier
+    // session too (an exercise's first session is a baseline, not a PR).
+    const loggedBefore = (name: string, before: string) =>
+      logs.some(
+        (l) =>
+          l.completedAt < before &&
+          l.exercises.some(
+            (e) => canonicalExerciseName(e.exerciseName) === name && e.sets.some((x) => x.weight && x.reps)
+          )
+      );
+    const pr = personalRecords(logs, 100)
+      .filter((r) => new Date(r.achievedAt).getTime() >= cutoff && loggedBefore(r.exerciseName, r.achievedAt))
+      .sort((x, y) => y.achievedAt.localeCompare(x.achievedAt))[0];
+    if (!pr) return null;
+    const days = Math.floor((Date.now() - new Date(pr.achievedAt).getTime()) / 86_400_000);
+    const when = days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
+    return `New best ${when}: ${pr.exerciseName}, ${lbToDisplay(pr.weight, units)} ${weightUnit(units)} × ${pr.reps}`;
+  }, [logs, units]);
+
+  // Friends who finished a workout in the last day.
+  const friendsToday = useMemo(() => {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const names: string[] = [];
+    for (const item of feed) {
+      if (item.type !== 'friend_workout' || item.actorUid === user?.uid || item.createdAt < cutoff) continue;
+      const first = item.actorName.split(' ')[0];
+      if (!names.includes(first)) names.push(first);
+    }
+    return names;
+  }, [feed, user?.uid]);
 
   const confirmDeleteLog = (log: WorkoutLog) => {
     appAlert(
@@ -177,25 +278,25 @@ export default function HomeScreen() {
     if (recommended) {
       steps.push({
         key: 'recommended',
-        title: "Today's Recommended Workout",
-        description: 'We pick a workout for you each day based on your goals and history — tap it to jump right in.',
+        title: 'Today',
+        description: 'Your next program day, or a workout we picked for you. Tap Start to go straight to logging.',
         getRect: () => scrollToTopAndMeasure(recommendedRef),
       });
     }
 
-    if (quickStarts.length > 0) {
+    {
       steps.push({
         key: 'quickStarts',
-        title: 'Quick Start',
-        description: 'Short on time? These are fast workouts you can start with one tap.',
+        title: 'Your Week',
+        description: 'Hit your weekly goal to keep your week streak. Rest days never break it.',
         getRect: () => scrollToTopAndMeasure(quickStartsRef),
       });
     }
 
     steps.push({
       key: 'myWorkouts',
-      title: 'My Workouts',
-      description: 'Track outdoor walks, runs, and rides, or build and save your own custom workouts here.',
+      title: 'Other Workouts',
+      description: 'Recent workouts, quick starts, walks, runs and rides, and your own custom workouts.',
       getRect: () => scrollToEndAndMeasure(myWorkoutsRef),
     });
 
@@ -215,26 +316,93 @@ export default function HomeScreen() {
       <TopBar />
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll}>
         <Text style={styles.heading}>
-          {profile?.name ? `${profile.name}, Let's Get Started` : "Let's Get Started"}
+          {greeting(profile?.name, new Date().getHours(), week, trainedToday, programNext?.day.name)}
         </Text>
 
         {loading && <Text style={styles.note}>Loading workouts...</Text>}
 
-        {!loading && recommendationReady && !recommended && (
-          <Text style={styles.note}>
-            No workouts yet — seed workoutTemplates in Firestore to see them here.
-          </Text>
+        {/* Rank: what every workout moves. */}
+        <Pressable
+          style={styles.rankCard}
+          onPress={() => router.push('/rank')}
+          accessibilityRole="button"
+          accessibilityLabel={`Rank ${rp.rank.name}. ${rp.next ? `${rp.xpToNext} XP to ${rp.next.name}` : 'Top rank'}`}
+        >
+          <RankEmblem rank={rp.rank} size={44} framed={isPro} />
+          <View style={styles.rankText}>
+            <View style={styles.rankRow}>
+              <Text style={styles.rankName}>{rp.rank.name}</Text>
+              <Text style={styles.rankToGo}>
+                {rp.next ? `${rp.xpToNext.toLocaleString()} XP to ${rp.next.name}` : 'Top rank'}
+              </Text>
+            </View>
+            <ProgressBar progress={rp.progress} />
+          </View>
+        </Pressable>
+
+        {/* Today: the one thing to do. */}
+        {todayWorkout && (
+          <View ref={recommendedRef} style={styles.section}>
+            <View style={styles.programLabelRow}>
+              <Text style={styles.sectionLabel}>
+                {program && programNext ? `Today · ${program.name}` : "Today's pick"}
+              </Text>
+              <Pressable onPress={() => router.push('/programs')} hitSlop={8} accessibilityRole="button">
+                <Text style={styles.changeLink}>{program ? 'Change' : 'Follow a program'}</Text>
+              </Pressable>
+            </View>
+            <Pressable
+              style={styles.todayCard}
+              onPress={() => router.push(`/workout/${todayWorkout.id}`)}
+              accessibilityRole="button"
+              accessibilityLabel={`${todayWorkout.name}, ${todayWorkout.durationMinutes} minutes. View details`}
+            >
+              {program && programNext && (
+                <Text style={styles.programDayKicker}>
+                  DAY {programNext.index + 1} OF {program.days.length}
+                </Text>
+              )}
+              <Text style={styles.todayTitle}>{todayWorkout.name}</Text>
+              <Text style={styles.todayMeta}>
+                {todayWorkout.durationMinutes} min · {todayWorkout.exercises.length} exercises
+              </Text>
+              <View style={styles.thumbRow}>
+                {todayWorkout.exercises.slice(0, 4).map((e) => (
+                  <ExerciseFormThumb key={e.id} exercise={findCatalogExercise(e)} />
+                ))}
+              </View>
+              <Text style={styles.lastTime} numberOfLines={1}>
+                {todayLastTime
+                  ? `Last time: ${todayLastTime}`
+                  : program
+                    ? 'First time: start light and learn the moves.'
+                    : todayWorkout.exercises.map((e) => e.name).slice(0, 3).join(' · ')}
+              </Text>
+              <Pressable
+                style={styles.startButton}
+                onPress={() => router.push(`/workout/${todayWorkout.id}/log`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Start ${todayWorkout.name}`}
+              >
+                <Ionicons name="play" size={18} color={colors.primary} />
+                <Text style={styles.startButtonText}>Start</Text>
+              </Pressable>
+            </Pressable>
+          </View>
+        )}
+        {!loading && recommendationReady && !todayWorkout && (
+          <Text style={styles.note}>No workouts yet. Seed workoutTemplates in Firestore to see them here.</Text>
         )}
 
+        {/* The week, Monday to Sunday. */}
         <View
+          ref={quickStartsRef}
           style={styles.weekCard}
           accessible
           accessibilityLabel={`This week: ${week.count} of ${week.goal} workouts. ${week.streak} week streak.`}
         >
           <View style={styles.weekHeader}>
-            <Text style={styles.weekTitle}>
-              {week.goalHit ? 'Weekly goal hit' : 'This week'}
-            </Text>
+            <Text style={styles.weekTitle}>{week.goalHit ? 'Weekly goal hit' : 'This week'}</Text>
             <View style={styles.weekStreak}>
               <FlameIcon size={16} color={week.streak > 0 ? colors.accentFlame : colors.divider} />
               <Text style={styles.weekStreakText}>
@@ -242,144 +410,110 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
-          <View style={styles.weekDots}>
-            {Array.from({ length: week.goal }, (_, i) => (
-              <View key={i} style={[styles.weekDot, i < week.count && styles.weekDotDone]} />
+          <View style={styles.weekDays}>
+            {weekDays.map((d) => (
+              <View key={d.date} style={styles.weekDay}>
+                <View
+                  style={[
+                    styles.dayDot,
+                    d.trained && styles.dayDotDone,
+                    d.isToday && !d.trained && styles.dayDotToday,
+                    d.future && styles.dayDotFuture,
+                  ]}
+                >
+                  {d.trained && <Ionicons name="checkmark" size={14} color={colors.textOnDark} />}
+                </View>
+                <Text style={[styles.dayLabel, d.isToday && styles.dayLabelToday]}>{d.label}</Text>
+              </View>
             ))}
           </View>
           <Text style={styles.weekNote}>
             {week.goalHit
-              ? week.count > week.goal
-                ? `${week.count} workouts this week. Everything extra is a bonus.`
-                : 'Rest up or keep going. Next week starts Monday.'
-              : `${week.count} of ${week.goal} workouts · ${week.daysLeft} ${week.daysLeft === 1 ? 'day' : 'days'} left`}
+              ? `${week.count} workouts this week. Rest up or keep going.`
+              : `${week.count} of ${week.goal} workouts · ${week.goal - week.count} to go · ${week.daysLeft} ${week.daysLeft === 1 ? 'day' : 'days'} left`}
           </Text>
         </View>
 
-        {program && programNext ? (
-          <View style={styles.section}>
-            <View style={styles.programLabelRow}>
-              <Text style={styles.sectionLabel}>Next in {program.name}:</Text>
-              <Pressable onPress={() => router.push('/programs')} hitSlop={8} accessibilityRole="button">
-                <Text style={styles.changeLink}>Change</Text>
-              </Pressable>
-            </View>
-            <Pressable
-              style={styles.recommendedCard}
-              accessibilityRole="button"
-              accessibilityLabel={`Next in your program: day ${programNext.index + 1}, ${programNext.day.name}`}
-              onPress={() => router.push(`/workout/${programNext.day.id}`)}
-            >
-              <Text style={styles.programDayKicker}>
-                DAY {programNext.index + 1} OF {program.days.length}
-              </Text>
-              <Text style={styles.recommendedTitle}>{programNext.day.name}</Text>
-              <View style={styles.recommendedMetaRow}>
-                <Text style={styles.recommendedMeta}>{programNext.day.durationMinutes} Minutes</Text>
-                <Text style={styles.recommendedMeta}>{programNext.day.exercises.length} exercises</Text>
-              </View>
-            </Pressable>
+        {recentPr && (
+          <View style={styles.prLine}>
+            <Ionicons name="trophy" size={16} color={colors.accentFlameText} />
+            <Text style={styles.prText}>{recentPr}</Text>
           </View>
-        ) : (
+        )}
+
+        {friendsToday.length > 0 && (
           <Pressable
-            style={styles.pickProgram}
-            onPress={() => router.push('/programs')}
+            style={styles.friendsRow}
+            onPress={() => router.push('/social')}
             accessibilityRole="button"
-            accessibilityLabel={`Pick a training program. Suggested: ${suggested.name}`}
+            accessibilityLabel={`${friendsToday.join(', ')} trained today. Open Social`}
           >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.pickProgramTitle}>Follow a program</Text>
-              <Text style={styles.pickProgramBody}>
-                Same lifts every week, so you can watch them go up. Try {suggested.name}.
-              </Text>
+            <View style={styles.friendInitials}>
+              {friendsToday.slice(0, 4).map((n, i) => (
+                <View key={n} style={[styles.friendInitial, { marginLeft: i === 0 ? 0 : -8 }]}>
+                  <Text style={styles.friendInitialText}>{n.charAt(0).toUpperCase()}</Text>
+                </View>
+              ))}
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+            <Text style={styles.friendsText} numberOfLines={1}>
+              {friendsToday.length === 1
+                ? `${friendsToday[0]} trained today`
+                : `${friendsToday[0]} and ${friendsToday.length - 1} more trained today`}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </Pressable>
         )}
 
-        {recommended && (
-          <View style={styles.section} ref={recommendedRef}>
-            <Text style={styles.sectionLabel}>
-              {program ? 'Something different today?' : "Today's Recommended Workout:"}
-            </Text>
-            <Pressable
-              style={styles.recommendedCard}
-              accessibilityRole="button"
-              accessibilityLabel={`Today's recommended workout: ${recommended.name}, ${recommended.durationMinutes} minutes`}
-              onPress={() => router.push(`/workout/${recommended.id}`)}
-            >
-              <Text style={styles.recommendedTitle}>{recommended.name}</Text>
-              <View style={styles.recommendedMetaRow}>
-                <Text style={styles.recommendedMeta}>{recommended.durationMinutes} Minutes</Text>
-                {recommended.equipmentRequired && (
-                  <Text style={styles.recommendedMeta}>Equipment Required</Text>
-                )}
-              </View>
-            </Pressable>
-          </View>
-        )}
-
-        {recentWorkouts.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Recent Workouts:</Text>
-            <Text style={styles.sectionSubLabel}>Jump back into something you've done before</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.recentRow}
-            >
-              {recentWorkouts.map((log) => (
-                <Pressable
-                  key={log.id}
-                  style={styles.recentCard}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${log.workoutName}, last done ${formatShortDate(log.completedAt)}`}
-                  onPress={() =>
-                    log.workoutSource === 'outdoor' && log.activityType
-                      ? router.push({
-                          pathname: '/workout/outdoor/intro',
-                          params: { activityType: log.activityType },
-                        })
-                      : router.push(`/workout/${log.workoutId}`)
-                  }
-                  onLongPress={() => setRecentMenuLog(log)}
-                  accessibilityHint="Long press for options"
-                >
-                  <View style={styles.recentCardHeader}>
-                    <Text style={[styles.quickCardTitle, { flex: 1 }]} numberOfLines={2}>
-                      {log.workoutName}
-                    </Text>
-                    <Pressable
-                      hitSlop={10}
-                      onPress={() => setRecentMenuLog(log)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Options for ${log.workoutName}`}
-                    >
-                      <Ionicons name="ellipsis-horizontal" size={16} color={colors.textOnDark} />
-                    </Pressable>
-                  </View>
-                  <Text style={styles.quickCardMeta}>{formatShortDate(log.completedAt)}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {quickStarts.length > 0 && (
-          <View style={styles.section} ref={quickStartsRef}>
-            <Text style={styles.sectionLabel}>Quick Start:</Text>
-            <Text style={styles.sectionSubLabel}>Jump into a fast workout</Text>
-            <View style={styles.quickRow}>
-              {quickStarts.map((w) => (
-                <QuickStartCard key={w.id} workout={w} />
-              ))}
-            </View>
-          </View>
-        )}
-
+        {/* Everything else, smaller. */}
         <View style={styles.section} ref={myWorkoutsRef}>
-          <Text style={styles.sectionLabel}>My Workouts:</Text>
-          <View style={styles.quickRow}>
+          <Text style={styles.sectionLabel}>Other workouts</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.otherRow}>
+            {program && recommended && (
+              <Pressable
+                style={styles.otherCard}
+                onPress={() => router.push(`/workout/${recommended.id}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Something different: ${recommended.name}`}
+              >
+                <Text style={styles.otherKicker}>SOMETHING DIFFERENT</Text>
+                <Text style={styles.otherTitle} numberOfLines={2}>{recommended.name}</Text>
+                <Text style={styles.otherMeta}>{recommended.durationMinutes} min</Text>
+              </Pressable>
+            )}
+            {recentWorkouts.map((log) => (
+              <Pressable
+                key={log.id}
+                style={styles.otherCard}
+                accessibilityRole="button"
+                accessibilityLabel={`${log.workoutName}, last done ${formatShortDate(log.completedAt)}`}
+                accessibilityHint="Long press for options"
+                onPress={() =>
+                  log.workoutSource === 'outdoor' && log.activityType
+                    ? router.push({ pathname: '/workout/outdoor/intro', params: { activityType: log.activityType } })
+                    : router.push(`/workout/${log.workoutId}`)
+                }
+                onLongPress={() => setRecentMenuLog(log)}
+              >
+                <Text style={styles.otherKicker}>RECENT</Text>
+                <Text style={styles.otherTitle} numberOfLines={2}>{log.workoutName}</Text>
+                <Text style={styles.otherMeta}>{formatShortDate(log.completedAt)}</Text>
+              </Pressable>
+            ))}
+            {quickStarts.map((w) => (
+              <Pressable
+                key={w.id}
+                style={styles.otherCard}
+                onPress={() => router.push(`/workout/${w.id}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Quick start: ${w.name}, ${w.durationMinutes} minutes`}
+              >
+                <Text style={styles.otherKicker}>QUICK</Text>
+                <Text style={styles.otherTitle} numberOfLines={2}>{w.name}</Text>
+                <Text style={styles.otherMeta}>{w.durationMinutes} min</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <View style={[styles.quickRow, { marginTop: spacing.md }]}>
             {OUTDOOR_ACTIVITY_TYPES.map((activityType) => (
               <OutdoorActivityCard key={activityType} activityType={activityType} />
             ))}
@@ -449,7 +583,7 @@ function OutdoorActivityCard({ activityType }: { activityType: OutdoorActivityTy
         <Ionicons
           name={activityType === 'bike' ? 'bicycle' : 'walk'}
           size={16}
-          color={colors.textOnDark}
+          color={colors.primary}
         />
         <Text style={styles.quickCardTitle} numberOfLines={2}>
           {OUTDOOR_ACTIVITY_LABELS[activityType]}
@@ -530,7 +664,7 @@ function QuickStartCard({
             accessibilityRole="button"
             accessibilityLabel={`Options for ${workout.name}`}
           >
-            <Ionicons name="ellipsis-vertical" size={16} color={colors.textOnDark} />
+            <Ionicons name="ellipsis-vertical" size={16} color={colors.textMuted} />
           </Pressable>
         )}
       </View>
@@ -569,6 +703,89 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   section: { marginBottom: spacing.xl },
   sectionLabel: { fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
   sectionSubLabel: { color: colors.textMuted, marginBottom: spacing.md },
+  rankCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  rankText: { flex: 1, gap: spacing.xs },
+  rankRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  rankName: { fontWeight: '800', color: colors.text, fontSize: typography.sizes.body },
+  rankToGo: { color: colors.textMuted, fontSize: typography.sizes.small },
+  todayCard: {
+    backgroundColor: colors.primary,
+    borderRadius: radii.md,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  todayTitle: { color: colors.textOnDark, fontSize: typography.sizes.lg, fontWeight: '800' },
+  todayMeta: { color: colors.textOnDark, opacity: 0.85, fontSize: typography.sizes.small },
+  thumbRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  lastTime: { color: colors.textOnDark, fontSize: typography.sizes.small, fontWeight: '600' },
+  startButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.textOnDark,
+    borderRadius: radii.pill,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  startButtonText: { color: colors.primary, fontWeight: '800', fontSize: typography.sizes.body },
+  weekDays: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: spacing.md },
+  weekDay: { alignItems: 'center', gap: 4 },
+  dayDot: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.divider,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayDotDone: { backgroundColor: colors.primary },
+  dayDotToday: { backgroundColor: colors.background, borderWidth: 2, borderColor: colors.primary },
+  dayDotFuture: { opacity: 0.5 },
+  dayLabel: { color: colors.textMuted, fontSize: 11, fontWeight: '600' },
+  dayLabelToday: { color: colors.primary, fontWeight: '800' },
+  prLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
+  prText: { flex: 1, color: colors.text, fontWeight: '600', fontSize: typography.sizes.small },
+  friendsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  friendInitials: { flexDirection: 'row' },
+  friendInitial: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendInitialText: { color: colors.textOnDark, fontWeight: '800', fontSize: 12 },
+  friendsText: { flex: 1, color: colors.text, fontWeight: '600', fontSize: typography.sizes.small },
+  otherRow: { gap: spacing.md, paddingRight: spacing.lg },
+  otherCard: {
+    width: 140,
+    minHeight: 96,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    backgroundColor: colors.surfaceMuted,
+    justifyContent: 'space-between',
+  },
+  otherKicker: { color: colors.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  otherTitle: { color: colors.text, fontWeight: '700', fontSize: typography.sizes.small },
+  otherMeta: { color: colors.textMuted, fontSize: 12 },
   weekCard: {
     backgroundColor: colors.surfaceMuted,
     borderRadius: radii.md,
@@ -625,13 +842,13 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   recommendedMeta: { color: colors.textOnDark, fontSize: typography.sizes.small },
   quickRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.md, rowGap: spacing.md },
   quickCard: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surfaceMuted,
     borderRadius: radii.md,
     padding: spacing.md,
     flexGrow: 1,
     flexBasis: '30%',
     maxWidth: '48%',
-    minHeight: 90,
+    minHeight: 64,
     justifyContent: 'space-between',
   },
   quickCardHeader: {
@@ -642,12 +859,12 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   quickCardTitle: {
     flex: 1,
-    color: colors.textOnDark,
+    color: colors.text,
     fontWeight: '700',
     fontSize: typography.sizes.small,
   },
   kebab: { marginRight: -4, marginTop: -2, padding: 2 },
-  quickCardMeta: { color: colors.textOnDark, fontSize: typography.sizes.small },
+  quickCardMeta: { color: colors.textMuted, fontSize: typography.sizes.small },
   createCard: {
     borderWidth: 1.5,
     borderColor: colors.primary,

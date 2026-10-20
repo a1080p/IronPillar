@@ -10,7 +10,8 @@ import { BadgeList } from '../../components/BadgeList';
 import { ProgressBar } from '../../components/ProgressBar';
 import { StatTile } from '../../components/StatTile';
 import { WorkoutHeader } from '../../components/WorkoutHeader';
-import { levelProgress } from '../../constants/gamification';
+import { rankProgress } from '../../constants/rank';
+import { RankEmblem } from '../../components/RankEmblem';
 import { spacing, typography } from '../../constants/theme';
 import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { BADGE_LIST } from '../../data/badges';
@@ -72,7 +73,7 @@ export default function FriendProfileScreen() {
     );
   }
 
-  const { level, xpInto, xpNeeded } = levelProgress(friend.xp);
+  const rp = rankProgress(friend.xp);
   const { stats } = friend;
   const firstName = friend.name.split(' ')[0] || friend.name;
   const hours = stats.seconds != null ? stats.seconds / 3600 : null;
@@ -89,12 +90,13 @@ export default function FriendProfileScreen() {
           {friend.username ? <Text style={styles.handle}>@{friend.username}</Text> : null}
         </View>
 
-        <View style={styles.levelRow}>
-          <Text style={styles.levelLabel}>Lvl. {level}</Text>
+        <View style={styles.levelRow} accessible accessibilityLabel={`${firstName}'s rank: ${rp.rank.name}`}>
+          <RankEmblem rank={rp.rank} size={36} />
           <View style={{ flex: 1, marginHorizontal: spacing.sm }}>
-            <ProgressBar progress={xpInto / xpNeeded} />
+            <Text style={styles.levelLabel}>{rp.rank.name}</Text>
+            <ProgressBar progress={rp.progress} />
           </View>
-          <Text style={styles.levelLabel}>Lvl. {level + 1}</Text>
+          {rp.next && <RankEmblem rank={rp.next} size={28} />}
         </View>
         <Text style={styles.xp}>{friend.xp} XP</Text>
 

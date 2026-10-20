@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { FlameIcon } from './icons/BrandIcons';
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router, type Href } from 'expo-router';
@@ -9,7 +8,7 @@ import { MoreMenu } from './MoreMenu';
 import { radii, spacing, typography } from '../constants/theme';
 import { useTheme, type ThemeColors } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { useActiveStreak } from '../hooks/useActiveStreak';
+import { RankBadge } from './RankEmblem';
 import { useNotifications } from '../contexts/NotificationsContext';
 
 const MENU_ITEMS = [
@@ -22,7 +21,6 @@ export function TopBar() {
   const { colors, isDark, toggleTheme } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { signOut } = useAuth();
-  const streak = useActiveStreak();
   const { unreadCount } = useNotifications();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -57,14 +55,7 @@ export function TopBar() {
             </View>
           )}
         </Pressable>
-        <View
-          style={styles.streak}
-          accessible
-          accessibilityLabel={`${streak} week streak`}
-        >
-          <Text style={styles.streakCount}>{streak}</Text>
-          <FlameIcon size={20} color={colors.accentFlame} />
-        </View>
+        <RankBadge />
         <MoreMenu color={colors.text} />
       </View>
 
@@ -147,16 +138,6 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   // Left and right take equal width so the logo stays centered.
   side: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   right: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: spacing.md },
-  streak: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  streakCount: {
-    fontSize: typography.sizes.body,
-    fontWeight: '700',
-    color: colors.primary,
-  },
   bellBadge: {
     position: 'absolute',
     top: -4,

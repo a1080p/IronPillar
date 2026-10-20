@@ -4,6 +4,17 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-20: Ranks replace levels on screen; Pro 2x XP removed; Home redesign
+
+- **Ranks** (`constants/rank.ts`, `components/RankEmblem.tsx`, `app/rank.tsx`): Iron → Bronze → Silver → Gold → Platinum → Diamond (III/II/I each) → Pillar, 19 ranks from total XP (Silver ~5 weeks, Gold ~4 months, Pillar ~2 years at 3×/week). Rank never goes down. The header flame is now the rank emblem (taps to the rank screen: progress, "about N workouts", full ladder). Profile and friend profiles show rank instead of "Lvl. N". Level badges remain in the collection; levels are otherwise hidden.
+- **Rank-up** replaces the level-up celebration; `completeWorkout` now returns `xpBefore`/`xpAfter` (older functions → no rank-up screen).
+- **Pro 2× XP removed** (owner's decision): `completeWorkout` awards the same XP to everyone and no longer calls RevenueCat. Pro's replacement perk is a gold rank frame on the emblem. Updated `constants/pro.ts`, website index/support/terms. **Owner to do:** the RevenueCat dashboard paywall and the App Store listing / IAP descriptions still say "2× XP".
+- **Home** (`app/(tabs)/index.tsx`): greeting that reacts to the week, rank progress strip, one big Today card (program day or pick) with form-photo thumbnails, a last-time line and a Start button straight into the logger, Mon–Sun week dots, a "new best" line (only PRs that beat an earlier session), a friends-trained-today row, and everything else as lighter "Other workouts" cards.
+- **Verified in the simulator** (owner's account, Bronze II): Home top to bottom, rank screen. The header emblem tap is covered by the dev-client gear in dev builds only. **Not verified:** the rank-up screen (needs the new functions deployed and a rank boundary crossed), the friends row (no friend workouts in the last day).
+- **Not deployed yet:** functions (2× removal, xpBefore/xpAfter). The app changes are OTA-able.
+
+---
+
 ## 2026-10-20: Pulse check — goblet squat equipment tag and dead code fixed
 
 - **Verified the 10-19 session's claims against code**, not just trusted them: `applyWeekGoal`/`activeWeekStreak` (`functions/src/achievements.ts`) and their client mirror (`constants/gamification.ts`) still match exactly — `weekStartOf`, shield logic, `clampWeeklyGoal` (2-6), `sameWeek` handling. Badge thresholds in `data/badges.ts` match `BADGE_RULES`. `MIN_GOAL_WORKOUT_SECONDS` (10 min) and the one-set-counts rule check out. Root and `functions/` `npx tsc --noEmit` both clean (fresh `npm install` needed in both — empty by default in this sandbox).

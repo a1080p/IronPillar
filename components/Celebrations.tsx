@@ -9,7 +9,9 @@ import { BadgeMedal } from './BadgeMedal';
 import { Confetti } from './Confetti';
 import { Button } from './Button';
 import { ProgressBar } from './ProgressBar';
-import { levelProgress } from '../constants/gamification';
+import { rankForXp, rankProgress } from '../constants/rank';
+import { RankEmblem } from './RankEmblem';
+import { usePurchases } from '../contexts/PurchasesContext';
 import {
   badgeMessages,
   levelUpMessages,
@@ -34,8 +36,11 @@ function earnedBadges(result: CompletionResult): Badge[] {
   return ids.map((id) => badgeCatalog[id]).filter((b): b is Badge => !!b);
 }
 
-function leveledUp(result: CompletionResult) {
-  return result.levelAfter != null && result.levelBefore != null && result.levelAfter > result.levelBefore;
+// Ranks replaced levels on screen; a rank-up needs the server's XP before
+// and after (older functions don't send them, so no rank-up screen there).
+function rankedUp(result: CompletionResult) {
+  if (result.xpBefore == null || result.xpAfter == null) return false;
+  return rankForXp(result.xpAfter).index > rankForXp(result.xpBefore).index;
 }
 
 type Step = 'streak' | 'level' | 'badges';
@@ -43,10 +48,8 @@ type Step = 'streak' | 'level' | 'badges';
 function stepsFor(result: CompletionResult): Step[] {
   const steps: Step[] = [];
   if (result.week) steps.push('streak');
-  if (leveledUp(result)) steps.push('level');
-  // A level badge is shown on the level-up screen itself.
-  const others = earnedBadges(result).filter((b) => !(leveledUp(result) && b.category === 'levels'));
-  if (others.length > 0) steps.push('badges');
+  if (rankedUp(result)) steps.push('level');
+  if (earnedBadges(result).length > 0) steps.push('badges');
   return steps;
 }
 
@@ -87,7 +90,7 @@ export function CelebrationFlow({
         ) : (
           <BadgesEarned
             key="badges"
-            badges={earnedBadges(result).filter((b) => !(leveledUp(result) && b.category === 'levels'))}
+            badges={earnedBadges(result)}
             onContinue={next}
             isLast={index + 1 >= steps.length}
           />
@@ -103,12 +106,9 @@ const SPARK_DISTANCE = 130;
 function LevelUp({ result, onContinue }: { result: CompletionResult; onContinue: () => void }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const { profile } = useAuth();
-  const level = result.levelAfter ?? 1;
-  const levelBadge = earnedBadges(result).find((b) => b.category === 'levels');
-  // The profile listener has the new XP by now; fall back to an empty bar.
-  const progress = profile ? levelProgress(profile.xp) : null;
-  const showProgress = !!progress && progress.level === level;
+  const { isPro } = usePurchases();
+  const progress = rankProgress(result.xpAfter ?? 0);
+  const { rank, next } = progress;
 
   const pop = useRef(new Animated.Value(0)).current;
   const burst = useRef(new Animated.Value(0)).current;
@@ -193,32 +193,21 @@ function LevelUp({ result, onContinue }: { result: CompletionResult; onContinue:
               },
             ]}
           >
-            <Text style={styles.levelCaption}>LEVEL</Text>
-            <Text style={styles.levelNumber}>{level}</Text>
+            <RankEmblem rank={rank} size={110} framed={isPro} />
           </Animated.View>
         </View>
 
         <Animated.View style={[styles.levelTextWrap, textStyle]}>
-          <Text style={styles.kicker}>LEVEL UP</Text>
-          <Text style={styles.title}>You reached Level {level}</Text>
-          <Text style={styles.body}>{pickMessage(levelUpMessages, level)}</Text>
+          <Text style={styles.kicker}>RANK UP</Text>
+          <Text style={styles.title}>You reached {rank.name}</Text>
+          <Text style={styles.body}>{pickMessage(levelUpMessages, rank.index)}</Text>
 
-          {showProgress && progress && (
+          {next && (
             <View style={styles.progressWrap}>
-              <ProgressBar progress={progress.xpInto / progress.xpNeeded} />
+              <ProgressBar progress={progress.progress} />
               <Text style={styles.progressLabel}>
-                {progress.xpInto}/{progress.xpNeeded} XP to Level {level + 1}
+                {progress.xpToNext.toLocaleString()} XP to {next.name}
               </Text>
-            </View>
-          )}
-
-          {levelBadge && (
-            <View style={styles.levelBadgeRow}>
-              <BadgeMedal badge={levelBadge} size={48} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.levelBadgeKicker}>New badge for your collection</Text>
-                <Text style={styles.levelBadgeName}>{levelBadge.name}</Text>
-              </View>
             </View>
           )}
         </Animated.View>
@@ -511,8 +500,6 @@ const getStyles = (colors: ThemeColors) =>
     levelCircle: {
       width: 168,
       height: 168,
-      borderRadius: 84,
-      backgroundColor: colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },

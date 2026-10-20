@@ -92,8 +92,6 @@ const STREAK_MILESTONE_INTERVAL = 4;
 const XP_PER_KM = 40;
 // How many recent logs to search for the previous time a workout was done.
 const PREVIOUS_WORKOUT_LOOKBACK = 40;
-// Pro subscribers earn double XP on every workout (see constants/pro.ts).
-const PRO_XP_MULTIPLIER = 2;
 const MAX_ROUTE_POINTS = 20000; // ~5.5hrs at one point/sec — well beyond any real workout
 // How often the time zone streak days are computed in may change. Without a
 // limit, a client could claim a different zone on every call and log three
@@ -236,7 +234,7 @@ function newFeedItem(
 // counts for that week), but that only picks which local calendar the
 // server's clock is read in: zone changes are rate-limited and the stored
 // week never moves backwards, so zone-hopping can't manufacture weeks.
-export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, async (request) => {
+export const completeWorkout = onCall(async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
     throw new HttpsError('unauthenticated', 'Must be signed in to complete a workout.');
@@ -248,21 +246,10 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     request.data;
   const requestedTimeZone = canonicalTimeZone(request.data.timeZone);
 
-  // Checked against RevenueCat on the server, before (not inside) the
-  // transaction since it's a network call. Any failure — no secret, outage,
-  // lapsed subscription — just means normal XP; it never blocks finishing.
-  // Started now and awaited inside the transaction, so the RevenueCat call
-  // overlaps with the database reads instead of running before them.
-  const revenueCatSecret = REVENUECAT_SECRET_KEY.value();
-  const proMultiplier = (async () => {
-    if (!revenueCatSecret) return 1;
-    try {
-      return (await isProSubscriber(uid, revenueCatSecret)) ? PRO_XP_MULTIPLIER : 1;
-    } catch (e) {
-      console.warn('Pro check failed during completeWorkout; awarding base XP', e);
-      return 1;
-    }
-  })();
+  // Everyone earns the same XP: ranks are compared between friends, so
+  // they can't be bought. (Pro used to double it.) `xpMultiplier` stays on
+  // the log and the result for older app builds, always 1.
+  const xpMultiplier = 1;
 
   const userRef = db.collection('users').doc(uid);
   const logRef = db.collection('workoutLogs').doc(uid).collection('logs').doc();
@@ -373,9 +360,8 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
     const improvementXp = improvements.reduce((sum, i) => sum + i.xp, 0);
     const baseStreakBonus = week.bonusXp;
     const baseXp = exerciseXp + setXp + distanceXp + prBonus + improvementXp;
-    const xpMultiplier = await proMultiplier;
-    const xpEarned = (baseXp + baseStreakBonus) * xpMultiplier;
-    const streakBonus = baseStreakBonus * xpMultiplier;
+    const xpEarned = baseXp + baseStreakBonus;
+    const streakBonus = baseStreakBonus;
 
     const levelBefore = levelForXp(profile.xp ?? 0);
     const levelAfter = levelForXp((profile.xp ?? 0) + xpEarned);
@@ -508,6 +494,8 @@ export const completeWorkout = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, asyn
       personalRecords,
       levelBefore,
       levelAfter,
+      xpBefore: profile.xp ?? 0,
+      xpAfter: (profile.xp ?? 0) + xpEarned,
       xpMultiplier,
       breakdown: {
         exercises: totals.exercisesDone,

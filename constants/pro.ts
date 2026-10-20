@@ -15,9 +15,9 @@ export const FREE_CUSTOM_WORKOUT_LIMIT = 5;
 // the website copy (website/index.html) — keep the two in sync.
 export const PRO_FEATURES: PlanFeature[] = [
   {
-    icon: 'flash',
-    title: '2× XP on every workout',
-    description: 'Level up twice as fast while you’re subscribed, weekly goal bonuses included.',
+    icon: 'shield',
+    title: 'Gold rank frame',
+    description: 'A gold frame around your rank emblem, on your profile and wherever friends see it.',
   },
   {
     icon: 'pulse',
@@ -75,7 +75,7 @@ export const PRO_FEATURES: PlanFeature[] = [
 // What stays free, listed on the paywall so it's clear nobody loses the core
 // app by not subscribing.
 export const FREE_FEATURES = [
-  'Unlimited workout logging, weekly goals, XP, and badges',
+  'Unlimited workout logging, programs, weekly goals, ranks, and badges',
   'Rest timer and "last time" numbers while you lift',
   'Consistency calendar, weekly stats, and personal records',
   'GPS walks, runs, and rides',

@@ -32,6 +32,8 @@ export interface CompletionResult {
   personalRecords?: PersonalRecordResult[];
   levelBefore?: number;
   levelAfter?: number;
+  xpBefore?: number; // total XP before this workout; absent from older functions
+  xpAfter?: number;
   xpMultiplier?: number; // 2 for Pro subscribers; absent from older functions
   breakdown?: XpBreakdown; // absent from older functions
   week?: WeekResult; // absent from older functions

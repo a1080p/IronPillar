@@ -10,7 +10,8 @@ import { Avatar } from '../../components/Avatar';
 import { FlameIcon, GroupIcon, GymIcon } from '../../components/icons/BrandIcons';
 import { radii, spacing, typography } from '../../constants/theme';
 import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
-import { levelProgress } from '../../constants/gamification';
+import { rankProgress } from '../../constants/rank';
+import { RankEmblem } from '../../components/RankEmblem';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWorkoutLogs } from '../../hooks/useWorkoutLogs';
 import { useEarnedBadges } from '../../hooks/useEarnedBadges';
@@ -34,6 +35,7 @@ export default function ProfileScreen() {
   const { earned, earnedAt } = useEarnedBadges(user?.uid);
   const stats = useAchievementStats(user?.uid, profile, logs.length);
   const streak = useActiveStreak();
+  const { isPro } = usePurchases();
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
 
   if (!profile || !user) {
@@ -44,7 +46,7 @@ export default function ProfileScreen() {
     );
   }
 
-  const { level, xpInto, xpNeeded } = levelProgress(profile.xp);
+  const rp = rankProgress(profile.xp);
   const handle = profile.username ? `@${profile.username}` : '';
 
   return (
@@ -69,15 +71,21 @@ export default function ProfileScreen() {
           {handle ? <Text style={styles.handle}>{handle}</Text> : null}
         </View>
 
-        <View style={styles.levelRow}>
-          <Text style={styles.levelLabel}>Lvl. {level}</Text>
+        <Pressable
+          style={styles.levelRow}
+          onPress={() => router.push('/rank')}
+          accessibilityRole="button"
+          accessibilityLabel={`Rank ${rp.rank.name}. ${rp.next ? `${rp.xpToNext} XP to ${rp.next.name}` : 'Top rank'}`}
+        >
+          <RankEmblem rank={rp.rank} size={36} framed={isPro} />
           <View style={{ flex: 1, marginHorizontal: spacing.sm }}>
-            <ProgressBar progress={xpInto / xpNeeded} />
+            <Text style={styles.levelLabel}>{rp.rank.name}</Text>
+            <ProgressBar progress={rp.progress} />
           </View>
-          <Text style={styles.levelLabel}>Lvl. {level + 1}</Text>
-        </View>
+          {rp.next && <RankEmblem rank={rp.next} size={28} />}
+        </Pressable>
         <Text style={styles.xpIntoLabel}>
-          {xpInto}/{xpNeeded} xp
+          {rp.next ? `${rp.xpToNext.toLocaleString()} XP to ${rp.next.name}` : 'Top rank reached'}
         </Text>
 
         <View style={styles.statsRow}>
