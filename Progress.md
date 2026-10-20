@@ -4,6 +4,18 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-20 (later): Workout type colors, rotating greeting, ranks intro, friends' ranks
+
+- **Workout types** (`constants/workoutTypes.ts`): Strength (blue), Cardio (orange), HIIT (red), Mobility (teal), Outdoor (green), Sports (purple), from each template's browse category (program/custom/preset days: timed-only → cardio, else strength). Shown as accents, not fills: Home Today chip + colored stripes on Other workouts + week dots tinted by that day's workout; Browse cards are light with a type stripe and icon, section icons tinted; History rows get a type dot. Light/dark variants for contrast.
+- **Greeting** rotates each app open (launch, or return after 30+ min; counter in AsyncStorage) across hello variants and context-aware lines; smaller (18pt) so it stays one or two lines.
+- **"Levels are now ranks"** one-time sheet for accounts with XP (per uid in AsyncStorage), with See My Rank.
+- **Friends' ranks:** server now copies XP onto friendship docs (on friend add/accept and on every workout) and onto workout feed items (`actorXp`); friends list, Social friends and feed workout items show the emblem. Existing friendships get XP after that friend's next workout (or a one-off backfill).
+- Profile stats row: week streak, workouts (→ History), friends; raw XP removed. History labels old logs' bonus "Streak Bonus" (only logs with `weekCountAfter` say "Weekly Goal Bonus"). Fixed invisible calorie text on Browse cards.
+- **Verified in the simulator:** Home (greeting rotated, stripes), ranks sheet, Browse colors, History dots. **Not verified:** friend emblems (needs deploy + a friend workout), rank-up screen.
+- **Still not deployed:** functions (2× removal, xpBefore/After, friend XP copies).
+
+---
+
 ## 2026-10-20: Ranks replace levels on screen; Pro 2x XP removed; Home redesign
 
 - **Ranks** (`constants/rank.ts`, `components/RankEmblem.tsx`, `app/rank.tsx`): Iron → Bronze → Silver → Gold → Platinum → Diamond (III/II/I each) → Pillar, 19 ranks from total XP (Silver ~5 weeks, Gold ~4 months, Pillar ~2 years at 3×/week). Rank never goes down. The header flame is now the rank emblem (taps to the rank screen: progress, "about N workouts", full ladder). Profile and friend profiles show rank instead of "Lvl. N". Level badges remain in the collection; levels are otherwise hidden.

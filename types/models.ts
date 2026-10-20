@@ -60,6 +60,7 @@ export interface Friend {
   uid: string;
   name: string;
   username: string;
+  xp?: number; // copy of the friend's XP for showing their rank (absent on older friendships)
   since: string; // ISO timestamp
 }
 
@@ -148,6 +149,7 @@ export interface WorkoutLog {
   xpMultiplier?: number; // 2 when earned as a Pro subscriber
   streakBonusEarned: number;
   streakCountAfter: number;
+  weekCountAfter?: number; // set once the weekly goal shipped; older logs earned a daily-streak bonus
   // Present only when workoutSource is 'outdoor' (GPS-tracked walk/run/bike).
   activityType?: OutdoorActivityType;
   distanceMeters?: number;
@@ -246,6 +248,7 @@ export interface ActivityFeedItem {
     | 'friend_request_accepted';
   actorUid: string;
   actorName: string;
+  actorXp?: number; // on workout items: the actor's XP after it, for their rank
   message: string;
   subject?: string; // e.g. "Core Crusher" or "the Journey Begins badge"
   myReactions?: { heart?: boolean; congrats?: boolean }; // reactions you've sent

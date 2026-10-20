@@ -117,7 +117,7 @@ export default function WorkoutLogDetailScreen() {
           <Text style={styles.xpValue}>+{log.xpEarned} XP</Text>
           <Text style={styles.xpDetail}>
             {[
-              log.streakBonusEarned > 0 ? `includes +${log.streakBonusEarned} weekly goal bonus` : null,
+              log.streakBonusEarned > 0 ? `includes +${log.streakBonusEarned} ${log.weekCountAfter != null ? 'weekly goal' : 'streak'} bonus` : null,
               (log.xpMultiplier ?? 1) > 1 ? `${log.xpMultiplier}× Pro` : null,
               log.streakCountAfter > 0 ? `week streak: ${log.streakCountAfter}` : null,
             ]

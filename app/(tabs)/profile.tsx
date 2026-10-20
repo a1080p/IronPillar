@@ -89,9 +89,18 @@ export default function ProfileScreen() {
         </Text>
 
         <View style={styles.statsRow}>
-          <Stat icon={<FlameIcon size={16} color={colors.accentFlame} />} value={streak} />
-          <Stat icon={<GymIcon size={16} color={colors.primary} />} value={logs.length} />
-          <Stat label="xp" value={profile.xp} />
+          <Stat
+            icon={<FlameIcon size={16} color={colors.accentFlame} />}
+            value={streak}
+            onPress={() => router.push('/')}
+            accessibilityLabel={`${streak} week streak`}
+          />
+          <Stat
+            icon={<GymIcon size={16} color={colors.primary} />}
+            value={logs.length}
+            onPress={() => router.push('/history' as Href)}
+            accessibilityLabel={`${logs.length} workouts. View history`}
+          />
           <Stat
             icon={<GroupIcon size={16} color={colors.primary} />}
             value={profile.friendCount}

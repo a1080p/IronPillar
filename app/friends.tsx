@@ -1,3 +1,5 @@
+import { RankEmblem } from '../components/RankEmblem';
+import { rankForXp } from '../constants/rank';
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -46,6 +48,7 @@ export default function FriendsScreen() {
                 <Text style={styles.name}>{friend.name}</Text>
                 <Text style={styles.handle}>@{friend.username}</Text>
               </View>
+              {friend.xp != null && <RankEmblem rank={rankForXp(friend.xp)} size={24} />}
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Pressable>
           ))

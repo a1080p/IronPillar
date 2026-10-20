@@ -24,7 +24,9 @@ import { formatShortDate } from '../../lib/dates';
 import { pickQuickStartWorkouts } from '../../lib/recommendations';
 import { useRecommendedWorkout } from '../../hooks/useRecommendedWorkout';
 import { useWeekProgress } from '../../hooks/useActiveStreak';
-import { nextProgramDay, programById, suggestedProgram } from '../../data/programs';
+import { PROGRAM_DAYS, nextProgramDay, programById, suggestedProgram } from '../../data/programs';
+import { WORKOUT_TYPES, workoutTypeColor, workoutTypeOf, workoutTypeOfLog } from '../../constants/workoutTypes';
+import { AppState } from 'react-native';
 import { FlameIcon } from '../../components/icons/BrandIcons';
 import { dedupeRecentWorkouts, hideRecent, loadHiddenRecents } from '../../lib/recentWorkouts';
 import { deleteWorkoutLog } from '../../lib/workoutCompletion';
@@ -42,22 +44,61 @@ import { lbToDisplay, weightUnit } from '../../lib/units';
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const PR_RECENT_DAYS = 14;
+const OPEN_COUNT_KEY = 'home_open_count';
+// Coming back after this long counts as a new app open.
+const REOPEN_AFTER_MS = 30 * 60 * 1000;
 
-// A greeting that knows where the week stands.
+// How many times the app has been opened (launches, plus returns after half
+// an hour away), so the greeting can change each time.
+function useAppOpenCount() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let hiddenAt = 0;
+    const bump = () =>
+      AsyncStorage.getItem(OPEN_COUNT_KEY)
+        .then((v) => {
+          const next = (Number(v) || 0) + 1;
+          setCount(next);
+          return AsyncStorage.setItem(OPEN_COUNT_KEY, String(next));
+        })
+        .catch(() => {});
+    bump();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') hiddenAt = Date.now();
+      else if (hiddenAt && Date.now() - hiddenAt >= REOPEN_AFTER_MS) bump();
+    });
+    return () => sub.remove();
+  }, []);
+  return count;
+}
+
+// A greeting that knows where the week stands, worded differently each time
+// the app is opened (`variant` counts app opens).
 function greeting(
   name: string | undefined,
   hour: number,
   week: { count: number; goal: number; goalHit: boolean },
   trainedToday: boolean,
-  todayName?: string
+  variant: number,
+  todayName?: string,
+  nextRank?: string
 ) {
   const first = name?.split(' ')[0];
-  const hello = hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening';
+  const hellos = [hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening', 'Hey', 'Welcome back'];
+  const hello = hellos[variant % hellos.length];
   const who = first ? `${hello}, ${first}.` : `${hello}.`;
-  if (trainedToday) return `${who} Nice work today.`;
-  if (week.goalHit) return `${who} Weekly goal hit. Anything now is a bonus.`;
-  if (todayName) return `${who} ${todayName} today.`;
-  return `${who} ${week.count} of ${week.goal} this week.`;
+  const pick = (lines: string[]) => lines[Math.floor(variant / hellos.length) % lines.length];
+  const left = week.goal - week.count;
+  if (trainedToday) return `${who} ${pick(['Nice work today.', "Today's done. Recover well.", 'Logged. See you next time.'])}`;
+  if (week.goalHit)
+    return `${who} ${pick(['Weekly goal hit. Anything now is a bonus.', 'Goal done for the week. Extra credit time.', 'Week handled. Rest is earned too.'])}`;
+  if (todayName)
+    return `${who} ${pick([`${todayName} today.`, `${todayName} is up next.`, `Ready for ${todayName}?`, `${left} to go this week.`])}`;
+  return `${who} ${pick([
+    `${week.count} of ${week.goal} this week.`,
+    "Let's add one to the week.",
+    nextRank ? `Every workout moves you toward ${nextRank}.` : `${left} to go this week.`,
+  ])}`;
 }
 
 // "Last time" for a workout: the first exercise's sets from the most recent
@@ -124,6 +165,33 @@ export default function HomeScreen() {
     };
   }, [user]);
 
+  // Once per account: explain that levels became ranks. Skipped for new
+  // accounts (nothing changed for them) and while the first-run tour is up.
+  useEffect(() => {
+    if (!user || !profile || tourVisible) return;
+    const key = `ranks_intro_seen_${user.uid}`;
+    let cancelled = false;
+    AsyncStorage.getItem(key)
+      .then((seen) => {
+        if (cancelled || seen) return;
+        AsyncStorage.setItem(key, '1').catch(() => {});
+        if (!profile.xp) return;
+        const rank = rankProgress(profile.xp).rank;
+        appAlert(
+          'Levels are now ranks',
+          `You're ${rank.name}. Ranks go from Iron to Pillar, rise with every workout, and never drop. Tap the emblem at the top any time to see the ladder.`,
+          [
+            { text: 'Got It', style: 'cancel' },
+            { text: 'See My Rank', onPress: () => router.push('/rank') },
+          ]
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, !!profile, tourVisible]);
+
   const finishTour = () => {
     setTourVisible(false);
     scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -186,6 +254,12 @@ export default function HomeScreen() {
   const units = useUnits();
   const { items: feed } = useActivityFeed(user?.uid);
   const rp = rankProgress(profile?.xp);
+  const { isDark } = useTheme();
+  const openCount = useAppOpenCount();
+  const workoutsById = useMemo(
+    () => new Map<string, WorkoutTemplate | CustomWorkout>([...templates, ...PROGRAM_DAYS, ...customWorkouts].map((w) => [w.id, w])),
+    [templates, customWorkouts]
+  );
   const program = programById(profile?.programId);
   const programNext = useMemo(() => (program ? nextProgramDay(program, logs) : null), [program, logs]);
   const suggested = suggestedProgram(profile?.experienceLevel, profile?.barrier);
@@ -206,14 +280,23 @@ export default function HomeScreen() {
   // Monday-to-Sunday dots: a day is filled when a workout that counts
   // toward the week (some XP, or 10+ minutes) was logged on it.
   const todayStr = todayDateString();
-  const trainedDays = new Set(
-    logs
-      .filter((l) => !l.imported && (l.xpEarned > 0 || l.durationSeconds >= 600))
-      .map((l) => todayDateString(new Date(l.completedAt)))
-  );
+  // Each trained day takes the color of its first workout's type.
+  const trainedDays = new Map<string, string>();
+  for (const l of [...logs].reverse()) {
+    if (l.imported || !(l.xpEarned > 0 || l.durationSeconds >= 600)) continue;
+    const day = todayDateString(new Date(l.completedAt));
+    if (!trainedDays.has(day)) trainedDays.set(day, workoutTypeColor(workoutTypeOfLog(l, workoutsById), isDark));
+  }
   const weekDays = WEEKDAY_LABELS.map((label, i) => {
     const date = offsetDateString(week.weekStart, i);
-    return { label, date, trained: trainedDays.has(date), isToday: date === todayStr, future: date > todayStr };
+    return {
+      label,
+      date,
+      trained: trainedDays.has(date),
+      color: trainedDays.get(date),
+      isToday: date === todayStr,
+      future: date > todayStr,
+    };
   });
   const trainedToday = trainedDays.has(todayStr);
 
@@ -316,7 +399,7 @@ export default function HomeScreen() {
       <TopBar />
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll}>
         <Text style={styles.heading}>
-          {greeting(profile?.name, new Date().getHours(), week, trainedToday, programNext?.day.name)}
+          {greeting(profile?.name, new Date().getHours(), week, trainedToday, openCount, programNext?.day.name, rp.next?.name)}
         </Text>
 
         {loading && <Text style={styles.note}>Loading workouts...</Text>}
@@ -362,6 +445,10 @@ export default function HomeScreen() {
                   DAY {programNext.index + 1} OF {program.days.length}
                 </Text>
               )}
+              <View style={styles.typeChip}>
+                <Ionicons name={WORKOUT_TYPES[workoutTypeOf(todayWorkout)].icon} size={12} color={colors.primary} />
+                <Text style={styles.typeChipText}>{WORKOUT_TYPES[workoutTypeOf(todayWorkout)].label.toUpperCase()}</Text>
+              </View>
               <Text style={styles.todayTitle}>{todayWorkout.name}</Text>
               <Text style={styles.todayMeta}>
                 {todayWorkout.durationMinutes} min · {todayWorkout.exercises.length} exercises
@@ -416,7 +503,7 @@ export default function HomeScreen() {
                 <View
                   style={[
                     styles.dayDot,
-                    d.trained && styles.dayDotDone,
+                    d.trained && { backgroundColor: d.color ?? colors.primary },
                     d.isToday && !d.trained && styles.dayDotToday,
                     d.future && styles.dayDotFuture,
                   ]}
@@ -470,7 +557,7 @@ export default function HomeScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.otherRow}>
             {program && recommended && (
               <Pressable
-                style={styles.otherCard}
+                style={[styles.otherCard, { borderLeftColor: workoutTypeColor(workoutTypeOf(recommended), isDark) }]}
                 onPress={() => router.push(`/workout/${recommended.id}`)}
                 accessibilityRole="button"
                 accessibilityLabel={`Something different: ${recommended.name}`}
@@ -483,7 +570,7 @@ export default function HomeScreen() {
             {recentWorkouts.map((log) => (
               <Pressable
                 key={log.id}
-                style={styles.otherCard}
+                style={[styles.otherCard, { borderLeftColor: workoutTypeColor(workoutTypeOfLog(log, workoutsById), isDark) }]}
                 accessibilityRole="button"
                 accessibilityLabel={`${log.workoutName}, last done ${formatShortDate(log.completedAt)}`}
                 accessibilityHint="Long press for options"
@@ -502,7 +589,7 @@ export default function HomeScreen() {
             {quickStarts.map((w) => (
               <Pressable
                 key={w.id}
-                style={styles.otherCard}
+                style={[styles.otherCard, { borderLeftColor: workoutTypeColor(workoutTypeOf(w), isDark) }]}
                 onPress={() => router.push(`/workout/${w.id}`)}
                 accessibilityRole="button"
                 accessibilityLabel={`Quick start: ${w.name}, ${w.durationMinutes} minutes`}
@@ -698,7 +785,7 @@ function QuickStartCard({
 const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: 120 },
-  heading: { fontSize: typography.sizes.lg, fontWeight: '700', color: colors.primary, marginBottom: spacing.xl },
+  heading: { fontSize: typography.sizes.md, fontWeight: '700', color: colors.primary, lineHeight: 24, marginBottom: spacing.lg },
   note: { color: colors.textMuted, marginBottom: spacing.lg },
   section: { marginBottom: spacing.xl },
   sectionLabel: { fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
@@ -775,7 +862,19 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   friendInitialText: { color: colors.textOnDark, fontWeight: '800', fontSize: 12 },
   friendsText: { flex: 1, color: colors.text, fontWeight: '600', fontSize: typography.sizes.small },
   otherRow: { gap: spacing.md, paddingRight: spacing.lg },
+  typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    backgroundColor: colors.textOnDark,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  typeChipText: { color: colors.primary, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
   otherCard: {
+    borderLeftWidth: 4,
     width: 140,
     minHeight: 96,
     borderRadius: radii.md,

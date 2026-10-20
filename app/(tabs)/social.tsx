@@ -1,3 +1,5 @@
+import { RankEmblem } from '../../components/RankEmblem';
+import { rankForXp } from '../../constants/rank';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { appAlert } from '../../lib/appAlert';
@@ -221,6 +223,7 @@ export default function SocialScreen() {
                     <Text style={styles.friendName}>{friend.name}</Text>
                     <Text style={styles.friendHandle}>@{friend.username}</Text>
                   </View>
+                  {friend.xp != null && <RankEmblem rank={rankForXp(friend.xp)} size={24} />}
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </Pressable>
               ))}
@@ -236,7 +239,11 @@ export default function SocialScreen() {
         ) : (
           items.map((item) => (
             <View key={item.id} style={styles.feedItem}>
-              {iconForType[item.type] ?? iconForType.friend_workout}
+              {item.type === 'friend_workout' && item.actorXp != null && item.actorUid !== user?.uid ? (
+                <RankEmblem rank={rankForXp(item.actorXp)} size={22} />
+              ) : (
+                iconForType[item.type] ?? iconForType.friend_workout
+              )}
               <View style={{ flex: 1 }}>
                 <Text
                   style={styles.feedMessage}

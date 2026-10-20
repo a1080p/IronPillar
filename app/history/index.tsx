@@ -14,7 +14,11 @@ import { formatDistance } from '../../lib/units';
 import { useUnits } from '../../hooks/useUnits';
 import type { UnitSystem } from '../../types/models';
 import { deleteWorkoutLog } from '../../lib/workoutCompletion';
-import type { WorkoutLog } from '../../types/models';
+import type { CustomWorkout, WorkoutLog, WorkoutTemplate } from '../../types/models';
+import { useWorkoutTemplates } from '../../hooks/useWorkoutTemplates';
+import { useCustomWorkouts } from '../../hooks/useCustomWorkouts';
+import { PROGRAM_DAYS } from '../../data/programs';
+import { WORKOUT_TYPES, workoutTypeColor, workoutTypeOfLog } from '../../constants/workoutTypes';
 
 function activityMeta(log: WorkoutLog, units: UnitSystem): string {
   if (log.workoutSource === 'outdoor') {
@@ -30,10 +34,16 @@ function formatDuration(seconds: number) {
 }
 
 export default function HistoryScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { user } = useAuth();
   const { logs, loading } = useWorkoutLogs(user?.uid);
+  const { templates } = useWorkoutTemplates();
+  const { customWorkouts } = useCustomWorkouts(user?.uid);
+  const workoutsById = useMemo(
+    () => new Map<string, WorkoutTemplate | CustomWorkout>([...templates, ...PROGRAM_DAYS, ...customWorkouts].map((w) => [w.id, w])),
+    [templates, customWorkouts]
+  );
   const units = useUnits();
 
   const confirmDelete = (log: WorkoutLog) => {
@@ -74,6 +84,10 @@ export default function HistoryScreen() {
             accessibilityLabel={`${log.workoutName}, ${formatShortDate(log.completedAt)}. Shows what you did`}
           >
             <View style={styles.cardHeader}>
+              <View
+                style={[styles.typeDot, { backgroundColor: workoutTypeColor(workoutTypeOfLog(log, workoutsById), isDark) }]}
+                accessibilityLabel={WORKOUT_TYPES[workoutTypeOfLog(log, workoutsById)].label}
+              />
               <Text style={[styles.workoutName, { flex: 1 }]} numberOfLines={1}>
                 {log.workoutName}
               </Text>
@@ -95,7 +109,7 @@ export default function HistoryScreen() {
               {activityMeta(log, units)}
             </Text>
             {log.streakBonusEarned > 0 && (
-              <Text style={styles.streakBonus}>Weekly Goal Bonus: +{log.streakBonusEarned}xp</Text>
+              <Text style={styles.streakBonus}>{log.weekCountAfter != null ? 'Weekly Goal Bonus' : 'Streak Bonus'}: +{log.streakBonusEarned}xp</Text>
             )}
           </Pressable>
         ))}
@@ -121,5 +135,6 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   xp: { fontWeight: '700', color: colors.accentFlameText },
   deleteButton: { marginLeft: spacing.sm },
   meta: { color: colors.textMuted, fontSize: typography.sizes.small, marginTop: 4 },
+  typeDot: { width: 10, height: 10, borderRadius: 5, marginRight: spacing.sm },
   streakBonus: { color: colors.text, fontSize: typography.sizes.small, marginTop: 2 },
 });

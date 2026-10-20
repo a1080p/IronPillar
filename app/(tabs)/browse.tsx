@@ -1,3 +1,4 @@
+import { WORKOUT_TYPES, workoutTypeColor, workoutTypeOf } from '../../constants/workoutTypes';
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -47,7 +48,7 @@ const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 export default function BrowseScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { templates, loading } = useWorkoutTemplates();
   const browseWorkouts = templates.filter((t) => t.category === 'browse');
@@ -81,7 +82,9 @@ export default function BrowseScreen() {
               <Ionicons
                 name={CATEGORY_ICONS[category] ?? 'fitness'}
                 size={18}
-                color={colors.primary}
+                color={
+                  workouts[0] ? workoutTypeColor(workoutTypeOf(workouts[0]), isDark) : colors.primary
+                }
               />
               <Text style={styles.sectionLabel}>{category}</Text>
             </View>
@@ -102,22 +105,25 @@ export default function BrowseScreen() {
 }
 
 function BrowseCard({ workout }: { workout: WorkoutTemplate }) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
+  const type = workoutTypeOf(workout);
+  const typeColor = workoutTypeColor(type, isDark);
   return (
     <Pressable
-      style={styles.card}
+      style={[styles.card, { borderLeftColor: typeColor }]}
       onPress={() => router.push(`/workout/${workout.id}`)}
       accessibilityRole="button"
       accessibilityLabel={`${workout.name}, ${workout.durationMinutes} minutes`}
     >
+      <Ionicons name={WORKOUT_TYPES[type].icon} size={16} color={typeColor} />
       <Text style={styles.cardTitle} numberOfLines={2}>
         {workout.name}
       </Text>
       <View style={styles.cardMetaRow}>
         <Text style={styles.cardMeta}>{workout.durationMinutes} Min</Text>
         {workout.equipmentRequired && (
-          <Ionicons name="barbell-outline" size={13} color={colors.textOnDark} />
+          <Ionicons name="barbell-outline" size={13} color={colors.textMuted} />
         )}
       </View>
       <Text style={styles.cardCalories}>{workout.caloriesRangeLabel}</Text>
@@ -146,7 +152,8 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   sectionLabel: { fontWeight: '700', color: colors.primary, fontSize: typography.sizes.md },
   row: { gap: spacing.md, paddingRight: spacing.lg },
   card: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surfaceMuted,
+    borderLeftWidth: 4,
     borderRadius: radii.md,
     padding: spacing.md,
     width: 160,
@@ -154,7 +161,7 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardTitle: {
-    color: colors.textOnDark,
+    color: colors.text,
     fontWeight: '700',
     fontSize: typography.sizes.small,
   },
@@ -164,6 +171,6 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: spacing.sm,
   },
-  cardMeta: { color: colors.textOnDark, fontSize: typography.sizes.small },
-  cardCalories: { color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 },
+  cardMeta: { color: colors.textMuted, fontSize: typography.sizes.small },
+  cardCalories: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
 });

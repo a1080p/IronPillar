@@ -212,7 +212,7 @@ function newFeedItem(
   actorName: string,
   message: string,
   subject?: string, // what the item is about (workout/badge name), for reactions
-  extra: { postId?: string; photoUrl?: string; caption?: string } = {}
+  extra: { postId?: string; photoUrl?: string; caption?: string; actorXp?: number } = {}
 ) {
   return {
     type,
@@ -443,8 +443,14 @@ export const completeWorkout = onCall(async (request) => {
           profile.name,
           `${profile.name} completed ${workout.name}!`,
           workout.name,
-          { postId }
+          { postId, actorXp: (profile.xp ?? 0) + xpEarned }
         )
+      );
+      // Friends' lists show this person's rank from their copy of the XP.
+      tx.set(
+        db.collection('friendships').doc(friendUid).collection('friends').doc(uid),
+        { xp: (profile.xp ?? 0) + xpEarned },
+        { merge: true }
       );
       // One feed item however many badges were earned at once.
       if (badgesEarned.length === 1) {
@@ -836,22 +842,26 @@ const outgoingRef = (fromUid: string, toUid: string) =>
 
 // Makes two people friends (both sides at once) and clears any requests
 // between them. Runs inside a transaction that has already read both users.
+// `xp` is copied so friend lists can show each other's rank; completeWorkout
+// keeps it current.
 function writeFriendship(
   tx: FirebaseFirestore.Transaction,
-  a: { uid: string; name: string; username: string },
-  b: { uid: string; name: string; username: string }
+  a: { uid: string; name: string; username: string; xp?: number },
+  b: { uid: string; name: string; username: string; xp?: number }
 ) {
   const now = new Date().toISOString();
   tx.set(db.collection('friendships').doc(a.uid).collection('friends').doc(b.uid), {
     uid: b.uid,
     name: b.name,
     username: b.username,
+    xp: b.xp ?? 0,
     since: now,
   });
   tx.set(db.collection('friendships').doc(b.uid).collection('friends').doc(a.uid), {
     uid: a.uid,
     name: a.name,
     username: a.username,
+    xp: a.xp ?? 0,
     since: now,
   });
   tx.update(db.collection('users').doc(a.uid), { friendCount: FieldValue.increment(1) });
@@ -909,10 +919,10 @@ export const addFriend = onCall(async (request) => {
     if (friendSnap.exists) {
       throw new HttpsError('already-exists', 'You are already friends.');
     }
-    const self = selfSnap.data() as { name: string; username: string };
-    const target = targetSnap.data() as { name: string; username: string };
-    const me = { uid, name: self.name, username: self.username };
-    const them = { uid: targetUid, name: target.name, username: target.username };
+    const self = selfSnap.data() as { name: string; username: string; xp?: number };
+    const target = targetSnap.data() as { name: string; username: string; xp?: number };
+    const me = { uid, name: self.name, username: self.username, xp: self.xp };
+    const them = { uid: targetUid, name: target.name, username: target.username, xp: target.xp };
 
     if (theirRequestSnap.exists) {
       writeFriendship(tx, me, them);
@@ -947,12 +957,12 @@ export const respondFriendRequest = onCall(async (request) => {
       tx.delete(outgoingRef(fromUid, uid));
       return { status: 'declined' };
     }
-    const self = selfSnap.data() as { name: string; username: string };
-    const from = fromSnap.data() as { name: string; username: string };
+    const self = selfSnap.data() as { name: string; username: string; xp?: number };
+    const from = fromSnap.data() as { name: string; username: string; xp?: number };
     writeFriendship(
       tx,
-      { uid, name: self.name, username: self.username },
-      { uid: fromUid, name: from.name, username: from.username }
+      { uid, name: self.name, username: self.username, xp: self.xp },
+      { uid: fromUid, name: from.name, username: from.username, xp: from.xp }
     );
     tx.set(
       db.collection('activityFeed').doc(fromUid).collection('items').doc(),
