@@ -46,3 +46,6 @@ serviceAccountKey.json
 # generated native folders
 /ios
 /android
+
+# Firebase emulator logs
+*-debug.log

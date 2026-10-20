@@ -13,6 +13,18 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-20 (security): Check-in photos friends-only in Storage (IP-64); username squatting closed (IP-61) — PR open, not deployed
+
+- **IP-64, `storage.rules`:** `checkins/{uid}/{fileName}` was readable by any signed-in user. Now only the owner or someone in `friendships/{uid}/friends/{reader}` (checked with `firestore.exists()`), the same test `posts/{postId}` uses in `firestore.rules`. This matches the in-app copy and `docs/app-review-reply.md`.
+- **Friends' photos still load.** The feed and post screens show `photoUrl`, a tokened download URL that `createCheckIn` writes into posts and friends' feed items. Token URLs skip Storage rules, so this change doesn't touch them. What the rule blocks is a non-friend reading the file through the SDK (`getBytes`/`getDownloadURL`) by its path. Kept the token URLs: they're only handed out through friend-only Firestore docs, and moving to rule-checked fetches would need a client change and a new build.
+- **Leftover gap (follow-up, Cloud Function, not rules):** `removeFriend` doesn't clear feed items, so someone who was unfriended (not blocked) keeps the old check-in URLs in their feed. `blockUser` does clear them.
+- **Before deploying:** `npm run deploy:rules` goes through the Admin SDK, not the CLI, so it won't grant the Storage service agent the `firebaserules.firestoreServiceAgent` role that cross-service rules need. Without that role, `firestore.exists()` fails and friends get denied (owners still pass). Grant it once (the Firebase console Storage Rules page prompts for it, or `firebase deploy --only storage` does) and test with a friend account after deploying.
+- **IP-61, `firestore.rules`:** re-applied [PR #2](https://github.com/a1080p/IronPillar/pull/2)'s commit onto current main. It applied cleanly: it only touches the `usernames/{username}` block, and the weekly-goal changes are elsewhere in the file. Client `create` on `usernames/{name}` is now refused once `users/{uid}` exists, and the doc can only hold `uid`. Signup still writes `{ uid }` only, in the same transaction as the profile.
+- **Tests:** new `tests/rules.test.ts` (`npm run test:rules`, needs Java 21+; `brew install openjdk@21`) runs both rule files on the Firestore and Storage emulators: 11/11 pass. On main's rules, 4 fail: non-friend read, one-sided friendship, username squat, extra fields. So the tests catch both bugs.
+- **Not done:** rules not deployed, PR not merged. Both wait for the owner's review.
+
+---
+
 ## 2026-10-20 (later): Workout type colors, rotating greeting, ranks intro, friends' ranks
 
 - **Workout types** (`constants/workoutTypes.ts`): Strength (blue), Cardio (orange), HIIT (red), Mobility (teal), Outdoor (green), Sports (purple), from each template's browse category (program/custom/preset days: timed-only → cardio, else strength). Shown as accents, not fills: Home Today chip + colored stripes on Other workouts + week dots tinted by that day's workout; Browse cards are light with a type stripe and icon, section icons tinted; History rows get a type dot. Light/dark variants for contrast.
