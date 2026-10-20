@@ -35,12 +35,6 @@ export function todayDateString(date = new Date()) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-export function yesterdayDateString(date = new Date()) {
-  const d = new Date(date);
-  d.setDate(d.getDate() - 1);
-  return todayDateString(d);
-}
-
 // Same limits as functions/src/achievements.ts.
 export const WEEKLY_GOAL_MIN = 2;
 export const WEEKLY_GOAL_MAX = 6;

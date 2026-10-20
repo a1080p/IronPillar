@@ -124,7 +124,7 @@ export const EXERCISE_CATALOG: CatalogExercise[] = [
   { id: 'machine-shoulder-press', name: 'Machine Shoulder Press', logType: 'reps_weight', equipment: 'machine', primaryMuscles: ['shoulders'], formPhotos: 'Machine_Shoulder_Military_Press' },
   { id: 'lateral-raises', name: 'Lateral Raises', aliases: ['Lateral Raise', 'Dumbbell Lateral Raise', 'Side Lateral Raise'], logType: 'reps_weight', equipment: 'dumbbell', primaryMuscles: ['shoulders'], formPhotos: 'Side_Lateral_Raise' },
   { id: 'dumbbell-shrug', name: 'Dumbbell Shrug', logType: 'reps_weight', equipment: 'dumbbell', primaryMuscles: ['traps'], formPhotos: 'Dumbbell_Shrug' },
-  { id: 'dumbbell-goblet-squat', name: 'Dumbbell Goblet Squat', aliases: ['Goblet Squat'], logType: 'reps_weight', equipment: 'kettlebell', primaryMuscles: ['quadriceps'], formPhotos: 'Goblet_Squat' },
+  { id: 'dumbbell-goblet-squat', name: 'Dumbbell Goblet Squat', aliases: ['Goblet Squat'], logType: 'reps_weight', equipment: 'dumbbell', primaryMuscles: ['quadriceps'], formPhotos: 'Goblet_Squat' },
   { id: 'kettlebell-goblet-squat', name: 'Kettlebell Goblet Squat', logType: 'reps_weight', equipment: 'kettlebell', primaryMuscles: ['quadriceps'], formPhotos: 'Goblet_Squat' },
   { id: 'dumbbell-romanian-deadlift', name: 'Dumbbell Romanian Deadlift', aliases: ['Dumbbell RDL'], logType: 'reps_weight', equipment: 'dumbbell', primaryMuscles: ['hamstrings'], formPhotos: 'Stiff-Legged_Dumbbell_Deadlift' },
   { id: 'dumbbell-lunges', name: 'Dumbbell Lunges', aliases: ['Lunges', 'Lunge'], logType: 'reps_weight', equipment: 'dumbbell', primaryMuscles: ['quadriceps'], formPhotos: 'Dumbbell_Lunges' },
