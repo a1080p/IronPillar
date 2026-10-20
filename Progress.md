@@ -12,7 +12,8 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 - **Friends' ranks:** server now copies XP onto friendship docs (on friend add/accept and on every workout) and onto workout feed items (`actorXp`); friends list, Social friends and feed workout items show the emblem. Existing friendships get XP after that friend's next workout (or a one-off backfill).
 - Profile stats row: week streak, workouts (→ History), friends; raw XP removed. History labels old logs' bonus "Streak Bonus" (only logs with `weekCountAfter` say "Weekly Goal Bonus"). Fixed invisible calorie text on Browse cards.
 - **Verified in the simulator:** Home (greeting rotated, stripes), ranks sheet, Browse colors, History dots. **Not verified:** friend emblems (needs deploy + a friend workout), rank-up screen.
-- **Still not deployed:** functions (2× removal, xpBefore/After, friend XP copies).
+- **Deployed 10-20:** all functions (Pro 2× removed, xpBefore/xpAfter, friend XP copies). Backfilled XP onto existing friendship docs (7 users, 4 with friends, 4 docs).
+- **EAS Update not possible for build 15:** no build profile had a `channel`, so build 15 isn't subscribed to any update branch (runtime 1.0.0 matches, channel is missing). Added `channel: production` / `preview` to `eas.json`; build 16+ can take OTA updates. Today's app changes need build 16 to reach TestFlight.
 
 ---
 
