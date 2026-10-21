@@ -4,6 +4,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { defineSecret } from 'firebase-functions/params';
+import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { randomInt, randomUUID } from 'node:crypto';
 import {
@@ -680,6 +681,33 @@ export const changeUsername = onCall(async (request) => {
     }
     return { username };
   });
+});
+
+// Friendship docs keep a copy of each friend's name (written by
+// writeFriendship). Edit Profile changes users/{uid}.name straight from the
+// client, so copy the new name onto every friend's doc here; otherwise
+// friends keep seeing the old name (IP-63). Usernames are synced by
+// changeUsername above.
+export const syncFriendName = onDocumentUpdated('users/{uid}', async (event) => {
+  const before = event.data?.before.data() as { name?: unknown } | undefined;
+  const after = event.data?.after.data() as { name?: unknown } | undefined;
+  const name = after?.name;
+  if (typeof name !== 'string' || !name || name === before?.name) return;
+  const uid = event.params.uid;
+  const friends = await db.collection('friendships').doc(uid).collection('friends').get();
+  // update(), not set(): a missing doc means that side of the friendship is
+  // gone, and shouldn't be recreated.
+  await Promise.all(
+    friends.docs.map((friend) =>
+      db
+        .collection('friendships')
+        .doc(friend.id)
+        .collection('friends')
+        .doc(uid)
+        .update({ name })
+        .catch(() => {})
+    )
+  );
 });
 
 // A friend's public profile: name, level, streak, badges and lifetime totals.
