@@ -162,8 +162,9 @@ function WearablesSection({ uid }: { uid: string }) {
     return (
       <>
         <Text style={[styles.sectionHeading, { marginTop: spacing.xl }]}>Connected apps</Text>
+        <AppleHealthCard uid={uid} />
         <ProLockCard
-          title="Apple Health & Apple Watch"
+          title="Apple Watch readiness & workout sync"
           description="Save workouts to Apple Health, and use Apple Watch HRV, resting heart rate, and sleep for a daily readiness score."
         />
       </>
@@ -186,7 +187,8 @@ function WearablesSection({ uid }: { uid: string }) {
 function AppleHealthCard({ uid }: { uid: string }) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
-  const health = useAppleHealth(uid, true);
+  const { isPro } = usePurchases();
+  const health = useAppleHealth(uid, isPro);
   const [busy, setBusy] = useState(false);
 
   if (!health.supported) {
@@ -215,7 +217,7 @@ function AppleHealthCard({ uid }: { uid: string }) {
         accessibilityLabel="Connect Apple Health"
       >
         <Text style={styles.connectButtonLabel}>
-          {busy ? 'Connecting...' : 'Connect Apple Health & Apple Watch'}
+          {busy ? 'Connecting...' : isPro ? 'Connect Apple Health & Apple Watch' : 'Connect Apple Health for steps'}
         </Text>
       </Pressable>
     );
@@ -241,8 +243,22 @@ function AppleHealthCard({ uid }: { uid: string }) {
         </View>
       )}
       <Text style={styles.note}>
-        Completed workouts are saved to Apple Health. Manage permissions in the Health app.
+        {!isPro
+          ? 'Steps show on your widget. Manage permissions in the Health app.'
+          : health.needsFullAccess
+            ? 'Only steps are shared so far. Allow heart, sleep, and workouts for your readiness score and to save workouts to Apple Health.'
+            : 'Completed workouts are saved to Apple Health. Manage permissions in the Health app.'}
       </Text>
+      {health.needsFullAccess && (
+        <Pressable
+          style={[styles.connectButton, styles.cardGap]}
+          onPress={handleConnect}
+          disabled={busy}
+          accessibilityRole="button"
+        >
+          <Text style={styles.connectButtonLabel}>{busy ? 'Connecting...' : 'Allow heart, sleep & workouts'}</Text>
+        </Pressable>
+      )}
       <View style={styles.wearableActions}>
         <Text
           style={styles.wearableAction}

@@ -48,8 +48,8 @@ function nextMidnight(from: Date, days = 1) {
 
 export function WidgetSync({ uid }: { uid: string }) {
   const { profile } = useAuth();
-  // The widget is free; steps and calories fill in once their source is on
-  // (Apple Health and calorie tracking are still Pro features in the app).
+  // The widget is free. Steps fill in once Apple Health is connected (steps
+  // are free); calories once calorie tracking (Pro) is on.
   const { isPro } = usePurchases();
   const { logs } = useWorkoutLogs(uid);
   const { metrics } = useProgressMetrics(uid);
@@ -62,10 +62,10 @@ export function WidgetSync({ uid }: { uid: string }) {
     const sub = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       setDay(todayDateString());
-      if (isPro && health.enabled) health.refresh();
+      if (health.enabled) health.refresh();
     });
     return () => sub.remove();
-  }, [isPro, health.enabled, health.refresh]);
+  }, [health.enabled, health.refresh]);
 
   const props = useMemo<TodayWidgetProps | null>(() => {
     if (!profile) return null;
@@ -74,7 +74,7 @@ export function WidgetSync({ uid }: { uid: string }) {
     const calorieGoal = isPro ? profile.calorieGoal ?? estimatedCalorieGoal(profile, weightLb) : null;
     const burned = todaysLogs.reduce((sum, l) => sum + workoutCaloriesBurned(l, weightLb), 0);
     const eaten = entries.reduce((sum, e) => sum + e.calories, 0);
-    const healthConnected = isPro && health.enabled;
+    const healthConnected = health.enabled;
     return {
       ...weekFields(profile),
       steps: healthConnected ? health.snapshot?.stepsToday ?? null : null,

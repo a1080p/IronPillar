@@ -74,5 +74,5 @@ export const FREE_FEATURES = [
   'Consistency calendar, weekly stats, and personal records',
   'GPS walks, runs, and rides',
   'Friends and activity feed',
-  'Home Screen and Lock Screen widgets',
+  'Home Screen and Lock Screen widgets, with steps from Apple Health',
 ];

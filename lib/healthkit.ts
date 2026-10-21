@@ -35,14 +35,44 @@ async function loadHealthKit() {
   return hk.isHealthDataAvailable() ? hk : null;
 }
 
-// Shows Apple's permission sheet (only the first time — iOS never re-prompts,
-// and never tells an app which read types were denied). Returns false when
-// Health isn't available on this device/build at all.
-export async function requestHealthAccess(): Promise<boolean> {
+// 'steps' is the free tier: step count only, nothing written. 'full' is Pro:
+// heart, sleep and workouts for readiness, plus saving workouts to Health.
+export type HealthScope = 'steps' | 'full';
+
+// Shows Apple's permission sheet for any types not asked about before (iOS
+// never re-prompts for the same type, and never says which reads were
+// denied), so going from 'steps' to 'full' later only asks for the rest.
+// Returns false when Health isn't available on this device/build at all.
+export async function requestHealthAccess(scope: HealthScope = 'full'): Promise<boolean> {
   const hk = await loadHealthKit();
   if (!hk) return false;
-  await hk.requestAuthorization({ toRead: [...READ_TYPES], toShare: [...SHARE_TYPES] });
+  if (scope === 'steps') {
+    await hk.requestAuthorization({ toRead: ['HKQuantityTypeIdentifierStepCount'], toShare: [] });
+  } else {
+    await hk.requestAuthorization({ toRead: [...READ_TYPES], toShare: [...SHARE_TYPES] });
+  }
   return true;
+}
+
+// Today's steps only, for the free tier.
+export async function fetchStepsSnapshot(): Promise<HealthSnapshot | null> {
+  const hk = await loadHealthKit();
+  if (!hk) return null;
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const snapshot: HealthSnapshot = { fetchedAt: now.toISOString(), externalWorkouts: [] };
+  try {
+    const steps = await hk.queryStatisticsForQuantity('HKQuantityTypeIdentifierStepCount', ['cumulativeSum'], {
+      unit: 'count',
+      filter: { date: { startDate: startOfToday, endDate: now } },
+    });
+    const sum = steps?.sumQuantity?.quantity;
+    if (sum != null) snapshot.stepsToday = Math.round(sum);
+  } catch (e) {
+    console.warn('HealthKit steps read failed', e);
+  }
+  return snapshot;
 }
 
 export interface ExternalWorkout {

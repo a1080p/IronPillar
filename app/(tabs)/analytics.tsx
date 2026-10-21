@@ -326,14 +326,8 @@ export default function AnalyticsScreen() {
 
         <View style={styles.sectionTitleRow}>
           <Text style={[styles.sectionLabel, { marginBottom: 0, marginTop: 0 }]}>Apple Health</Text>
-          <ProBadge />
         </View>
-        {!isPro ? (
-          <ProLockCard
-            title="Steps, sleep & heart data"
-            description="Connect Apple Health and Apple Watch to see steps, active calories, sleep, and resting heart rate here."
-          />
-        ) : !health.supported ? (
+        {!health.supported ? (
           <Text style={styles.note}>Apple Health is available on iPhone.</Text>
         ) : !health.enabled ? (
           <Pressable
@@ -346,8 +340,20 @@ export default function AnalyticsScreen() {
             accessibilityRole="button"
           >
             <Ionicons name="heart" size={18} color={colors.danger} />
-            <Text style={styles.healthConnectText}>Connect Apple Health & Apple Watch</Text>
+            <Text style={styles.healthConnectText}>
+              {isPro ? 'Connect Apple Health & Apple Watch' : 'Connect Apple Health for steps'}
+            </Text>
           </Pressable>
+        ) : !isPro ? (
+          <>
+            <View style={styles.tileGrid}>
+              <StatTile value={health.snapshot?.stepsToday?.toLocaleString() ?? '—'} label="Steps today" />
+            </View>
+            <ProLockCard
+              title="Sleep, heart & active calories"
+              description="See active calories, sleep, and resting heart rate from Apple Watch here."
+            />
+          </>
         ) : (
           <View style={styles.tileGrid}>
             <StatTile
