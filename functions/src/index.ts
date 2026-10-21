@@ -1210,6 +1210,7 @@ export const removeFriend = onCall(async (request) => {
   if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
   const otherUid = readOtherUid(request.data, uid);
   await unfriend(uid, otherUid);
+  await Promise.all([clearFeedItems(uid, otherUid), clearFeedItems(otherUid, uid)]);
   return { removed: true };
 });
 
