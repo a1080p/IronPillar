@@ -4,6 +4,16 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-21: Pulse check — stale "2× XP" in App Review reply fixed; removeFriend feed-cleanup gap ticketed and fixed in a PR
+
+- **Verified the 10-20 session's claims against code**, not just trusted them: `firestore.rules` and `storage.rules` match the PR #8 narrative exactly (username-squat block, check-in photos gated on owner-or-friend via `firestore.exists`). Root `npm test` 58/58, `npx tsc --noEmit` clean; `functions/` `npm test` 33/33, `npx tsc --noEmit` clean (needed a fresh `npm install` in both — empty by default in this sandbox; the first silent install attempt didn't actually populate `node_modules`, so the first tsc/test run was spurious failures from missing packages, not real ones). The IAM grant claim ("Storage service agent now has `firebaserules.firestoreServiceAgent`") is a GCP project setting this sandbox has no credentials to check (`gcloud auth list` → no credentialed accounts) — not independently re-verified, left as the owner's report.
+- **Found + fixed (merged, [PR #9](https://github.com/a1080p/IronPillar/pull/9)):** `docs/app-review-reply.md`'s Pro feature walkthrough for Apple App Review still listed "2× XP" — removed on 2026-10-20 (`af33094`) in favor of a gold rank frame, and every other current Pro-copy surface (`constants/pro.ts`, website, paywall) already says "gold rank frame." Doc-only text fix, no excluded paths touched, auto-merged per policy.
+- **Found, ticketed, fixed but NOT merged ([PR #10](https://github.com/a1080p/IronPillar/pull/10), [IP-67](https://studiogreatt.atlassian.net/browse/IP-67)):** `removeFriend` (`functions/src/index.ts`) only deletes the `friendships` docs; unlike `blockUser` right below it, it never calls `clearFeedItems`. Someone who's unfriended (not blocked) keeps the ex-friend's old `activityFeed` items — including check-in photo posts — forever, even though a fresh read would now be denied. This was already noted as a known gap in the 10-20 security session's Progress.md entry but never ticketed or fixed at the time; filed as IP-67 and fixed with a 1-line mirror of `blockUser`'s pattern (`functions/` `tsc`/tests clean). Left as a PR, not merged — touches `functions/src/index.ts`, excluded from auto-merge regardless of how small.
+- **Jira hygiene:** IP-64 (check-in photos readable by any signed-in user) and IP-61 (username squatting) were both still showing "To Do" despite being fixed and deployed in PR #8 — verified against current `firestore.rules`/`storage.rules` and transitioned both to Done with a verification comment. IP-37 (theme colors approximated, not exact Figma hex) re-confirmed still open and correctly untouched — same `TODO` comment in `constants/theme.ts` since 10-11, no action taken (needs Figma dev-mode access, not a code fix). IP-63, IP-35, IP-36 re-confirmed still open, correctly untouched.
+- **Jira MCP tools were available this session** (`mcp__Atlassian_Rovo__*`).
+
+---
+
 ## 2026-10-20 (evening): PR #8 merged and rules deployed; build 16 built
 
 - **Merged PR #8** (fast-forward to `d07bf13`): check-in photos readable only by the owner and accepted friends (IP-64); usernames can't be claimed once a profile exists (IP-61). `npm test` 58/58 after merge; the PR's `test:rules` emulator suite passed 11/11 in its session.
