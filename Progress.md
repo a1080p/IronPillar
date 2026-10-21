@@ -4,6 +4,16 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-21 (evening): Test Store prices match the App Store; new subscription review screenshots
+
+- **RevenueCat Test Store** now has `monthly_499` ($4.99/month) and `yearly_3999` ($39.99/year, 1-week free trial for anyone who has never purchased). Both are attached to `iron_pillar_pro` and are the Test Store products in the `default` offering's `$rc_monthly` / `$rc_annual` packages. The old `monthly` ($9.99) and `yearly` ($79.99) Test Store products are still there but no longer in the offering. App Store products were not touched.
+- Why: dev and simulator builds use the Test Store key from `.env`, so they showed $9.99/$79.99 even though App Store Connect (and production builds, which use the `appl_` key from EAS env) were already $4.99/$39.99.
+- **Subscription review screenshots** on `ironpillar_pro_monthly` and `ironpillar_pro_Yearly` were replaced with a new simulator paywall capture showing $39.99/yr and $4.99/mo (`store-screenshots/paywall.png`, gitignored). Checked both uploaded images at full size.
+- **Still blocked:** App Store Connect "Add for Review" on 1.0 says the medium-display (6.3") screenshot slot is empty, even though 5 rendered screenshots are in it. Retry later; if it still fails, remove and re-upload one screenshot.
+- **Anthropic API key "Iron Pillar" expires 2026-10-21 (UTC).** `generateWorkoutDetails` and `parseImport` stop working until a new key is set with `npx firebase functions:secrets:set ANTHROPIC_API_KEY` (run from `functions/`) and those two functions are redeployed.
+
+---
+
 ## 2026-10-21 (later): Bug sweep — removeFriend feed cleanup (IP-67), stale friend names (IP-63), clampWeeklyGoal(null); Oct 12 Vercel failures
 
 - **IP-67 merged:** cherry-picked [PR #10](https://github.com/a1080p/IronPillar/pull/10)'s commit. `removeFriend` now clears both feeds like `blockUser`. PR #10 can be closed once main is pushed.
