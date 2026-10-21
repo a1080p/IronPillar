@@ -3,7 +3,7 @@
 Paste the section below into the reply in App Store Connect, and paste it again
 into App Review Information → Notes. Attach the screen recording to the reply.
 Replace `[review account email]` / `[password]` with the demo account you added.
-Submit build 1.0.0 (15) or later with this reply: earlier builds still have the
+Submit build 1.0.0 (16) or later with this reply: earlier builds still have the
 Sign in with Apple problem.
 
 ---
@@ -11,7 +11,7 @@ Sign in with Apple problem.
 Hello App Review team, thank you for the review.
 
 **Sign in with Apple (Guideline 2.1(a))**
-Thank you for catching this. Creating an account with Sign in with Apple failed because our iOS app was not registered with our authentication backend (Firebase), so it rejected every Apple sign-in token. We registered the app (bundle ID com.aidand510.ironpillar) and verified Sign in with Apple, including creating a new account, on a physical iPhone with build 1.0.0 (15). The attached recording shows it working.
+Thank you for catching this. Creating an account with Sign in with Apple failed because our iOS app was not registered with our authentication backend (Firebase), so it rejected every Apple sign-in token. We registered the app (bundle ID com.aidand510.ironpillar) and verified Sign in with Apple, including creating a new account, on a physical iPhone with build 1.0.0 (16). The attached recording shows it working.
 
 Here is the information you requested.
 
@@ -19,13 +19,13 @@ Here is the information you requested.
 Attached: a recording on a physical iPhone running the latest iOS. It starts at app launch and shows creating an account with Sign in with Apple, sign-up with email and the 6-digit verification code, onboarding, starting a training program, logging a workout, the post-workout summary and weekly goal screen, an outdoor walk with the Lock Screen Live Activity, the Social tab with a friend's profile and the Report, Block and Remove Friend controls, subscribing to Iron Pillar Pro with a sandbox account and the Pro features it unlocks, Restore Purchases, signing out and back in, and deleting the account from Settings → Account Details → Delete Account.
 
 **2. Purpose and audience**
-Iron Pillar is a workout tracker for adults and teens (13+) who want to build a consistent exercise habit. It solves the problem of starting strong and then quitting: users follow a training program or build their own workouts (each exercise shows photos of correct form), log sets, reps, weight and time (or GPS-track walks, runs and rides), set a weekly goal of 2-6 workouts, and earn XP, levels, a week streak and badges that reward consistency and personal records. Rest days never break the streak. The value is a simple, motivating log of real training with clear progress over time.
+Iron Pillar is a workout tracker for adults and teens (13+) who want to build a consistent exercise habit. It solves the problem of starting strong and then quitting: users follow a training program or build their own workouts (each exercise shows photos of correct form), log sets, reps, weight and time (or GPS-track walks, runs and rides), set a weekly goal of 2-6 workouts, and earn XP, ranks (Iron to Pillar), a week streak and badges that reward consistency and personal records. Rest days never break the streak. The value is a simple, motivating log of real training with clear progress over time.
 
 **3. Setup and access**
 - Demo account: `[review account email]` / `[password]` (email verification is already complete).
 - Home → Follow a program (or tap any workout) → Get Started to log sets (tap ✓ to log a set) → Finish to see XP, progress toward the weekly goal and any badges.
 - Home → Walk / Run / Bike Ride starts GPS tracking (location permission is requested at that point; "Always" keeps tracking with the screen locked). Lock the phone to see the Live Activity.
-- Pro: Settings → Upgrade to Pro, or the Insights tab. Purchase with a sandbox account. Pro unlocks the Insights tab (readiness score and strength analytics), Apple Health sync (Profile → Connected apps), CSV export (Settings), unlimited custom workouts, AI-filled details for custom workouts, and a gold rank frame. Restore Purchases is on the paywall.
+- Pro: Settings → Upgrade to Pro, or the Insights tab. Purchase with a sandbox account. Pro unlocks the Insights tab (readiness score and strength analytics), Apple Health sync (Profile → Connected apps), CSV export (Settings), unlimited custom workouts, AI-filled details for custom workouts, and a gold frame around the rank emblem. Restore Purchases is on the paywall.
 - Social: Social tab → send a friend request by username; the other person must accept it (Friend Requests section). Friends see each other's workouts and optional post-workout check-in photos (camera button at the top of the Social tab) and can comment on them. From a friend's profile: Report, Block, Remove Friend. On any post or comment, the ••• menu has Report (and Delete for your own content or comments on your posts). Blocked users are listed under Settings → Blocked Users.
 - Account deletion: Settings → Account Details → Delete Account. It permanently deletes the account and all its data.
 - Sign in with Apple and Google are also offered on the welcome screen.

@@ -49,3 +49,4 @@ serviceAccountKey.json
 
 # Firebase emulator logs
 *-debug.log
+store-screenshots/
