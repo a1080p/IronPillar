@@ -420,6 +420,8 @@ export const XP_PER_WEEK_STREAK = 25; // extra per week of streak, capped below
 const MAX_WEEK_STREAK_BONUS_STEPS = 8;
 
 export function clampWeeklyGoal(goal: unknown): number {
+  // Number(null) and Number('') are 0, which would clamp to 2, not the default.
+  if (goal == null || goal === '') return WEEKLY_GOAL_DEFAULT;
   const n = Math.round(Number(goal));
   if (!Number.isFinite(n)) return WEEKLY_GOAL_DEFAULT;
   return Math.min(WEEKLY_GOAL_MAX, Math.max(WEEKLY_GOAL_MIN, n));

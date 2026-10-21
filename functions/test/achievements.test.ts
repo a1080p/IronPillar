@@ -62,6 +62,8 @@ describe('clampWeeklyGoal', () => {
 
   it('falls back to the default of 3 for missing or junk values', () => {
     assert.equal(clampWeeklyGoal(undefined), 3);
+    assert.equal(clampWeeklyGoal(null), 3);
+    assert.equal(clampWeeklyGoal(''), 3);
     assert.equal(clampWeeklyGoal('abc'), 3);
     assert.equal(clampWeeklyGoal(NaN), 3);
   });

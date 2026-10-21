@@ -41,6 +41,8 @@ export const WEEKLY_GOAL_MAX = 6;
 export const WEEKLY_GOAL_DEFAULT = 3;
 
 export function clampWeeklyGoal(goal: number | null | undefined): number {
+  // Number(null) is 0, which would clamp to 2, not the default.
+  if (goal == null) return WEEKLY_GOAL_DEFAULT;
   const n = Math.round(Number(goal));
   if (!Number.isFinite(n)) return WEEKLY_GOAL_DEFAULT;
   return Math.min(WEEKLY_GOAL_MAX, Math.max(WEEKLY_GOAL_MIN, n));
