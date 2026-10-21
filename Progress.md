@@ -4,6 +4,19 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-21 (later): Bug sweep — removeFriend feed cleanup (IP-67), stale friend names (IP-63), clampWeeklyGoal(null); Oct 12 Vercel failures
+
+- **IP-67 merged:** cherry-picked [PR #10](https://github.com/a1080p/IronPillar/pull/10)'s commit. `removeFriend` now clears both feeds like `blockUser`. PR #10 can be closed once main is pushed.
+- **IP-63 fixed:** new `syncFriendName` Firestore trigger (`functions/src/index.ts`, `onDocumentUpdated('users/{uid}')`). When `name` changes, it copies the new name onto `friendships/{friend}/friends/{uid}` for every friend. It uses `update()`, so a missing doc isn't recreated. Edit Profile writes the name from the client, and before this nothing updated the copies. Old renames stay stale until that user renames again (a one-off backfill would fix them).
+- **`clampWeeklyGoal(null)`** now gives the default 3 instead of 2, on client and server. New test cases for `null` and `''`.
+- **Needs a functions deploy (not done):** IP-67 and IP-63 are server-only. The trigger is the project's first Firestore trigger, so the first deploy may ask to enable Eventarc. The client `clampWeeklyGoal` fix is JS-only and can go out in an EAS Update.
+- **Vercel, Oct 12 (`3575f6b`, `a730c40`):** both failed the second they were created (GitHub's deployment status shows failure at the same timestamp as creation), before any build step ran. Neither commit touches `website/`. The deploys before and after them succeeded, and www.ironpillar.app serves the current site (gold rank frame copy). So this was a one-off on Vercel's side, not the code. The exact error needs `npx vercel inspect dpl_GekVC4xzDG8C3uGo56ZZdgKjWUgB --logs` from a logged-in CLI. The CLI on this machine has no login, and the dashboard needs a sign-in. No fix needed.
+- **Closed out from older notes:** the floating bug-report button covering content (09-30) is gone; reports open from the "..." menu now. [PR #2](https://github.com/a1080p/IronPillar/pull/2) (draft) was superseded by PR #8 and can be closed.
+- **Deferred:** IP-37 (exact Figma colors need Figma dev-mode access), IP-35 (VoiceOver pass needs a device), IP-36 (ESLint setup is tooling, not a bug). The first-week streak-at-risk nudge is a product call. Also, `clearFeedItems` deletes in a single batch, so it would fail at 500+ items from one friend. That's unlikely today.
+- `npm test` 58/58, `functions/` 33/33, both `tsc --noEmit` clean.
+
+---
+
 ## 2026-10-21: Pulse check — stale "2× XP" in App Review reply fixed; removeFriend feed-cleanup gap ticketed and fixed in a PR
 
 - **Verified the 10-20 session's claims against code**, not just trusted them: `firestore.rules` and `storage.rules` match the PR #8 narrative exactly (username-squat block, check-in photos gated on owner-or-friend via `firestore.exists`). Root `npm test` 58/58, `npx tsc --noEmit` clean; `functions/` `npm test` 33/33, `npx tsc --noEmit` clean (needed a fresh `npm install` in both — empty by default in this sandbox; the first silent install attempt didn't actually populate `node_modules`, so the first tsc/test run was spurious failures from missing packages, not real ones). The IAM grant claim ("Storage service agent now has `firebaserules.firestoreServiceAgent`") is a GCP project setting this sandbox has no credentials to check (`gcloud auth list` → no credentialed accounts) — not independently re-verified, left as the owner's report.
