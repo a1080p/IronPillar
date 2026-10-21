@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase/config';
 import { cancelPendingGymReminders, syncGymGeofences } from '../lib/gymReminders';
 import {
@@ -24,6 +25,7 @@ import type { WorkoutLog } from '../types/models';
 // completion (on this device or any other) lands here and today's remaining
 // reminders are dropped.
 export function ReminderSync({ uid }: { uid: string }) {
+  const { profile } = useAuth();
   const [logs, setLogs] = useState<WorkoutLog[] | null>(null);
   const [settings, setSettings] = useState<ReminderSettings | null>(null);
   const [permissionReady, setPermissionReady] = useState(false);
@@ -65,11 +67,27 @@ export function ReminderSync({ uid }: { uid: string }) {
     return () => sub.remove();
   }, []);
 
+  // Only the fields the reminder copy and counts depend on, so unrelated
+  // profile writes don't reschedule everything.
+  const nudgeProfile = profile
+    ? {
+        xp: profile.xp,
+        timeZone: profile.timeZone,
+        weeklyGoal: profile.weeklyGoal,
+        weekStart: profile.weekStart,
+        weekCount: profile.weekCount,
+        weekGoal: profile.weekGoal,
+        streakCount: profile.streakCount,
+        lastGoalWeek: profile.lastGoalWeek,
+      }
+    : null;
+  const nudgeKey = JSON.stringify(nudgeProfile);
+
   useEffect(() => {
     if (!logs || !settings || !permissionReady) return;
-    rescheduleWorkoutReminders(logs, settings);
+    rescheduleWorkoutReminders(logs, settings, nudgeProfile);
     if (workedOutToday(logs)) cancelPendingGymReminders();
-  }, [logs, settings, permissionReady, foregroundTick]);
+  }, [logs, settings, permissionReady, foregroundTick, nudgeKey]);
 
   useEffect(() => {
     if (settings) syncGymGeofences(settings);

@@ -48,6 +48,8 @@ function nextMidnight(from: Date, days = 1) {
 
 export function WidgetSync({ uid }: { uid: string }) {
   const { profile } = useAuth();
+  // The widget is free; steps and calories fill in once their source is on
+  // (Apple Health and calorie tracking are still Pro features in the app).
   const { isPro } = usePurchases();
   const { logs } = useWorkoutLogs(uid);
   const { metrics } = useProgressMetrics(uid);
@@ -79,7 +81,6 @@ export function WidgetSync({ uid }: { uid: string }) {
       stepsGoal: STEPS_GOAL,
       caloriesLeft: calorieGoal != null ? Math.round(calorieGoal + burned - eaten) : null,
       calorieGoal,
-      isPro,
       healthConnected,
       updatedAt: Date.now(),
     };

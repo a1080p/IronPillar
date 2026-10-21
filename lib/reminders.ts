@@ -16,6 +16,7 @@ import {
   type DailySlot,
   type ReminderSettings,
 } from './reminderSettings';
+import { averageXpPerWorkout, nudgeForDay, type NudgeProfile } from './reminderNudges';
 import { detectWorkoutPatterns, type WorkoutFocus, type WorkoutPattern } from './workoutPatterns';
 
 export const REMINDER_CHANNEL_ID = 'workout-reminders';
@@ -154,14 +155,18 @@ interface PlannedReminder {
 
 // Pure planning step, split out from the scheduling side effects so the
 // "what fires when" rules are easy to reason about on their own.
+// With a profile, the weekly goal decides how many fire each day and the
+// copy is about the week and rank (see lib/reminderNudges.ts).
 export function planReminders(
   logs: WorkoutLog[],
   settings: ReminderSettings,
-  now = new Date()
+  now = new Date(),
+  profile?: NudgeProfile | null
 ): PlannedReminder[] {
   const planned: PlannedReminder[] = [];
   const doneToday = workedOutToday(logs, now);
   const patterns = settings.patternReminders ? detectWorkoutPatterns(logs, now) : [];
+  const xpPerWorkout = averageXpPerWorkout(logs);
 
   for (let offset = 0; offset < SCHEDULE_DAYS; offset++) {
     if (offset === 0 && doneToday) continue;
@@ -176,23 +181,34 @@ export function planReminders(
     // rather than adding a third notification.
     const pattern = patterns.find((p) => p.weekday === day.getDay());
     const patternSlot = pattern ? patternReminderSlot(pattern) : null;
+    const nudge = profile ? nudgeForDay(profile, atMinutes(day, 12 * 60), xpPerWorkout) : null;
+    if (nudge && nudge.maxReminders === 0) continue;
 
+    const forDay: (PlannedReminder & { isPattern: boolean })[] = [];
     for (const slot of Object.keys(DAILY_SLOT_TIMES) as DailySlot[]) {
       const isPatternSlot = slot === patternSlot && !!pattern;
       if (!settings.dailySlots[slot] && !isPatternSlot) continue;
       const date = atMinutes(day, DAILY_SLOT_TIMES[slot]);
       if (date <= now) continue;
       if (isPatternSlot) {
-        planned.push({ identifier: `${PATTERN_PREFIX}${dateKey}`, date, ...patternMessage(pattern) });
+        forDay.push({ identifier: `${PATTERN_PREFIX}${dateKey}`, date, ...patternMessage(pattern), isPattern: true });
         continue;
       }
       const messages = DAILY_MESSAGES[slot];
-      planned.push({
+      forDay.push({
         identifier: `${DAILY_PREFIX}${dateKey}-${slot}`,
         date,
-        ...messages[rotation % messages.length],
+        ...(nudge ? { title: nudge.title, body: nudge.body } : messages[rotation % messages.length]),
+        isPattern: false,
       });
     }
+    // One a day when the week has slack: the habit reminder if there is one,
+    // otherwise the latest slot (evening), which leaves the most time to act.
+    const kept =
+      nudge && forDay.length > nudge.maxReminders
+        ? [forDay.find((r) => r.isPattern) ?? forDay[forDay.length - 1]]
+        : forDay;
+    for (const { isPattern: _, ...r } of kept) planned.push(r);
   }
   return planned;
 }
@@ -202,7 +218,11 @@ export function planReminders(
 // leave duplicates behind.
 let queue: Promise<void> = Promise.resolve();
 
-export function rescheduleWorkoutReminders(logs: WorkoutLog[], settings: ReminderSettings) {
+export function rescheduleWorkoutReminders(
+  logs: WorkoutLog[],
+  settings: ReminderSettings,
+  profile?: NudgeProfile | null
+) {
   queue = queue
     .then(async () => {
       if (workedOutToday(logs)) await setLastWorkoutDate(todayDateString());
@@ -214,7 +234,7 @@ export function rescheduleWorkoutReminders(logs: WorkoutLog[], settings: Reminde
       );
       if (!(await ensureNotificationPermission(false))) return;
       await ensureReminderChannel();
-      for (const r of planReminders(logs, settings)) {
+      for (const r of planReminders(logs, settings, new Date(), profile)) {
         await Notifications.scheduleNotificationAsync({
           identifier: r.identifier,
           content: { title: r.title, body: r.body, data: { url: '/' } },

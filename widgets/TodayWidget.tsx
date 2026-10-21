@@ -1,6 +1,6 @@
 // The "Iron Pillar Today" home screen and lock screen widget: week streak and
-// workouts this week toward the weekly goal, steps (Pro, Apple Health), and calories left
-// (Pro). Long-press → Edit Widget to choose which of the three it shows.
+// workouts this week toward the weekly goal, steps (once Apple Health is
+// connected), and calories left (once calorie tracking is on). Long-press → Edit Widget to choose which of the three it shows.
 // Kept up to date from the app by components/WidgetSync.tsx.
 //
 // The function below runs in the widget extension, not in the app: it can
@@ -34,11 +34,10 @@ export type TodayWidgetProps = {
   streak: number;
   weekCount: number; // workouts counted this week
   weekGoal: number; // the week's goal (2-6)
-  steps: number | null; // null until Apple Health is connected (Pro)
+  steps: number | null; // null until Apple Health is connected
   stepsGoal: number;
-  caloriesLeft: number | null; // null when not Pro
+  caloriesLeft: number | null; // null until calorie tracking is enabled
   calorieGoal: number | null;
-  isPro: boolean;
   healthConnected: boolean;
   updatedAt: number; // ms epoch the app last refreshed these numbers
 };
@@ -104,32 +103,31 @@ const TodayWidget = (props: TodayWidgetProps, env: WidgetEnvironment<TodayWidget
     });
   }
   if (config.showSteps) {
-    const locked = !props.isPro;
-    const missing = !locked && (!props.healthConnected || props.steps == null);
+    const missing = !props.healthConnected || props.steps == null;
     const steps = props.steps ?? 0;
     metrics.push({
       key: 'steps',
       symbol: 'figure.walk',
       color: green,
-      value: locked ? 'Pro' : missing ? '—' : short(steps),
-      label: locked ? 'steps with Pro' : missing ? 'connect Apple Health' : 'steps',
-      progress: locked || missing ? null : clamp(steps / props.stepsGoal),
-      inline: locked || missing ? 'Steps' : `${short(steps)} steps`,
-      circular: locked || missing ? '—' : short(steps),
+      value: missing ? '—' : short(steps),
+      label: missing ? 'connect Apple Health' : 'steps',
+      progress: missing ? null : clamp(steps / props.stepsGoal),
+      inline: missing ? 'Steps' : `${short(steps)} steps`,
+      circular: missing ? '—' : short(steps),
     });
   }
   if (config.showCalories) {
-    const locked = !props.isPro || props.caloriesLeft == null || props.calorieGoal == null;
+    const missing = props.caloriesLeft == null || props.calorieGoal == null;
     const left = props.caloriesLeft ?? 0;
     metrics.push({
       key: 'calories',
       symbol: 'fork.knife',
       color: blue,
-      value: locked ? 'Pro' : fmt(Math.abs(left)),
-      label: locked ? 'calories with Pro' : left >= 0 ? 'cal left' : 'cal over',
-      progress: locked ? null : clamp(1 - left / (props.calorieGoal || 1)),
-      inline: locked ? 'Calories' : `${fmt(left)} cal left`,
-      circular: locked ? '—' : short(Math.max(0, left)),
+      value: missing ? '—' : fmt(Math.abs(left)),
+      label: missing ? 'track calories in app' : left >= 0 ? 'cal left' : 'cal over',
+      progress: missing ? null : clamp(1 - left / (props.calorieGoal || 1)),
+      inline: missing ? 'Calories' : `${fmt(left)} cal left`,
+      circular: missing ? '—' : short(Math.max(0, left)),
     });
   }
 
