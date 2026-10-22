@@ -13,10 +13,6 @@ const TIER_COLORS: Record<BadgeTier, string> = {
   platinum: '#3D4FEA',
 };
 
-export function tierColor(tier: BadgeTier) {
-  return TIER_COLORS[tier];
-}
-
 // A badge drawn as a medal: tier-coloured ring around the badge's own icon.
 // Locked badges are drawn in muted grey.
 export function BadgeMedal({

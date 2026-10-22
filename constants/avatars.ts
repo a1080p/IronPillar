@@ -37,7 +37,6 @@ export const AVATAR_COLORS: string[] = [
   '#D97706', // amber
 ];
 
-export const DEFAULT_AVATAR_ICON = AVATAR_ICONS[0].key;
 export const DEFAULT_AVATAR_COLOR = AVATAR_COLORS[0];
 
 // Fixed icon+color pairs shown as the picker's grid — one distinct color per

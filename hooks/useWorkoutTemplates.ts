@@ -21,9 +21,3 @@ export function useWorkoutTemplates() {
 
   return { templates, loading };
 }
-
-export function useWorkoutTemplate(id: string | undefined) {
-  const { templates, loading } = useWorkoutTemplates();
-  const template = templates.find((t) => t.id === id);
-  return { template, loading };
-}
