@@ -5,7 +5,7 @@ import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { defineSecret } from 'firebase-functions/params';
 import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
-import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { randomInt, randomUUID } from 'node:crypto';
 import {
   BADGE_NAMES,
@@ -25,6 +25,7 @@ import {
   type WeekState,
 } from './achievements';
 import { containsBlockedTerm } from './moderation';
+import { hasActiveEntitlement, revenueCatEventUserIds, webhookAuthorized, type RevenueCatSubscriber } from './pro';
 
 initializeApp();
 const db = getFirestore();
@@ -65,6 +66,11 @@ const REVENUECAT_SECRET_KEY = defineSecret('REVENUECAT_SECRET_KEY');
 // Must match the entitlement identifier in the RevenueCat dashboard and
 // contexts/PurchasesContext.tsx.
 const PRO_ENTITLEMENT_ID = 'iron_pillar_pro';
+// Set with: firebase functions:secrets:set REVENUECAT_WEBHOOK_AUTH
+// Any long random string; paste the same value into the RevenueCat dashboard
+// (Integrations > Webhooks > Authorization header). revenueCatWebhook
+// rejects requests without it.
+const REVENUECAT_WEBHOOK_AUTH = defineSecret('REVENUECAT_WEBHOOK_AUTH');
 
 // Set with: firebase functions:secrets:set WHOOP_CLIENT_ID
 //           firebase functions:secrets:set WHOOP_CLIENT_SECRET
@@ -213,7 +219,7 @@ function newFeedItem(
   actorName: string,
   message: string,
   subject?: string, // what the item is about (workout/badge name), for reactions
-  extra: { postId?: string; photoUrl?: string; caption?: string; actorXp?: number } = {}
+  extra: { postId?: string; photoUrl?: string; caption?: string; actorXp?: number; actorPro?: boolean } = {}
 ) {
   return {
     type,
@@ -272,6 +278,7 @@ export const completeWorkout = onCall(async (request) => {
     const profile = userSnap.data() as WeekState & {
       name: string;
       xp: number;
+      pro?: boolean;
       weeklyGoal?: number;
       timeZone?: string;
       timeZoneUpdatedAt?: string;
@@ -444,13 +451,14 @@ export const completeWorkout = onCall(async (request) => {
           profile.name,
           `${profile.name} completed ${workout.name}!`,
           workout.name,
-          { postId, actorXp: (profile.xp ?? 0) + xpEarned }
+          { postId, actorXp: (profile.xp ?? 0) + xpEarned, actorPro: profile.pro === true }
         )
       );
-      // Friends' lists show this person's rank from their copy of the XP.
+      // Friends' lists show this person's rank (and Pro frame) from their
+      // copy of the XP and pro flag.
       tx.set(
         db.collection('friendships').doc(friendUid).collection('friends').doc(uid),
-        { xp: (profile.xp ?? 0) + xpEarned },
+        { xp: (profile.xp ?? 0) + xpEarned, pro: profile.pro === true },
         { merge: true }
       );
       // One feed item however many badges were earned at once.
@@ -683,16 +691,20 @@ export const changeUsername = onCall(async (request) => {
   });
 });
 
-// Friendship docs keep a copy of each friend's name (written by
-// writeFriendship). Edit Profile changes users/{uid}.name straight from the
-// client, so copy the new name onto every friend's doc here; otherwise
-// friends keep seeing the old name (IP-63). Usernames are synced by
-// changeUsername above.
+// Friendship docs keep a copy of each friend's name and Pro status (written
+// by writeFriendship). Edit Profile changes users/{uid}.name straight from
+// the client, so copy the new name onto every friend's doc here; otherwise
+// friends keep seeing the old name (IP-63). `pro` is set by setProStatus and
+// copied the same way, so friends see the gold rank frame. Usernames are
+// synced by changeUsername above.
 export const syncFriendName = onDocumentUpdated('users/{uid}', async (event) => {
-  const before = event.data?.before.data() as { name?: unknown } | undefined;
-  const after = event.data?.after.data() as { name?: unknown } | undefined;
+  const before = event.data?.before.data() as { name?: unknown; pro?: unknown } | undefined;
+  const after = event.data?.after.data() as { name?: unknown; pro?: unknown } | undefined;
+  const changes: { name?: string; pro?: boolean } = {};
   const name = after?.name;
-  if (typeof name !== 'string' || !name || name === before?.name) return;
+  if (typeof name === 'string' && name && name !== before?.name) changes.name = name;
+  if ((after?.pro === true) !== (before?.pro === true)) changes.pro = after?.pro === true;
+  if (Object.keys(changes).length === 0) return;
   const uid = event.params.uid;
   const friends = await db.collection('friendships').doc(uid).collection('friends').get();
   // update(), not set(): a missing doc means that side of the friendship is
@@ -704,7 +716,7 @@ export const syncFriendName = onDocumentUpdated('users/{uid}', async (event) => 
         .doc(friend.id)
         .collection('friends')
         .doc(uid)
-        .update({ name })
+        .update(changes)
         .catch(() => {})
     )
   );
@@ -745,6 +757,7 @@ export const getFriendProfile = onCall(async (request) => {
     avatarUrl?: string | null;
     avatarKey?: string | null;
     xp?: number;
+    pro?: boolean;
     timeZone?: string;
     friendCount?: number;
   } & WeekState;
@@ -764,6 +777,7 @@ export const getFriendProfile = onCall(async (request) => {
     avatarUrl: profile.avatarUrl ?? null,
     avatarKey: profile.avatarKey ?? null,
     xp,
+    pro: profile.pro === true,
     streakCount: currentStreak,
     friendCount: profile.friendCount ?? 0,
     badges: badgesSnap.docs.map((d) => {
@@ -870,12 +884,12 @@ const outgoingRef = (fromUid: string, toUid: string) =>
 
 // Makes two people friends (both sides at once) and clears any requests
 // between them. Runs inside a transaction that has already read both users.
-// `xp` is copied so friend lists can show each other's rank; completeWorkout
-// keeps it current.
+// `xp` and `pro` are copied so friend lists can show each other's rank and
+// Pro frame; completeWorkout and syncFriendName keep them current.
 function writeFriendship(
   tx: FirebaseFirestore.Transaction,
-  a: { uid: string; name: string; username: string; xp?: number },
-  b: { uid: string; name: string; username: string; xp?: number }
+  a: { uid: string; name: string; username: string; xp?: number; pro?: boolean },
+  b: { uid: string; name: string; username: string; xp?: number; pro?: boolean }
 ) {
   const now = new Date().toISOString();
   tx.set(db.collection('friendships').doc(a.uid).collection('friends').doc(b.uid), {
@@ -883,6 +897,7 @@ function writeFriendship(
     name: b.name,
     username: b.username,
     xp: b.xp ?? 0,
+    pro: b.pro === true,
     since: now,
   });
   tx.set(db.collection('friendships').doc(b.uid).collection('friends').doc(a.uid), {
@@ -890,6 +905,7 @@ function writeFriendship(
     name: a.name,
     username: a.username,
     xp: a.xp ?? 0,
+    pro: a.pro === true,
     since: now,
   });
   tx.update(db.collection('users').doc(a.uid), { friendCount: FieldValue.increment(1) });
@@ -947,13 +963,13 @@ export const addFriend = onCall(async (request) => {
     if (friendSnap.exists) {
       throw new HttpsError('already-exists', 'You are already friends.');
     }
-    const self = selfSnap.data() as { name: string; username: string; xp?: number };
-    const target = targetSnap.data() as { name: string; username: string; xp?: number };
+    const self = selfSnap.data() as { name: string; username: string; xp?: number; pro?: boolean };
+    const target = targetSnap.data() as { name: string; username: string; xp?: number; pro?: boolean };
     const me = { uid, name: self.name, username: self.username, xp: self.xp };
     const them = { uid: targetUid, name: target.name, username: target.username, xp: target.xp };
 
     if (theirRequestSnap.exists) {
-      writeFriendship(tx, me, them);
+      writeFriendship(tx, { ...me, pro: self.pro }, { ...them, pro: target.pro });
       return { status: 'friends', uid: targetUid, name: target.name, username: target.username };
     }
 
@@ -985,12 +1001,12 @@ export const respondFriendRequest = onCall(async (request) => {
       tx.delete(outgoingRef(fromUid, uid));
       return { status: 'declined' };
     }
-    const self = selfSnap.data() as { name: string; username: string; xp?: number };
-    const from = fromSnap.data() as { name: string; username: string; xp?: number };
+    const self = selfSnap.data() as { name: string; username: string; xp?: number; pro?: boolean };
+    const from = fromSnap.data() as { name: string; username: string; xp?: number; pro?: boolean };
     writeFriendship(
       tx,
-      { uid, name: self.name, username: self.username, xp: self.xp },
-      { uid: fromUid, name: from.name, username: from.username, xp: from.xp }
+      { uid, name: self.name, username: self.username, xp: self.xp, pro: self.pro },
+      { uid: fromUid, name: from.name, username: from.username, xp: from.xp, pro: from.pro }
     );
     tx.set(
       db.collection('activityFeed').doc(fromUid).collection('items').doc(),
@@ -1591,14 +1607,61 @@ async function isProSubscriber(uid: string, secretValue: string): Promise<boolea
   if (!res.ok) {
     throw new HttpsError('internal', 'Could not verify subscription status. Try again.');
   }
-  const data = (await res.json()) as {
-    subscriber?: { entitlements?: Record<string, { expires_date: string | null }> };
-  };
-  const entitlement = data.subscriber?.entitlements?.[PRO_ENTITLEMENT_ID];
-  if (!entitlement) return false;
-  if (!entitlement.expires_date) return true; // lifetime/non-expiring grant
-  return new Date(entitlement.expires_date).getTime() > Date.now();
+  return hasActiveEntitlement((await res.json()) as RevenueCatSubscriber, PRO_ENTITLEMENT_ID);
 }
+
+// Re-checks a user's entitlement with RevenueCat and stores it as
+// users/{uid}.pro, which only Cloud Functions can write (firestore.rules).
+// syncFriendName copies a change onto friends' docs; completeWorkout copies
+// it onto new feed items. Returns null when there's no profile to update.
+async function refreshProStatus(uid: string, secretValue: string): Promise<boolean | null> {
+  const pro = await isProSubscriber(uid, secretValue);
+  const userRef = db.collection('users').doc(uid);
+  const snap = await userRef.get();
+  if (!snap.exists) return null;
+  if ((snap.get('pro') === true) !== pro) await userRef.update({ pro });
+  return pro;
+}
+
+// Called by the app whenever its RevenueCat customer info says Pro changed
+// (purchase, restore, expiry), so the gold frame reaches friends right away
+// even before RevenueCat's webhook arrives. The client's claim isn't used:
+// the status always comes from RevenueCat's API.
+export const syncProStatus = onCall({ secrets: [REVENUECAT_SECRET_KEY] }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Must be signed in.');
+  const secret = REVENUECAT_SECRET_KEY.value();
+  if (!secret) return { pro: false };
+  return { pro: (await refreshProStatus(uid, secret)) ?? false };
+});
+
+// RevenueCat webhook (Integrations > Webhooks, URL of this function). Keeps
+// users/{uid}.pro right when a subscription renews, lapses or is refunded
+// while the app is closed. Each user the event names is re-checked against
+// the RevenueCat API rather than trusting the event body.
+export const revenueCatWebhook = onRequest(
+  { secrets: [REVENUECAT_SECRET_KEY, REVENUECAT_WEBHOOK_AUTH] },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method not allowed');
+      return;
+    }
+    if (!webhookAuthorized(req.get('authorization'), REVENUECAT_WEBHOOK_AUTH.value())) {
+      res.status(401).send('Unauthorized');
+      return;
+    }
+    const secret = REVENUECAT_SECRET_KEY.value();
+    try {
+      await Promise.all(revenueCatEventUserIds(req.body).map((uid) => refreshProStatus(uid, secret)));
+    } catch (e) {
+      // A non-2xx makes RevenueCat retry the event later.
+      console.error('revenueCatWebhook refresh failed', e);
+      res.status(500).send('Retry');
+      return;
+    }
+    res.status(200).send('OK');
+  }
+);
 
 export const generateWorkoutDetails = onCall(
   { secrets: [ANTHROPIC_API_KEY, REVENUECAT_SECRET_KEY] },

@@ -91,7 +91,7 @@ export default function FriendProfileScreen() {
         </View>
 
         <View style={styles.levelRow} accessible accessibilityLabel={`${firstName}'s rank: ${rp.rank.name}`}>
-          <RankEmblem rank={rp.rank} size={36} />
+          <RankEmblem rank={rp.rank} size={36} framed={friend.pro === true} />
           <View style={{ flex: 1, marginHorizontal: spacing.sm }}>
             <Text style={styles.levelLabel}>{rp.rank.name}</Text>
             <ProgressBar progress={rp.progress} />

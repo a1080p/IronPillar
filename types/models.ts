@@ -32,6 +32,9 @@ export interface UserProfile {
   calorieGoal?: number | null; // Pro calorie tracking: the user's own daily target, if they set one
   level: number;
   xp: number;
+  // Server-written copy of the Pro entitlement (syncProStatus /
+  // revenueCatWebhook), so friends can see the gold rank frame.
+  pro?: boolean;
   // Weeks in a row the weekly goal was hit; server-written. (Before the
   // weekly goal this counted days; those values were dropped.)
   streakCount: number;
@@ -61,6 +64,7 @@ export interface Friend {
   name: string;
   username: string;
   xp?: number; // copy of the friend's XP for showing their rank (absent on older friendships)
+  pro?: boolean; // copy of whether the friend has Pro, for the gold rank frame
   since: string; // ISO timestamp
 }
 
@@ -193,6 +197,7 @@ export interface FriendProfile {
   avatarUrl: string | null;
   avatarKey: string | null;
   xp: number;
+  pro?: boolean; // has Pro: their rank emblem gets the gold frame
   streakCount: number;
   friendCount: number;
   badges: { badgeId: string; earnedAt: string | null }[];
@@ -249,6 +254,7 @@ export interface ActivityFeedItem {
   actorUid: string;
   actorName: string;
   actorXp?: number; // on workout items: the actor's XP after it, for their rank
+  actorPro?: boolean; // on workout items: whether the actor had Pro (gold rank frame)
   message: string;
   subject?: string; // e.g. "Core Crusher" or "the Journey Begins badge"
   myReactions?: { heart?: boolean; congrats?: boolean }; // reactions you've sent

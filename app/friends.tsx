@@ -48,7 +48,7 @@ export default function FriendsScreen() {
                 <Text style={styles.name}>{friend.name}</Text>
                 <Text style={styles.handle}>@{friend.username}</Text>
               </View>
-              {friend.xp != null && <RankEmblem rank={rankForXp(friend.xp)} size={24} />}
+              {friend.xp != null && <RankEmblem rank={rankForXp(friend.xp)} size={24} framed={friend.pro === true} />}
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Pressable>
           ))

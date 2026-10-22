@@ -1,8 +1,9 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import type { CustomerInfo, PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import type { PAYWALL_RESULT } from 'react-native-purchases-ui';
+import { syncProStatus } from '../lib/account';
 import { useAuth } from './AuthContext';
 
 // The Pro entitlement identifier as configured in the RevenueCat dashboard
@@ -74,7 +75,7 @@ interface PurchasesContextValue {
 const PurchasesContext = createContext<PurchasesContextValue | undefined>(undefined);
 
 export function PurchasesProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [loading, setLoading] = useState(purchasesReady);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
@@ -119,6 +120,20 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
   }, [user?.uid]);
 
   const isPro = !!customerInfo?.entitlements.active[PRO_ENTITLEMENT_ID];
+
+  // Friends see the gold rank frame from profile.pro, which only the server
+  // writes. When RevenueCat's answer here disagrees with it (just bought,
+  // restored or lapsed), ask the server to re-check; it asks RevenueCat
+  // itself, so this can't grant anything. Once per mismatch, not per render.
+  const profilePro = profile ? profile.pro === true : null;
+  const syncedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (loading || !customerInfo || !user || profilePro === null || profilePro === isPro) return;
+    const key = `${user.uid}:${isPro}`;
+    if (syncedFor.current === key) return;
+    syncedFor.current = key;
+    syncProStatus().catch((e) => console.warn('syncProStatus failed', e));
+  }, [loading, customerInfo, user, profilePro, isPro]);
 
   const purchasePackage = useCallback(async (pkg: PurchasesPackage) => {
     const Purchases = (await import('react-native-purchases')).default;

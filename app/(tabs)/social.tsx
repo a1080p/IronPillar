@@ -223,7 +223,7 @@ export default function SocialScreen() {
                     <Text style={styles.friendName}>{friend.name}</Text>
                     <Text style={styles.friendHandle}>@{friend.username}</Text>
                   </View>
-                  {friend.xp != null && <RankEmblem rank={rankForXp(friend.xp)} size={24} />}
+                  {friend.xp != null && <RankEmblem rank={rankForXp(friend.xp)} size={24} framed={friend.pro === true} />}
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </Pressable>
               ))}
@@ -240,7 +240,11 @@ export default function SocialScreen() {
           items.map((item) => (
             <View key={item.id} style={styles.feedItem}>
               {item.type === 'friend_workout' && item.actorXp != null && item.actorUid !== user?.uid ? (
-                <RankEmblem rank={rankForXp(item.actorXp)} size={22} />
+                <RankEmblem
+                  rank={rankForXp(item.actorXp)}
+                  size={22}
+                  framed={friends.find((f) => f.uid === item.actorUid)?.pro ?? item.actorPro === true}
+                />
               ) : (
                 iconForType[item.type] ?? iconForType.friend_workout
               )}

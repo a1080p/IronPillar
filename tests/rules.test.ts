@@ -139,3 +139,39 @@ describe('usernames/{username}', () => {
     await assertFails(setDoc(doc(db, 'usernames', 'alice'), { uid: 'alice' }));
   });
 });
+
+// users/{uid}.pro drives the gold rank frame friends see, so only Cloud
+// Functions (after asking RevenueCat) may set it.
+describe('users/{uid}.pro', () => {
+  const profile = {
+    uid: 'alice',
+    username: 'alice',
+    name: 'Alice',
+    level: 1,
+    xp: 0,
+    streakCount: 0,
+    lastWorkoutDate: null,
+    friendCount: 0,
+    createdAt: 'x',
+  };
+
+  test('cannot create a profile that claims Pro', async () => {
+    const db = env.authenticatedContext('alice').firestore();
+    await assertFails(setDoc(doc(db, 'users', 'alice'), { ...profile, pro: true }));
+    await assertSucceeds(setDoc(doc(db, 'users', 'alice'), profile));
+  });
+
+  test('cannot grant or remove Pro on an existing profile', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users/alice'), profile);
+      await setDoc(doc(ctx.firestore(), 'users/bob'), { ...profile, uid: 'bob', username: 'bob', pro: true });
+    });
+    const alice = env.authenticatedContext('alice').firestore();
+    await assertFails(setDoc(doc(alice, 'users', 'alice'), { ...profile, pro: true }));
+    await assertSucceeds(setDoc(doc(alice, 'users', 'alice'), { ...profile, name: 'Al' }));
+    const bob = env.authenticatedContext('bob').firestore();
+    const bobProfile = { ...profile, uid: 'bob', username: 'bob' };
+    await assertFails(setDoc(doc(bob, 'users', 'bob'), { ...bobProfile, pro: false }));
+    await assertSucceeds(setDoc(doc(bob, 'users', 'bob'), { ...bobProfile, pro: true, name: 'Bobby' }));
+  });
+});

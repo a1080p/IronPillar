@@ -14,3 +14,12 @@ export async function changeUsername(username: string) {
   const { data } = await changeUsernameFn({ username });
   return data.username;
 }
+
+const syncProStatusFn = httpsCallable<void, { pro: boolean }>(functions, 'syncProStatus');
+
+// Asks the server to re-check Pro with RevenueCat and store it on the
+// profile, where friends' copies (and the gold rank frame) come from.
+export async function syncProStatus() {
+  const { data } = await syncProStatusFn();
+  return data.pro;
+}

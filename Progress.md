@@ -4,6 +4,22 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-22: Friends now see the gold rank frame
+
+- **Why:** the paywall promises the gold frame "wherever friends see it", but it only showed on your own screens. No Pro status was stored anywhere friends could read.
+- **`users/{uid}.pro`** is now a server-only boolean. `firestore.rules` blocks clients from setting it on create or changing it on update. Two Cloud Functions write it, and both ask the RevenueCat API instead of trusting the caller:
+  - `syncProStatus` (callable): `PurchasesContext` calls it when the device's RevenueCat answer disagrees with `profile.pro`, e.g. right after a purchase, restore or lapse.
+  - `revenueCatWebhook` (HTTPS): re-checks every user an event names (subscriber, aliases, both sides of a TRANSFER), so renewals, expiries and refunds land while the app is closed. Returns 500 on a RevenueCat error so RevenueCat retries.
+- **Copied to friends** like `xp`: `writeFriendship` copies `pro` onto new friendship docs, `syncFriendName` now also copies a `pro` change onto every friend's doc, `completeWorkout` writes it on the friend doc and as `actorPro` on feed items, and `getFriendProfile` returns it. `app/friends.tsx`, `app/(tabs)/social.tsx` (friend list and feed; the feed prefers the live friend-doc value) and `app/friend/[uid].tsx` pass `framed`.
+- **Before deploying (owner):**
+  1. `npx firebase functions:secrets:set REVENUECAT_WEBHOOK_AUTH` (any long random string). Deploys are refused until it exists.
+  2. Deploy rules and `syncProStatus,revenueCatWebhook,syncFriendName,completeWorkout,getFriendProfile,addFriend,respondFriendRequest`.
+  3. In RevenueCat > Integrations > Webhooks, add the `revenueCatWebhook` URL with the same value as the Authorization header.
+- **Gaps:** current subscribers' friend docs fill in the first time each opens the new app build (or on their next webhook event). Old feed items have no `actorPro` and show no frame unless the friend list has it. Pure logic is in `functions/src/pro.ts` with tests in `functions/test/pro.test.ts`. New rules tests are in `tests/rules.test.ts` but weren't run: no Java on this machine.
+- `npm test` 70/70, root and `functions/` `tsc --noEmit` clean.
+
+---
+
 ## 2026-10-22: Pulse check — stale Pro-copy fix, dead code removed, Tabata copy fixed, two stale "To Do" tickets closed out, two superseded PRs closed, expired Anthropic key ticketed
 
 - **Verified two unlogged commits against code and the tests**, not just trusted the summaries: `69e9bc2` ("Free users can connect Apple Health for steps") and `fa39ca2` ("Free widgets; reminders follow the weekly goal and rank") both check out — `hooks/useAppleHealth.ts`/`lib/healthkit.ts` correctly gate `'full'` scope reads on `isPro`, widgets correctly keep calories Pro-only while freeing steps, and the new `lib/reminderNudges.ts` logic (tested in `tests/unit/reminderNudges.test.ts`) matches its own commit description exactly. Root `npm test` 63/63 (up from 58 — the new reminder-nudge tests), `functions/` 33/33, both `npx tsc --noEmit` clean.
