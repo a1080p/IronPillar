@@ -25,7 +25,7 @@ Iron Pillar is a workout tracker for adults and teens (13+) who want to build a 
 - Demo account: `[review account email]` / `[password]` (email verification is already complete).
 - Home → Follow a program (or tap any workout) → Get Started to log sets (tap ✓ to log a set) → Finish to see XP, progress toward the weekly goal and any badges.
 - Home → Walk / Run / Bike Ride starts GPS tracking (location permission is requested at that point; "Always" keeps tracking with the screen locked). Lock the phone to see the Live Activity.
-- Pro: Settings → Upgrade to Pro, or the Insights tab. Purchase with a sandbox account. Pro unlocks the Insights tab (readiness score and strength analytics), Apple Health sync (Profile → Connected apps), CSV export (Settings), unlimited custom workouts, AI-filled details for custom workouts, and a gold frame around the rank emblem. Restore Purchases is on the paywall.
+- Pro: Settings → Upgrade to Pro, or the Insights tab. Purchase with a sandbox account. Pro unlocks the Insights tab (readiness score and strength analytics), full Apple Health & Apple Watch sync — HRV, resting heart rate, sleep, and saving workouts to Health (Profile → Connected apps; free accounts can connect Apple Health there too, for steps only), calorie tracking, CSV export (Settings), unlimited custom workouts, AI-filled details for custom workouts, and a gold frame around the rank emblem. Restore Purchases is on the paywall.
 - Social: Social tab → send a friend request by username; the other person must accept it (Friend Requests section). Friends see each other's workouts and optional post-workout check-in photos (camera button at the top of the Social tab) and can comment on them. From a friend's profile: Report, Block, Remove Friend. On any post or comment, the ••• menu has Report (and Delete for your own content or comments on your posts). Blocked users are listed under Settings → Blocked Users.
 - Account deletion: Settings → Account Details → Delete Account. It permanently deletes the account and all its data.
 - Sign in with Apple and Google are also offered on the welcome screen.
@@ -35,7 +35,7 @@ Iron Pillar is a workout tracker for adults and teens (13+) who want to build a 
 - RevenueCat: manages the Iron Pillar Pro auto-renewable subscription; payments are processed by Apple In-App Purchase.
 - Resend: sends the email verification code and user reports to the developer.
 - Anthropic (Claude): generates the overview, tips and equipment list for custom workouts created by Pro users. Only the workout name and exercise list are sent, no personal data.
-- Apple HealthKit (optional, Pro): reads HRV, resting heart rate, sleep, steps, energy, weight and workouts to compute a readiness score, and writes completed workouts. Health data stays on the device and is never uploaded.
+- Apple HealthKit (optional): free accounts can connect it for step count only. Pro additionally reads HRV, resting heart rate, sleep, energy, weight and workouts to compute a readiness score, and writes completed workouts. Health data stays on the device and is never uploaded.
 - Apple Maps (MapKit) shows outdoor routes; Sign in with Apple and Google Sign-In for login.
 - Exercise form photos are from free-exercise-db, a public-domain (Unlicense) image set, loaded from the jsDelivr CDN.
 

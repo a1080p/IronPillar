@@ -36,18 +36,18 @@ Add friends, see their workouts and ranks, react and comment, and share check-in
 MORE
 - GPS walks, runs and rides with a Lock Screen Live Activity
 - Personal records, weekly stats and a consistency calendar
-- Home and Lock Screen widget
+- Home and Lock Screen widget, with steps from Apple Health
 - 75+ workouts across strength, cardio, HIIT, yoga, mobility and sports
 
 IRON PILLAR PRO
 - Daily readiness score from HRV, resting heart rate, sleep and training load
-- Apple Health and Apple Watch sync
+- Full Apple Health & Apple Watch sync: HRV, sleep, resting heart rate, and workouts saved to Health
 - Advanced strength analytics: 1RM trends, next-session targets and plateau alerts
 - Calorie tracking with a daily goal
 - Import workouts, weigh-ins and meals with AI
 - AI-written details for your custom workouts
 - Unlimited custom workouts and CSV export
-- Steps and calories in your widget
+- Calories in your widget
 - A gold frame around your rank emblem
 
 Pro is available as a monthly or annual auto-renewing subscription; the annual plan includes a 7-day free trial for new subscribers. Payment is charged to your Apple ID and renews automatically unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your App Store account settings.
