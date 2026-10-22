@@ -179,7 +179,7 @@ export default function HomeScreen() {
         const rank = rankProgress(profile.xp).rank;
         appAlert(
           'Levels are now ranks',
-          `You're ${rank.name}. Ranks go from Iron to Pillar, rise with every workout, and never drop. Tap the emblem at the top any time to see the ladder.`,
+          `You're ${rank.name}. Ranks go from Bronze to Pillar, rise with every workout, and never drop. Tap the emblem at the top any time to see the ladder.`,
           [
             { text: 'Got It', style: 'cancel' },
             { text: 'See My Rank', onPress: () => router.push('/rank') },

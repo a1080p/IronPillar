@@ -5,7 +5,7 @@ Removes the old "2× XP" and daily-streak claims; describes ranks, weekly goals 
 
 ## Promotional text (170 characters max, editable without a new build)
 
-Follow a real program, see proper form for every lift, and climb from Iron to Pillar. Weekly goals mean rest days never break your streak.
+Follow a real program, see proper form for every lift, and climb from Bronze to Pillar. Weekly goals mean rest days never break your streak.
 
 ## Subtitle (30 characters max)
 
@@ -28,7 +28,7 @@ WEEKLY GOALS, NOT DAILY GUILT
 Choose 2 to 6 workouts a week. Hit your goal and the week counts toward your streak. Rest days never break it, and one missed week a month is forgiven.
 
 RANK UP
-Every set, personal record and session where you beat last time earns XP. Climb seven tiers from Iron to Pillar. Your rank only ever goes up.
+Every set, personal record and session where you beat last time earns XP. Climb seven tiers from Bronze to Pillar. Your rank only ever goes up.
 
 TRAIN WITH FRIENDS
 Add friends, see their workouts and ranks, react and comment, and share check-in photos with your friends only.

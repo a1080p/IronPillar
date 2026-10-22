@@ -34,8 +34,8 @@ describe('nudgeForDay', () => {
   });
 
   it('leads with the next rank when it is a workout or two away', () => {
-    const n = nudgeForDay({ ...base, weekCount: 1, xp: 300 }, WED, 350);
-    assert.equal(n.title, 'One workout from Iron II');
+    const n = nudgeForDay({ ...base, weekCount: 1, xp: 500 }, WED, 350);
+    assert.equal(n.title, 'One workout from Bronze II');
     assert.match(n.body, /200 XP to go/);
   });
 
