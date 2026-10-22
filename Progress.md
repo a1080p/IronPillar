@@ -4,6 +4,13 @@ Running log of what's been built, changed, and verified. Newest entries at the t
 
 ---
 
+## 2026-10-22: New Anthropic key live (IP-68)
+
+- The owner renewed the key and set it as `ANTHROPIC_API_KEY` version 2. `generateWorkoutDetails` and `parseImport` were redeployed (us-central1), so they now use it. Not tested end to end: calling them needs a signed-in Pro user.
+- **Next build (#17):** needed so friends see the gold frame. It wasn't started from here because the session's permissions require the owner to run production builds. Command: `npx eas-cli build --platform ios --profile production --auto-submit`. This uploads to App Store Connect without sending it to review.
+
+---
+
 ## 2026-10-22: Friends now see the gold rank frame
 
 - **Why:** the paywall promises the gold frame "wherever friends see it", but it only showed on your own screens. No Pro status was stored anywhere friends could read.
