@@ -1,4 +1,4 @@
-# App Store listing (version 1.0.0, build 16)
+# App Store listing (version 1.0.0, build 17)
 
 Paste into App Store Connect → Iron Pillar → iOS App 1.0 → App Information / version page.
 Removes the old "2× XP" and daily-streak claims; describes ranks, weekly goals and programs.

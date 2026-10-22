@@ -83,7 +83,7 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "Iron Pillar Pro reads heart rate variability, resting heart rate, sleep, activity, body weight, and Apple Watch workouts to calculate your daily readiness score. This data stays on your device.",
+          "NSHealthShareUsageDescription": "Iron Pillar reads your step count to show your daily steps on your profile and widget. With Iron Pillar Pro, it also reads heart rate variability, resting heart rate, sleep, activity, body weight, and Apple Watch workouts to calculate your daily readiness score. This data stays on your device.",
           "NSHealthUpdateUsageDescription": "Iron Pillar saves the workouts you complete to Apple Health so they count toward your Activity rings.",
           "background": false
         }
