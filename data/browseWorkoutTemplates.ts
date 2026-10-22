@@ -341,7 +341,7 @@ export const browseWorkoutTemplates: WorkoutTemplate[] = [
       ex('tabata-mountain-climbers', 'Mountain Climbers', 'duration', 4, '20 sec work / 10 sec rest', { tips: 'Hold a plank and drive your knees toward your chest quickly while keeping your hips level.' }),
       ex('tabata-plank-jacks', 'Plank Jacks', 'duration', 4, '20 sec work / 10 sec rest', { tips: 'Hold a strong plank position and jump your feet apart and together without letting your hips rise.' }),
     ],
-    [info('Intensity', ['True Tabata is all-out for the full 20 seconds', 'Repeat the 4-exercise circuit twice through'])],
+    [info('Intensity', ['True Tabata is all-out for the full 20 seconds', 'Repeat the 4-exercise circuit four times through'])],
     [info('Essential Equipment', ['None - bodyweight only'])]
   ),
   browse(
